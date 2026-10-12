@@ -50,6 +50,18 @@ test("cards resolve the surface token per theme", async ({ page }) => {
 	await expect(card("dark")).toHaveCSS("background-color", "rgb(37, 36, 32)");
 });
 
+test("a drop target column counts the hovering card, the origin keeps its own", async ({ page }) => {
+	const board = scope(page, "board", "light");
+	const targets = board.locator('[data-slot="board-column"][data-drop-target]');
+	await expect(targets).toHaveCount(2);
+	for (const target of await targets.all()) {
+		await expect(target.locator('[data-slot="board-column-count"]')).toHaveText("4");
+		await expect(target.locator('[data-slot="board-column-count"]')).toHaveCSS("color", "rgb(113, 108, 99)");
+	}
+	const origin = board.locator('[data-slot="board-column"]:has([data-slot="issue-card"][data-drag-state="ghost"])');
+	await expect(origin.locator('[data-slot="board-column-count"]')).toHaveText("6");
+});
+
 test("data-preview forces hover and focus styles", async ({ page }) => {
 	const ghost = scope(page, "buttons", "light").getByRole("button", { name: "Filter" });
 	await expect(ghost.nth(0)).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");

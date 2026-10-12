@@ -8,6 +8,7 @@ type BoardColumnProps = ComponentProps<"section"> & {
 	status: StatusKey;
 	count: number;
 	name?: string;
+	/** A card from another column is over this one, so the header counts it before the drop. */
 	dropTarget?: boolean;
 	hiddenCount?: number;
 	empty?: boolean;
@@ -29,13 +30,16 @@ export function BoardColumn({
 	return (
 		<section
 			data-slot="board-column"
+			data-drop-target={dropTarget || undefined}
 			className={cn("relative flex w-column shrink-0 flex-col gap-[5px] rounded-xl bg-bg-sunken p-[5px]", className)}
 			{...props}
 		>
 			<header className="flex h-7 items-center gap-[7px] pr-0.5 pl-1.5">
 				<StatusSquare status={status} />
 				<span className="font-semibold text-[12.5px]">{name ?? statusLabels[status]}</span>
-				<span className="font-mono text-fg-3 text-xs">{count}</span>
+				<span data-slot="board-column-count" className="font-mono text-fg-3 text-xs">
+					{dropTarget ? count + 1 : count}
+				</span>
 				<span className="flex-1" />
 				<Button type="button" variant="ghost" size="icon" aria-label="Add card" className={headerButtonClass}>
 					<Plus />
