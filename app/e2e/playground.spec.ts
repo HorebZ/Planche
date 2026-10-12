@@ -26,6 +26,30 @@ test("shadows switch with the theme scope", async ({ page }) => {
 	await expect(secondary("dark")).toHaveCSS("box-shadow", /rgba\(255, 248, 235, 0\.07\)/);
 });
 
+test("portalled overlays take the theme of their panel", async ({ page }) => {
+	const menu = (theme: Theme) => scope(page, "overlays", theme).locator('[data-slot="dropdown-menu-content"]').first();
+	await expect(menu("light")).toHaveCSS("background-color", "rgb(255, 255, 255)");
+	await expect(menu("dark")).toHaveCSS("background-color", "rgb(42, 41, 37)");
+	const tooltip = scope(page, "overlays", "dark").locator('[data-slot="tooltip-content"]').first();
+	await expect(tooltip).toHaveCSS("background-color", "rgb(238, 235, 229)");
+});
+
+test("a live dialog opened from the dark panel is dark", async ({ page }) => {
+	const dark = scope(page, "overlays", "dark");
+	await dark.getByRole("button", { name: "Open dialog" }).click();
+	const dialog = dark.locator('[data-slot="dialog-content"]').filter({ visible: true });
+	await expect(dialog).toHaveCount(1);
+	await expect(dialog).toHaveCSS("background-color", "rgb(42, 41, 37)");
+	await page.keyboard.press("Escape");
+	await expect(dialog).toHaveCount(0);
+});
+
+test("cards resolve the surface token per theme", async ({ page }) => {
+	const card = (theme: Theme) => scope(page, "board", theme).locator('[data-slot="issue-card"]').first();
+	await expect(card("light")).toHaveCSS("background-color", "rgb(255, 255, 255)");
+	await expect(card("dark")).toHaveCSS("background-color", "rgb(37, 36, 32)");
+});
+
 test("data-preview forces hover and focus styles", async ({ page }) => {
 	const ghost = scope(page, "buttons", "light").getByRole("button", { name: "Filter" });
 	await expect(ghost.nth(0)).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
