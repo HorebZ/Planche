@@ -6,7 +6,7 @@ const twMerge = extendTailwindMerge({
 		theme: {
 			text: ["2xs", "xs", "sm", "base", "md", "lg", "xl", "2xl"],
 			radius: ["xs", "sm", "md", "lg", "xl", "window"],
-			shadow: ["card", "drag", "pop", "window", "ring"],
+			shadow: ["card", "drag", "pop", "window", "ring", "thumb"],
 			spacing: ["row", "control", "control-lg", "toolbar", "sidebar", "column"],
 		},
 	},

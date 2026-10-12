@@ -5,8 +5,8 @@ const palette =
 	"slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose";
 
 const rules: { name: string; pattern: RegExp }[] = [
-	{ name: "raw hex color", pattern: /(?:["'`[(,]|:\s*)#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b/ },
-	{ name: "raw color function", pattern: /\b(?:rgba?|hsla?|oklch|oklab|lab|lch|hwb)\(/ },
+	{ name: "raw hex color", pattern: /(?:["'`[(,_]|:\s*)#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b/ },
+	{ name: "raw color function", pattern: /(?<![a-zA-Z-])(?:rgba?|hsla?|oklch|oklab|lab|lch|hwb)\(/ },
 	{ name: "Tailwind palette class", pattern: new RegExp(`(?<![\\w-])[a-z]+-(?:${palette})-\\d{2,3}\\b|-black\\b`) },
 	{ name: "dark: utility", pattern: /(?<![\w-])dark:/ },
 ];
