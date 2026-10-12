@@ -1,0 +1,6 @@
+import type { ComponentProps } from "react";
+import { cn } from "@/lib/cn";
+
+export function Skeleton({ className, ...props }: ComponentProps<"div">) {
+	return <div data-slot="skeleton" className={cn("animate-pl-shimmer rounded-xs bg-skeleton", className)} {...props} />;
+}
