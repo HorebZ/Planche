@@ -1,3 +1,4 @@
+import { BannerSection } from "./sections/banner";
 import { BoardSection } from "./sections/board";
 import { ButtonsSection } from "./sections/buttons";
 import { ControlsSection } from "./sections/controls";
@@ -8,6 +9,7 @@ const sections = [
 	{ id: "tokens", Component: TokensSection },
 	{ id: "buttons", Component: ButtonsSection },
 	{ id: "controls", Component: ControlsSection },
+	{ id: "banner", Component: BannerSection },
 	{ id: "overlays", Component: OverlaysSection },
 	{ id: "board", Component: BoardSection },
 ];

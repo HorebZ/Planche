@@ -8,17 +8,17 @@ export const buttonVariants = cva(
 		"inline-flex shrink-0 select-none items-center justify-center gap-1.5 whitespace-nowrap rounded-md border-0",
 		"font-medium text-sm transition-[background-color,box-shadow,color]",
 		"disabled:pointer-events-none disabled:bg-active disabled:text-fg-3 disabled:shadow-none",
-		"[&_svg]:shrink-0",
+		"has-[>kbd]:pr-1.25 has-[>kbd]:pl-2.25 [&_svg]:shrink-0",
 	],
 	{
 		variants: {
 			variant: {
 				primary:
-					"bg-accent font-semibold text-accent-fg focus-visible:shadow-[0_0_0_2px_var(--pl-bg),0_0_0_4px_var(--pl-focus)] has-[>kbd]:pr-1.25 has-[>kbd]:pl-2.25",
+					"bg-accent font-semibold text-accent-fg focus-visible:shadow-[0_0_0_2px_var(--pl-bg),0_0_0_4px_var(--pl-focus)]",
 				secondary:
 					"bg-surface text-fg shadow-card focus-visible:shadow-[var(--pl-shadow-card),0_0_0_2px_var(--pl-focus)]",
 				ghost: "bg-transparent text-fg hover:bg-hover focus-visible:shadow-ring",
-				danger: "bg-transparent text-danger hover:bg-hover focus-visible:shadow-ring",
+				danger: "bg-transparent text-danger hover:bg-danger-soft focus-visible:shadow-ring",
 			},
 			size: {
 				default: "h-control px-2.5 [&_svg]:size-4",
