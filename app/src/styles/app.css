@@ -13,7 +13,7 @@
 }
 
 @theme inline {
-	--color-white: #fff;
+	--color-white: white;
 	--color-bg: var(--pl-bg);
 	--color-bg-sunken: var(--pl-bg-sunken);
 	--color-surface: var(--pl-surface);

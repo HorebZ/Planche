@@ -7,7 +7,7 @@ const kbdVariants = cva("inline-grid shrink-0 place-items-center rounded-xs font
 		variant: {
 			default: "bg-kbd text-fg-2",
 			onAccent: "bg-white/22 text-current",
-			onTooltip: "bg-[rgba(128,128,128,0.3)] text-current",
+			onTooltip: "bg-current/30 text-current",
 			plain: "bg-transparent text-fg-3",
 		},
 		size: {
