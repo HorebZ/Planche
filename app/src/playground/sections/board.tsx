@@ -194,8 +194,8 @@ export function BoardSection() {
 						<State label="empty">
 							<BoardColumn status="backlog" count={0} empty />
 						</State>
-						<State label="drop target">
-							<BoardColumn status="doing" count={4} dropTarget>
+						<State label="drop target · 3 + 1">
+							<BoardColumn status="doing" count={3} dropTarget>
 								<IssueCard
 									kind="issue"
 									state="open"
@@ -256,7 +256,7 @@ function DragMock() {
 						assignees={[theo]}
 					/>
 				</BoardColumn>
-				<BoardColumn status="doing" count={4} dropTarget>
+				<BoardColumn status="doing" count={3} dropTarget>
 					<IssueCard
 						kind="issue"
 						state="open"

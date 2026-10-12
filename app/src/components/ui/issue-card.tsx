@@ -125,6 +125,7 @@ export function IssueCard(card: IssueCardProps) {
 			data-slot="issue-card"
 			data-kind={kind}
 			data-state={state}
+			data-drag-state={dragState}
 			tabIndex={tabIndex}
 			className={cn(issueCardVariants({ dragState: dragState ?? "none" }), className)}
 			{...props}
