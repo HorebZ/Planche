@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..600,0..1,0&display=block">
+<style>
+body { margin: 0; background: #E4E1DB; }
+a { color: oklch(0.56 0.18 38); text-decoration: none; }
+a:hover { color: oklch(0.48 0.18 38); text-decoration: underline; }
+</style>
+</helmet>
+<div style="padding:72px 80px 120px;display:flex;flex-direction:column;gap:40px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Helvetica,Arial,sans-serif;color:#1C1A17;width:max-content">
+  <header style="display:flex;align-items:flex-end;gap:40px">
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px;color:#716C63">Planche · Partie 2</div>
+      <div style="font-size:56px;line-height:60px;font-weight:700;letter-spacing:-0.025em">Écrans de l'application</div>
+      <div style="font-size:18px;line-height:26px;color:#57534C;max-width:900px;text-wrap:pretty">Fenêtre 1440 × 900, barre de titre masquée, sidebar en vibrancy. Chaque état en clair et en sombre. Les anneaux vermillon montrent le focus clavier.</div>
+    </div>
+    <div style="flex:1"></div>
+    <nav style="display:flex;gap:20px;font-size:16px;font-weight:500">
+      <a href="Planche Identite.dc.html">Identité →</a>
+      <a href="Planche Tokens.dc.html">Tokens &amp; composants →</a>
+    </nav>
+  </header>
+
+  <div style="display:grid;grid-template-columns:auto auto;gap:40px;align-items:start">
+    <div style="display:flex;flex-direction:column;gap:56px;--pl-bg:#FCFBF9;--pl-bg-sunken:#F3F1ED;--pl-surface:#FFFFFF;--pl-elevated:#FFFFFF;--pl-sidebar:rgba(244,242,238,0.72);--pl-overlay:rgba(28,25,20,0.28);--pl-hover:rgba(28,25,20,0.05);--pl-active:rgba(28,25,20,0.085);--pl-kbd:rgba(28,25,20,0.055);--pl-skeleton:rgba(28,25,20,0.07);--pl-border:rgba(28,25,20,0.09);--pl-border-strong:rgba(28,25,20,0.17);--pl-fg:#1C1A17;--pl-fg-2:#57534C;--pl-fg-3:#716C63;--pl-accent:oklch(0.56 0.18 38);--pl-accent-fg:#FFFFFF;--pl-accent-soft:oklch(0.56 0.18 38 / 0.10);--pl-focus:oklch(0.56 0.18 38);--pl-danger:oklch(0.52 0.19 20);--pl-danger-soft:oklch(0.52 0.19 20 / 0.08);--pl-success:oklch(0.55 0.13 150);--pl-warning:oklch(0.62 0.14 75);--pl-s-backlog:#9A958C;--pl-s-todo:oklch(0.60 0.10 250);--pl-s-doing:oklch(0.72 0.15 75);--pl-s-review:oklch(0.58 0.15 300);--pl-s-done:oklch(0.60 0.13 150);--pl-shadow-card:0 0 0 1px rgba(28,25,20,.07), 0 1px 2px rgba(28,25,20,.06);--pl-shadow-drag:0 0 0 1px rgba(28,25,20,.08), 0 18px 40px -10px rgba(28,25,20,.30), 0 6px 14px -4px rgba(28,25,20,.14);--pl-shadow-pop:0 0 0 1px rgba(28,25,20,.08), 0 12px 32px -8px rgba(28,25,20,.22), 0 2px 6px rgba(28,25,20,.06);--pl-shadow-window:0 0 0 .5px rgba(0,0,0,.2), 0 30px 80px -20px rgba(30,25,15,.38), 0 10px 30px -10px rgba(30,25,15,.2)">
+      <div style="font-size:28px;font-weight:700;letter-spacing:-0.015em">Clair</div>
+      <sc-for list="{{ screens }}" as="sc" hint-placeholder-count="11">
+        <div data-screen-label="{{ sc.label }}" style="display:flex;flex-direction:column;gap:16px">
+          <div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:18px;color:#716C63">{{ sc.n }}</span><span style="font-size:24px;font-weight:650;letter-spacing:-0.01em">{{ sc.title }}</span><span style="font-size:16px;color:#57534C">{{ sc.note }}</span></div>
+          <div style="width:1560px;height:1000px;border-radius:18px;display:grid;place-items:center;background:radial-gradient(60% 70% at 15% 20%,#E8D5C0 0%,transparent 70%),radial-gradient(50% 60% at 85% 85%,#C9D3DA 0%,transparent 70%),linear-gradient(160deg,#EEE7DC,#D9DCDC)">
+            <dc-import name="PlancheWindow" screen="{{ sc.id }}" style="width:{{ sc.w }};height:{{ sc.h }}" hint-size="1440px,900px"></dc-import>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:56px;--pl-bg:#1A1917;--pl-bg-sunken:#151413;--pl-surface:#252420;--pl-elevated:#2A2925;--pl-sidebar:rgba(36,34,31,0.62);--pl-overlay:rgba(0,0,0,0.45);--pl-hover:rgba(255,248,235,0.05);--pl-active:rgba(255,248,235,0.09);--pl-kbd:rgba(255,248,235,0.07);--pl-skeleton:rgba(255,248,235,0.07);--pl-border:rgba(255,248,235,0.08);--pl-border-strong:rgba(255,248,235,0.15);--pl-fg:#EEEBE5;--pl-fg-2:#ABA69D;--pl-fg-3:#8E897F;--pl-accent:oklch(0.70 0.16 42);--pl-accent-fg:#1C1209;--pl-accent-soft:oklch(0.70 0.16 42 / 0.14);--pl-focus:oklch(0.74 0.15 45);--pl-danger:oklch(0.69 0.17 22);--pl-danger-soft:oklch(0.69 0.17 22 / 0.12);--pl-success:oklch(0.72 0.13 150);--pl-warning:oklch(0.80 0.13 80);--pl-s-backlog:#8E897F;--pl-s-todo:oklch(0.70 0.10 250);--pl-s-doing:oklch(0.80 0.14 78);--pl-s-review:oklch(0.70 0.14 300);--pl-s-done:oklch(0.72 0.13 150);--pl-shadow-card:0 0 0 1px rgba(255,248,235,.07), 0 1px 2px rgba(0,0,0,.35);--pl-shadow-drag:0 0 0 1px rgba(255,248,235,.12), 0 20px 44px -10px rgba(0,0,0,.65), 0 6px 14px -4px rgba(0,0,0,.4);--pl-shadow-pop:0 0 0 1px rgba(255,248,235,.10), 0 16px 40px -8px rgba(0,0,0,.6), 0 2px 6px rgba(0,0,0,.3);--pl-shadow-window:0 0 0 .5px rgba(0,0,0,.7), inset 0 0 0 .5px rgba(255,255,255,.09), 0 30px 80px -20px rgba(0,0,0,.7)">
+      <div style="font-size:28px;font-weight:700;letter-spacing:-0.015em">Sombre</div>
+      <sc-for list="{{ screens }}" as="sc" hint-placeholder-count="11">
+        <div data-screen-label="{{ sc.label }} (sombre)" style="display:flex;flex-direction:column;gap:16px">
+          <div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:18px;color:#716C63">{{ sc.n }}</span><span style="font-size:24px;font-weight:650;letter-spacing:-0.01em">{{ sc.title }}</span><span style="font-size:16px;color:#57534C">{{ sc.note }}</span></div>
+          <div style="width:1560px;height:1000px;border-radius:18px;display:grid;place-items:center;background:radial-gradient(60% 70% at 15% 20%,#4A3426 0%,transparent 70%),radial-gradient(50% 60% at 85% 85%,#26323B 0%,transparent 70%),linear-gradient(160deg,#24211E,#14161A)">
+            <dc-import name="PlancheWindow" screen="{{ sc.id }}" style="width:{{ sc.w }};height:{{ sc.h }}" hint-size="1440px,900px"></dc-import>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const list = [
+      ['board', '1', 'Board kanban', 'Écran principal · focus clavier sur #226'],
+      ['drag', '2', 'Drag-and-drop', 'Carte soulevée, placeholder dans la colonne cible, aide clavier'],
+      ['detail', '3', 'Détail d\'une issue', 'Panneau latéral · menu Statut ouvert (Radix DropdownMenu)'],
+      ['palette', '4', 'Palette ⌘K', 'Contexte #226, actions + résultats, raccourcis'],
+      ['loading', '5a', 'Chargement initial', 'Squelettes + barre indéterminée'],
+      ['syncing', '5b', 'Synchro en arrière-plan', 'Indicateur discret, cartes mises à jour marquées'],
+      ['error', '5c', 'Erreur réseau', 'Mode hors ligne, modification en attente'],
+      ['empty', '5d', 'Board vide', 'Appel à l\'action centré'],
+      ['onboarding', '6a', 'Onboarding · vérification', 'Token en cours de validation'],
+      ['onboarding-ok', '6b', 'Onboarding · validé', 'Compte reconnu, scopes OK'],
+      ['settings', '7', 'Réglages', 'Compte, intervalle de synchro, thème']
+    ];
+    return {
+      screens: list.map(([id, n, title, note]) => {
+        const small = id.startsWith('onboarding');
+        return { id, n, title, note, label: n + ' ' + title, w: small ? '780px' : '1440px', h: small ? '540px' : '900px' };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>
