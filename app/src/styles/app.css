@@ -76,12 +76,14 @@
 	--radius-lg: var(--pl-radius-lg);
 	--radius-xl: var(--pl-radius-xl);
 	--radius-window: var(--pl-radius-window);
+	--radius-full: calc(infinity * 1px);
 
 	--shadow-card: var(--pl-shadow-card);
 	--shadow-drag: var(--pl-shadow-drag);
 	--shadow-pop: var(--pl-shadow-pop);
 	--shadow-window: var(--pl-shadow-window);
 	--shadow-ring: var(--pl-ring);
+	--shadow-thumb: var(--pl-shadow-thumb);
 
 	--ease-pl: var(--pl-ease);
 	--ease-pl-out: var(--pl-ease-out);
@@ -92,6 +94,7 @@
 	--animate-pl-panel: pl-panel var(--pl-dur-slow) var(--pl-ease);
 	--animate-pl-spin: pl-spin 800ms linear infinite;
 	--animate-pl-shimmer: pl-shimmer 1.4s ease-in-out infinite;
+	--animate-pl-slide: pl-slide 1.4s var(--pl-ease) infinite;
 
 	@keyframes pl-in {
 		from {
@@ -117,6 +120,14 @@
 		}
 		50% {
 			opacity: 1;
+		}
+	}
+	@keyframes pl-slide {
+		from {
+			transform: translateX(-100%);
+		}
+		to {
+			transform: translateX(260%);
 		}
 	}
 }

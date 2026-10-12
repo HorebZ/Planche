@@ -25,6 +25,11 @@ test("a raw hex color fails and names the line", () => {
 	expect(stderr).toContain(`${file}:1: raw hex color`);
 });
 
+test("a raw color inside a Tailwind arbitrary value fails", () => {
+	expect(check('<span className="shadow-[0_1px_2px_rgba(0,0,0,0.25)]" />\n').code).toBe(1);
+	expect(check('<span className="shadow-[0_0_0_1px_#fff]" />\n').code).toBe(1);
+});
+
 test("a Tailwind palette class fails", () => {
 	expect(check('<div className="bg-gray-100" />\n').code).toBe(1);
 });
