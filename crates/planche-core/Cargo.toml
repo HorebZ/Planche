@@ -1,0 +1,15 @@
+[package]
+name = "planche-core"
+description = "Domain, GitHub client, cache and sync engine for Planche"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+serde.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
