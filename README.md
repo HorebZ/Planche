@@ -35,10 +35,12 @@ Planche shows your GitHub Projects (v2) boards in a native macOS window. Cards m
 
 ```sh
 git clone https://github.com/HorebZ/Planche.git
-cd Planche/app
+cd Planche
 bun install
-bun run tauri dev
+cd app && bun run tauri dev
 ```
+
+`bun install` at the root installs the workspace tools and the `app/` dependencies.
 
 ## Development
 
@@ -52,26 +54,34 @@ Run these commands from `app/`.
 
 While `bun run dev` is running, http://localhost:1420/playground shows every UI component in every state, in light and dark mode. The playground is excluded from production builds.
 
+The command-line client builds from the root with `cargo run -p planche-cli -- --help`.
+
 ## Testing
 
+Run these commands from the root.
+
 ```sh
-bun run check                    # typecheck, lint, design check, unit tests
-bunx playwright install webkit   # first time only
-bun run test:e2e                 # end-to-end tests in WebKit
-cd src-tauri && cargo check      # Rust
+bun run check                             # Rust fmt, clippy and tests, lint, app checks, GraphQL validation
+bunx playwright install webkit            # first time only
+bun run --cwd app test:e2e                # end-to-end tests in WebKit
 ```
 
-UI styles must come from the design tokens in `app/src/styles/tokens.css`. `bun run check:design` fails on hardcoded colors, default Tailwind palette classes, and `dark:` utilities.
+UI styles must come from the design tokens in `app/src/styles/tokens.css`. The design check fails on hardcoded colors, default Tailwind palette classes, and `dark:` utilities.
+
+GraphQL documents in `crates/planche-core/graphql/` are validated against GitHub's public schema. `bun run update:schema` refreshes it.
 
 ## Project structure
 
 ```
+crates/
+  planche-core/        Domain, GitHub client, cache and sync engine
+  planche-cli/         Command-line client
 app/
   src/components/ui/   UI components
   src/playground/      Component playground
   src/styles/          Design tokens and Tailwind theme
-  scripts/             Design check
   e2e/                 Playwright tests
   src-tauri/           Tauri shell
 design/                Design handoff, the visual source of truth
+scripts/               GraphQL validation, schema update, sandbox seed
 ```
