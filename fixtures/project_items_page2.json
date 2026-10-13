@@ -1,0 +1,340 @@
+{
+  "data": {
+    "node": {
+      "items": {
+        "totalCount": 12,
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": "Y3Vyc29yOnYyOpK5MDAwMDAwMDAuMDgzMzMzMzMzMzMzMzMzM84QG9sM"
+        },
+        "nodes": [
+          {
+            "id": "PVTI_lAHOAq5TD84Bm1t2zhAbQSc",
+            "type": "ISSUE",
+            "isArchived": false,
+            "updatedAt": "2026-10-13T12:45:09Z",
+            "fieldValues": {
+              "nodes": [
+                {
+                  "__typename": "ProjectV2ItemFieldRepositoryValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldLabelValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldTextValue",
+                  "text": "Phase 4: show the cached board in a read-only Tauri window",
+                  "field": {
+                    "id": "PVTF_lAHOAq5TD84Bm1t2zhldDNQ"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "optionId": "f75ad846",
+                  "field": {
+                    "id": "PVTSSF_lAHOAq5TD84Bm1t2zhldDOA"
+                  }
+                }
+              ]
+            },
+            "content": {
+              "__typename": "Issue",
+              "id": "I_kwDOVF-zOM8AAAABWrz1Gg",
+              "number": 7,
+              "title": "Phase 4: show the cached board in a read-only Tauri window",
+              "url": "https://github.com/HorebZ/Planche/issues/7",
+              "issueState": "OPEN",
+              "updatedAt": "2026-10-13T12:45:08Z",
+              "repository": {
+                "nameWithOwner": "HorebZ/Planche"
+              },
+              "assignees": {
+                "nodes": []
+              },
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "phase",
+                    "color": "1D76DB"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "id": "PVTI_lAHOAq5TD84Bm1t2zhAbQSw",
+            "type": "ISSUE",
+            "isArchived": false,
+            "updatedAt": "2026-10-13T12:45:11Z",
+            "fieldValues": {
+              "nodes": [
+                {
+                  "__typename": "ProjectV2ItemFieldRepositoryValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldLabelValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldTextValue",
+                  "text": "Phase 5: drag cards between columns with optimistic updates",
+                  "field": {
+                    "id": "PVTF_lAHOAq5TD84Bm1t2zhldDNQ"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "optionId": "f75ad846",
+                  "field": {
+                    "id": "PVTSSF_lAHOAq5TD84Bm1t2zhldDOA"
+                  }
+                }
+              ]
+            },
+            "content": {
+              "__typename": "Issue",
+              "id": "I_kwDOVF-zOM8AAAABWrz2SA",
+              "number": 8,
+              "title": "Phase 5: drag cards between columns with optimistic updates",
+              "url": "https://github.com/HorebZ/Planche/issues/8",
+              "issueState": "OPEN",
+              "updatedAt": "2026-10-13T12:45:09Z",
+              "repository": {
+                "nameWithOwner": "HorebZ/Planche"
+              },
+              "assignees": {
+                "nodes": []
+              },
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "phase",
+                    "color": "1D76DB"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "id": "PVTI_lAHOAq5TD84Bm1t2zhAbQTM",
+            "type": "ISSUE",
+            "isArchived": false,
+            "updatedAt": "2026-10-13T12:45:12Z",
+            "fieldValues": {
+              "nodes": [
+                {
+                  "__typename": "ProjectV2ItemFieldRepositoryValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldLabelValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldTextValue",
+                  "text": "Phase 6: drive the board from the keyboard and Cmd+K",
+                  "field": {
+                    "id": "PVTF_lAHOAq5TD84Bm1t2zhldDNQ"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "optionId": "f75ad846",
+                  "field": {
+                    "id": "PVTSSF_lAHOAq5TD84Bm1t2zhldDOA"
+                  }
+                }
+              ]
+            },
+            "content": {
+              "__typename": "Issue",
+              "id": "I_kwDOVF-zOM8AAAABWrz3eA",
+              "number": 9,
+              "title": "Phase 6: drive the board from the keyboard and Cmd+K",
+              "url": "https://github.com/HorebZ/Planche/issues/9",
+              "issueState": "OPEN",
+              "updatedAt": "2026-10-13T12:45:10Z",
+              "repository": {
+                "nameWithOwner": "HorebZ/Planche"
+              },
+              "assignees": {
+                "nodes": []
+              },
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "phase",
+                    "color": "1D76DB"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "id": "PVTI_lAHOAq5TD84Bm1t2zhAbQTo",
+            "type": "ISSUE",
+            "isArchived": false,
+            "updatedAt": "2026-10-13T12:45:14Z",
+            "fieldValues": {
+              "nodes": [
+                {
+                  "__typename": "ProjectV2ItemFieldRepositoryValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldLabelValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldTextValue",
+                  "text": "Phase 7: finish the macOS window and motion",
+                  "field": {
+                    "id": "PVTF_lAHOAq5TD84Bm1t2zhldDNQ"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "optionId": "f75ad846",
+                  "field": {
+                    "id": "PVTSSF_lAHOAq5TD84Bm1t2zhldDOA"
+                  }
+                }
+              ]
+            },
+            "content": {
+              "__typename": "Issue",
+              "id": "I_kwDOVF-zOM8AAAABWrz42g",
+              "number": 10,
+              "title": "Phase 7: finish the macOS window and motion",
+              "url": "https://github.com/HorebZ/Planche/issues/10",
+              "issueState": "OPEN",
+              "updatedAt": "2026-10-13T12:45:12Z",
+              "repository": {
+                "nameWithOwner": "HorebZ/Planche"
+              },
+              "assignees": {
+                "nodes": []
+              },
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "phase",
+                    "color": "1D76DB"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "id": "PVTI_lAHOAq5TD84Bm1t2zhAbQT4",
+            "type": "ISSUE",
+            "isArchived": false,
+            "updatedAt": "2026-10-13T12:10:07Z",
+            "fieldValues": {
+              "nodes": [
+                {
+                  "__typename": "ProjectV2ItemFieldRepositoryValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldLabelValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldTextValue",
+                  "text": "Handoff screens after v1",
+                  "field": {
+                    "id": "PVTF_lAHOAq5TD84Bm1t2zhldDNQ"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "optionId": "f75ad846",
+                  "field": {
+                    "id": "PVTSSF_lAHOAq5TD84Bm1t2zhldDOA"
+                  }
+                }
+              ]
+            },
+            "content": {
+              "__typename": "Issue",
+              "id": "I_kwDOVF-zOM8AAAABWrz6Hg",
+              "number": 11,
+              "title": "Handoff screens after v1",
+              "url": "https://github.com/HorebZ/Planche/issues/11",
+              "issueState": "OPEN",
+              "updatedAt": "2026-10-12T16:46:30Z",
+              "repository": {
+                "nameWithOwner": "HorebZ/Planche"
+              },
+              "assignees": {
+                "nodes": []
+              },
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "follow-up",
+                    "color": "C5DEF5"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "id": "PVTI_lAHOAq5TD84Bm1t2zhAb2ww",
+            "type": "PULL_REQUEST",
+            "isArchived": false,
+            "updatedAt": "2026-10-13T12:50:16Z",
+            "fieldValues": {
+              "nodes": [
+                {
+                  "__typename": "ProjectV2ItemFieldUserValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldRepositoryValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldTextValue",
+                  "text": "feat: Cargo workspace and GraphQL contract (phase 1a)",
+                  "field": {
+                    "id": "PVTF_lAHOAq5TD84Bm1t2zhldDNQ"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "optionId": "98236657",
+                  "field": {
+                    "id": "PVTSSF_lAHOAq5TD84Bm1t2zhldDOA"
+                  }
+                }
+              ]
+            },
+            "content": {
+              "__typename": "PullRequest",
+              "id": "PR_kwDOVF-zOM8AAAABIKy3ew",
+              "number": 13,
+              "title": "feat: Cargo workspace and GraphQL contract (phase 1a)",
+              "url": "https://github.com/HorebZ/Planche/pull/13",
+              "prState": "MERGED",
+              "isDraft": false,
+              "updatedAt": "2026-10-13T12:46:11Z",
+              "repository": {
+                "nameWithOwner": "HorebZ/Planche"
+              },
+              "assignees": {
+                "nodes": [
+                  {
+                    "id": "MDQ6VXNlcjQ0OTc4OTU5",
+                    "login": "HorebZ",
+                    "avatarUrl": "https://avatars.githubusercontent.com/u/44978959?u=42fe3fec60e473bf5ad5d6313e3ae0c3cfa14b99&v=4"
+                  }
+                ]
+              },
+              "labels": {
+                "nodes": []
+              }
+            }
+          }
+        ]
+      }
+    },
+    "rateLimit": {
+      "cost": 3,
+      "remaining": 3350,
+      "resetAt": "2026-10-13T13:01:00Z"
+    }
+  }
+}

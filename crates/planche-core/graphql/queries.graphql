@@ -3,16 +3,6 @@ query Viewer {
   rateLimit { limit cost remaining resetAt }
 }
 
-query ViewerOrganizations($after: String) {
-  viewer {
-    organizations(first: 100, after: $after) {
-      pageInfo { hasNextPage endCursor }
-      nodes { id login }
-    }
-  }
-  rateLimit { cost remaining resetAt }
-}
-
 query ListProjects($login: String!, $isOrg: Boolean!, $after: String) {
   user(login: $login) @skip(if: $isOrg) {
     projectsV2(first: 50, after: $after) { ...ProjectSummaryPage }

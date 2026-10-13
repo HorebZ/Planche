@@ -1,0 +1,362 @@
+{
+  "data": {
+    "node": {
+      "items": {
+        "totalCount": 12,
+        "pageInfo": {
+          "hasNextPage": true,
+          "endCursor": "Y3Vyc29yOnBhZ2Ux"
+        },
+        "nodes": [
+          {
+            "id": "PVTI_lAHOAq5TD84Bm1t2zhAbQO0",
+            "type": "ISSUE",
+            "isArchived": false,
+            "updatedAt": "2026-10-13T12:45:03Z",
+            "fieldValues": {
+              "nodes": [
+                {
+                  "__typename": "ProjectV2ItemFieldUserValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldRepositoryValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldLabelValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldTextValue",
+                  "text": "Planche v1 roadmap",
+                  "field": {
+                    "id": "PVTF_lAHOAq5TD84Bm1t2zhldDNQ"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "optionId": "47fc9ee4",
+                  "field": {
+                    "id": "PVTSSF_lAHOAq5TD84Bm1t2zhldDOA"
+                  }
+                }
+              ]
+            },
+            "content": {
+              "__typename": "Issue",
+              "id": "I_kwDOVF-zOM8AAAABWrzsxg",
+              "number": 1,
+              "title": "Planche v1 roadmap",
+              "url": "https://github.com/HorebZ/Planche/issues/1",
+              "issueState": "OPEN",
+              "updatedAt": "2026-10-13T12:45:00Z",
+              "repository": {
+                "nameWithOwner": "HorebZ/Planche"
+              },
+              "assignees": {
+                "nodes": [
+                  {
+                    "id": "MDQ6VXNlcjQ0OTc4OTU5",
+                    "login": "HorebZ",
+                    "avatarUrl": "https://avatars.githubusercontent.com/u/44978959?u=42fe3fec60e473bf5ad5d6313e3ae0c3cfa14b99&v=4"
+                  }
+                ]
+              },
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "roadmap",
+                    "color": "0E8A16"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "id": "PVTI_lAHOAq5TD84Bm1t2zhAbQQg",
+            "type": "ISSUE",
+            "isArchived": false,
+            "updatedAt": "2026-10-13T12:38:31Z",
+            "fieldValues": {
+              "nodes": [
+                {
+                  "__typename": "ProjectV2ItemFieldRepositoryValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldLabelValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldPullRequestValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldTextValue",
+                  "text": "Phase 1a: scaffold the Cargo workspace and the GraphQL contract",
+                  "field": {
+                    "id": "PVTF_lAHOAq5TD84Bm1t2zhldDNQ"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "optionId": "98236657",
+                  "field": {
+                    "id": "PVTSSF_lAHOAq5TD84Bm1t2zhldDOA"
+                  }
+                }
+              ]
+            },
+            "content": {
+              "__typename": "Issue",
+              "id": "I_kwDOVF-zOM8AAAABWrzuFA",
+              "number": 2,
+              "title": "Phase 1a: scaffold the Cargo workspace and the GraphQL contract",
+              "url": "https://github.com/HorebZ/Planche/issues/2",
+              "issueState": "CLOSED",
+              "updatedAt": "2026-10-13T12:38:30Z",
+              "repository": {
+                "nameWithOwner": "HorebZ/Planche"
+              },
+              "assignees": {
+                "nodes": []
+              },
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "phase",
+                    "color": "1D76DB"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "id": "PVTI_lAHOAq5TD84Bm1t2zhAbQQ4",
+            "type": "ISSUE",
+            "isArchived": false,
+            "updatedAt": "2026-10-13T12:27:16Z",
+            "fieldValues": {
+              "nodes": [
+                {
+                  "__typename": "ProjectV2ItemFieldUserValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldRepositoryValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldLabelValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldPullRequestValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldTextValue",
+                  "text": "Design system: tokens, UI components and /playground",
+                  "field": {
+                    "id": "PVTF_lAHOAq5TD84Bm1t2zhldDNQ"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "optionId": "98236657",
+                  "field": {
+                    "id": "PVTSSF_lAHOAq5TD84Bm1t2zhldDOA"
+                  }
+                }
+              ]
+            },
+            "content": {
+              "__typename": "Issue",
+              "id": "I_kwDOVF-zOM8AAAABWrzvXw",
+              "number": 3,
+              "title": "Design system: tokens, UI components and /playground",
+              "url": "https://github.com/HorebZ/Planche/issues/3",
+              "issueState": "CLOSED",
+              "updatedAt": "2026-10-13T12:27:14Z",
+              "repository": {
+                "nameWithOwner": "HorebZ/Planche"
+              },
+              "assignees": {
+                "nodes": [
+                  {
+                    "id": "MDQ6VXNlcjQ0OTc4OTU5",
+                    "login": "HorebZ",
+                    "avatarUrl": "https://avatars.githubusercontent.com/u/44978959?u=42fe3fec60e473bf5ad5d6313e3ae0c3cfa14b99&v=4"
+                  }
+                ]
+              },
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "design-system",
+                    "color": "D9542B"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "id": "PVTI_lAHOAq5TD84Bm1t2zhAbQRY",
+            "type": "ISSUE",
+            "isArchived": false,
+            "updatedAt": "2026-10-13T12:45:04Z",
+            "fieldValues": {
+              "nodes": [
+                {
+                  "__typename": "ProjectV2ItemFieldRepositoryValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldLabelValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldTextValue",
+                  "text": "Phase 1b: show a project board in the terminal",
+                  "field": {
+                    "id": "PVTF_lAHOAq5TD84Bm1t2zhldDNQ"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "optionId": "f75ad846",
+                  "field": {
+                    "id": "PVTSSF_lAHOAq5TD84Bm1t2zhldDOA"
+                  }
+                }
+              ]
+            },
+            "content": {
+              "__typename": "Issue",
+              "id": "I_kwDOVF-zOM8AAAABWrzxHQ",
+              "number": 4,
+              "title": "Phase 1b: show a project board in the terminal",
+              "url": "https://github.com/HorebZ/Planche/issues/4",
+              "issueState": "OPEN",
+              "updatedAt": "2026-10-13T12:45:02Z",
+              "repository": {
+                "nameWithOwner": "HorebZ/Planche"
+              },
+              "assignees": {
+                "nodes": []
+              },
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "phase",
+                    "color": "1D76DB"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "id": "PVTI_lAHOAq5TD84Bm1t2zhAbQRo",
+            "type": "ISSUE",
+            "isArchived": false,
+            "updatedAt": "2026-10-13T12:45:06Z",
+            "fieldValues": {
+              "nodes": [
+                {
+                  "__typename": "ProjectV2ItemFieldRepositoryValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldLabelValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldTextValue",
+                  "text": "Phase 2: move a card from the CLI",
+                  "field": {
+                    "id": "PVTF_lAHOAq5TD84Bm1t2zhldDNQ"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "optionId": "f75ad846",
+                  "field": {
+                    "id": "PVTSSF_lAHOAq5TD84Bm1t2zhldDOA"
+                  }
+                }
+              ]
+            },
+            "content": {
+              "__typename": "Issue",
+              "id": "I_kwDOVF-zOM8AAAABWrzyug",
+              "number": 5,
+              "title": "Phase 2: move a card from the CLI",
+              "url": "https://github.com/HorebZ/Planche/issues/5",
+              "issueState": "OPEN",
+              "updatedAt": "2026-10-13T12:45:04Z",
+              "repository": {
+                "nameWithOwner": "HorebZ/Planche"
+              },
+              "assignees": {
+                "nodes": []
+              },
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "phase",
+                    "color": "1D76DB"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "id": "PVTI_lAHOAq5TD84Bm1t2zhAbQR8",
+            "type": "ISSUE",
+            "isArchived": false,
+            "updatedAt": "2026-10-13T12:45:08Z",
+            "fieldValues": {
+              "nodes": [
+                {
+                  "__typename": "ProjectV2ItemFieldRepositoryValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldLabelValue"
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldTextValue",
+                  "text": "Phase 3: cache the board in SQLite and sync it in the background",
+                  "field": {
+                    "id": "PVTF_lAHOAq5TD84Bm1t2zhldDNQ"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "optionId": "f75ad846",
+                  "field": {
+                    "id": "PVTSSF_lAHOAq5TD84Bm1t2zhldDOA"
+                  }
+                }
+              ]
+            },
+            "content": {
+              "__typename": "Issue",
+              "id": "I_kwDOVF-zOM8AAAABWrzz8w",
+              "number": 6,
+              "title": "Phase 3: cache the board in SQLite and sync it in the background",
+              "url": "https://github.com/HorebZ/Planche/issues/6",
+              "issueState": "OPEN",
+              "updatedAt": "2026-10-13T12:45:06Z",
+              "repository": {
+                "nameWithOwner": "HorebZ/Planche"
+              },
+              "assignees": {
+                "nodes": []
+              },
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "phase",
+                    "color": "1D76DB"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    "rateLimit": {
+      "cost": 3,
+      "remaining": 3350,
+      "resetAt": "2026-10-13T13:01:00Z"
+    }
+  }
+}

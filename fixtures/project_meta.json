@@ -1,0 +1,156 @@
+{
+  "data": {
+    "node": {
+      "id": "PVT_kwHOAq5TD84Bm1t2",
+      "number": 2,
+      "title": "Planche",
+      "url": "https://github.com/users/HorebZ/projects/2",
+      "updatedAt": "2026-10-13T12:50:10Z",
+      "owner": {
+        "__typename": "User",
+        "login": "HorebZ"
+      },
+      "fields": {
+        "nodes": [
+          {
+            "__typename": "ProjectV2Field",
+            "id": "PVTF_lAHOAq5TD84Bm1t2zhldDNQ",
+            "name": "Title",
+            "dataType": "TITLE"
+          },
+          {
+            "__typename": "ProjectV2Field",
+            "id": "PVTF_lAHOAq5TD84Bm1t2zhldDNs",
+            "name": "Assignees",
+            "dataType": "ASSIGNEES"
+          },
+          {
+            "__typename": "ProjectV2SingleSelectField",
+            "id": "PVTSSF_lAHOAq5TD84Bm1t2zhldDOA",
+            "name": "Status",
+            "dataType": "SINGLE_SELECT",
+            "options": [
+              {
+                "id": "f75ad846",
+                "name": "Todo",
+                "color": "GREEN",
+                "description": "This item hasn't been started"
+              },
+              {
+                "id": "47fc9ee4",
+                "name": "In Progress",
+                "color": "YELLOW",
+                "description": "This is actively being worked on"
+              },
+              {
+                "id": "98236657",
+                "name": "Done",
+                "color": "PURPLE",
+                "description": "This has been completed"
+              }
+            ]
+          },
+          {
+            "__typename": "ProjectV2Field",
+            "id": "PVTF_lAHOAq5TD84Bm1t2zhldDOg",
+            "name": "Labels",
+            "dataType": "LABELS"
+          },
+          {
+            "__typename": "ProjectV2Field",
+            "id": "PVTF_lAHOAq5TD84Bm1t2zhldDO4",
+            "name": "Linked pull requests",
+            "dataType": "LINKED_PULL_REQUESTS"
+          },
+          {
+            "__typename": "ProjectV2Field",
+            "id": "PVTF_lAHOAq5TD84Bm1t2zhldDPQ",
+            "name": "Milestone",
+            "dataType": "MILESTONE"
+          },
+          {
+            "__typename": "ProjectV2Field",
+            "id": "PVTF_lAHOAq5TD84Bm1t2zhldDPs",
+            "name": "Repository",
+            "dataType": "REPOSITORY"
+          },
+          {
+            "__typename": "ProjectV2Field",
+            "id": "PVTF_lAHOAq5TD84Bm1t2zhldDQo",
+            "name": "Reviewers",
+            "dataType": "REVIEWERS"
+          },
+          {
+            "__typename": "ProjectV2Field",
+            "id": "PVTF_lAHOAq5TD84Bm1t2zhldDRA",
+            "name": "Parent issue",
+            "dataType": "PARENT_ISSUE"
+          },
+          {
+            "__typename": "ProjectV2Field",
+            "id": "PVTF_lAHOAq5TD84Bm1t2zhldDRY",
+            "name": "Sub-issues progress",
+            "dataType": "SUB_ISSUES_PROGRESS"
+          },
+          {
+            "__typename": "ProjectV2Field",
+            "id": "PVTF_lAHOAq5TD84Bm1t2zhldDRw",
+            "name": "Created",
+            "dataType": "CREATED"
+          },
+          {
+            "__typename": "ProjectV2Field",
+            "id": "PVTF_lAHOAq5TD84Bm1t2zhldDSA",
+            "name": "Updated",
+            "dataType": "UPDATED"
+          },
+          {
+            "__typename": "ProjectV2Field",
+            "id": "PVTF_lAHOAq5TD84Bm1t2zhldDSQ",
+            "name": "Closed",
+            "dataType": "CLOSED"
+          }
+        ]
+      },
+      "views": {
+        "nodes": [
+          {
+            "id": "PVTV_lAHOAq5TD84Bm1t2zgMCl0E",
+            "number": 1,
+            "name": "View 1",
+            "layout": "TABLE_LAYOUT",
+            "filter": null,
+            "verticalGroupByFields": {
+              "nodes": []
+            },
+            "sortByFields": {
+              "totalCount": 0
+            }
+          },
+          {
+            "id": "PVTV_lAHOAq5TD84Bm1t2zgMCnDk",
+            "number": 2,
+            "name": "View 2",
+            "layout": "BOARD_LAYOUT",
+            "filter": null,
+            "verticalGroupByFields": {
+              "nodes": [
+                {
+                  "id": "PVTSSF_lAHOAq5TD84Bm1t2zhldDOA"
+                }
+              ]
+            },
+            "sortByFields": {
+              "totalCount": 0
+            }
+          }
+        ]
+      }
+    },
+    "rateLimit": {
+      "cost": 1,
+      "remaining": 3356,
+      "resetAt": "2026-10-13T13:01:00Z"
+    }
+  }
+}
