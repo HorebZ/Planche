@@ -1,0 +1,19 @@
+{
+	"name": "planche-workspace",
+	"private": true,
+	"type": "module",
+	"workspaces": [
+		"app"
+	],
+	"scripts": {
+		"check": "cargo fmt --check && cargo clippy --workspace -- -D warnings && cargo test --workspace && biome check && bun run --cwd app check && bun run validate:gql",
+		"validate:gql": "bun scripts/validate-graphql.ts",
+		"update:schema": "scripts/update-schema.sh",
+		"seed": "scripts/seed-sandbox.sh"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.15",
+		"@types/bun": "latest",
+		"graphql": "^16"
+	}
+}
