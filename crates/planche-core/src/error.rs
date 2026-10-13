@@ -1,0 +1,53 @@
+use serde::Deserialize;
+
+pub type Result<T> = std::result::Result<T, Error>;
+
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("not signed in, run `planche auth login`")]
+    NotSignedIn,
+    #[error("token rejected by GitHub (401)")]
+    Unauthorized,
+    #[error("the token is missing the {} scope(s), create a classic token with repo, read:org and project", .0.join(", "))]
+    MissingScopes(Vec<String>),
+    #[error(
+        "Planche needs a classic personal access token with repo, read:org and project. \
+         A fine-grained token covers a single resource owner, so it cannot reach your account and your organizations at once"
+    )]
+    ClassicTokenRequired,
+    #[error("network unreachable: {0}")]
+    Network(String),
+    #[error("GitHub rate limit reached, retry in {retry_after_secs}s")]
+    RateLimited { retry_after_secs: u64 },
+    #[error("GitHub returned HTTP {0}")]
+    Http(u16),
+    #[error("GitHub API error: {}", .0.iter().map(|e| e.message.as_str()).collect::<Vec<_>>().join("; "))]
+    GitHub(Vec<GraphqlError>),
+    #[error("unexpected response from GitHub: {0}")]
+    Decode(String),
+    #[error("project {owner}/{number} not found")]
+    ProjectNotFound { owner: String, number: u32 },
+    #[error("view {0} not found")]
+    ViewNotFound(u32),
+    #[error("view {0} is not a board")]
+    ViewNotBoard(u32),
+    #[error("the project has no board view and no single select field named Status")]
+    NoStatusField,
+    #[error("the board columns use the field {0}, which is not a single select field")]
+    UnsupportedColumnField(String),
+    #[error("keychain error: {0}")]
+    Keychain(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct GraphqlError {
+    #[serde(rename = "type")]
+    pub kind: Option<String>,
+    pub message: String,
+}
+
+impl GraphqlError {
+    pub fn is_access_denied(&self) -> bool {
+        self.kind.as_deref() == Some("FORBIDDEN") || self.message.contains("SAML")
+    }
+}
