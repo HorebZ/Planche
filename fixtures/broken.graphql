@@ -1,0 +1,14 @@
+query BrokenItemState($projectId: ID!) {
+  node(id: $projectId) {
+    ... on ProjectV2 {
+      items(first: 1) {
+        nodes {
+          content {
+            ... on Issue { state }
+            ... on PullRequest { state }
+          }
+        }
+      }
+    }
+  }
+}

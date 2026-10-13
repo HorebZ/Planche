@@ -1,0 +1,18 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+	"files": {
+		"includes": ["scripts/**", "*.json", "app/**", "!app/src-tauri", "!app/dist"]
+	},
+	"formatter": {
+		"indentStyle": "tab",
+		"lineWidth": 120
+	},
+	"linter": {
+		"rules": {
+			"preset": "recommended"
+		}
+	},
+	"assist": {
+		"actions": { "source": { "organizeImports": "on" } }
+	}
+}
