@@ -18,7 +18,7 @@ Native macOS client for GitHub Projects v2. Tauri 2 shell, React webview, all lo
 - `cargo run -p planche-cli -- board @me/<number>` prints a board.
 - `cd app && bun run tauri dev` runs the app. In dev, `http://localhost:1420/playground` shows every UI component in every state.
 - `cd app && bun run test:e2e` runs the WebKit e2e tests. Run `bunx playwright install webkit` once first.
-- `bun run seed` creates the throwaway "Planche Sandbox" project with 150 drafts. It never touches the real "Planche" tracking project.
+- Live tests run against the real tracking project "Planche" (`@me/2`). A scenario that changes a card restores it at the end.
 
 ## Rules
 

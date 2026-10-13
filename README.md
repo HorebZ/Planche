@@ -83,5 +83,5 @@ app/
   e2e/                 Playwright tests
   src-tauri/           Tauri shell
 design/                Design handoff, the visual source of truth
-scripts/               GraphQL validation, schema update, sandbox seed
+scripts/               GraphQL validation, schema update
 ```
