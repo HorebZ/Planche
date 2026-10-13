@@ -1,0 +1,56 @@
+mutation SetSingleSelect($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+  updateProjectV2ItemFieldValue(input: {
+    projectId: $projectId, itemId: $itemId, fieldId: $fieldId,
+    value: { singleSelectOptionId: $optionId }
+  }) {
+    projectV2Item { id updatedAt }
+  }
+}
+
+mutation ClearFieldValue($projectId: ID!, $itemId: ID!, $fieldId: ID!) {
+  clearProjectV2ItemFieldValue(input: { projectId: $projectId, itemId: $itemId, fieldId: $fieldId }) {
+    projectV2Item { id updatedAt }
+  }
+}
+
+mutation MoveItemPosition($projectId: ID!, $itemId: ID!, $afterId: ID) {
+  updateProjectV2ItemPosition(input: { projectId: $projectId, itemId: $itemId, afterId: $afterId }) {
+    clientMutationId
+  }
+}
+
+mutation ArchiveItem($projectId: ID!, $itemId: ID!) {
+  archiveProjectV2Item(input: { projectId: $projectId, itemId: $itemId }) {
+    item { id }
+  }
+}
+
+mutation UnarchiveItem($projectId: ID!, $itemId: ID!) {
+  unarchiveProjectV2Item(input: { projectId: $projectId, itemId: $itemId }) {
+    item { id }
+  }
+}
+
+mutation AddDraftIssue($projectId: ID!, $title: String!, $body: String) {
+  addProjectV2DraftIssue(input: { projectId: $projectId, title: $title, body: $body }) {
+    projectItem { id updatedAt }
+  }
+}
+
+mutation AddAssignees($assignableId: ID!, $assigneeIds: [ID!]!) {
+  addAssigneesToAssignable(input: { assignableId: $assignableId, assigneeIds: $assigneeIds }) {
+    clientMutationId
+  }
+}
+
+mutation RemoveAssignees($assignableId: ID!, $assigneeIds: [ID!]!) {
+  removeAssigneesFromAssignable(input: { assignableId: $assignableId, assigneeIds: $assigneeIds }) {
+    clientMutationId
+  }
+}
+
+mutation SetDraftAssignees($draftIssueId: ID!, $assigneeIds: [ID!]!) {
+  updateProjectV2DraftIssue(input: { draftIssueId: $draftIssueId, assigneeIds: $assigneeIds }) {
+    draftIssue { id }
+  }
+}
