@@ -54,7 +54,16 @@ Run these commands from `app/`.
 
 While `bun run dev` is running, http://localhost:1420/playground shows every UI component in every state, in light and dark mode. The playground is excluded from production builds.
 
-The command-line client builds from the root with `cargo run -p planche-cli -- --help`.
+The command-line client runs from the root. It needs a classic personal access token with the `repo`, `read:org` and `project` scopes, stored in the macOS Keychain on sign-in.
+
+```sh
+cargo run -p planche-cli -- auth login              # paste the token
+cargo run -p planche-cli -- projects                # your projects and your organizations'
+cargo run -p planche-cli -- board @me/2             # a board, columns by Status
+cargo run -p planche-cli -- board my-org/5 --view 3 --json
+```
+
+`PLANCHE_TOKEN` overrides the stored token.
 
 ## Testing
 
