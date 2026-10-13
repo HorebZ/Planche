@@ -1,0 +1,24 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+	"files": {
+		"includes": ["src/**", "e2e/**", "scripts/**", "*.ts", "*.json", "!src-tauri"]
+	},
+	"formatter": {
+		"indentStyle": "tab",
+		"lineWidth": 120
+	},
+	"css": {
+		"parser": { "tailwindDirectives": true }
+	},
+	"linter": {
+		"rules": {
+			"preset": "recommended",
+			"nursery": {
+				"useSortedClasses": { "level": "error", "fix": "safe", "options": { "functions": ["cn", "cva"] } }
+			}
+		}
+	},
+	"assist": {
+		"actions": { "source": { "organizeImports": "on" } }
+	}
+}
