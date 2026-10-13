@@ -13,42 +13,28 @@ query ListProjects($login: String!, $isOrg: Boolean!, $after: String) {
   rateLimit { cost remaining resetAt }
 }
 
-query ResolveProject($login: String!, $isOrg: Boolean!, $number: Int!) {
-  user(login: $login) @skip(if: $isOrg) { projectV2(number: $number) { id title } }
-  organization(login: $login) @include(if: $isOrg) { projectV2(number: $number) { id title } }
-}
-
 fragment ProjectSummaryPage on ProjectV2Connection {
   pageInfo { hasNextPage endCursor }
   nodes { id number title closed url updatedAt }
 }
 
+# One round trip for `<owner>/<number>`: resolves the owner, then returns the metadata and the
+# first page of items. `repositoryOwner` covers users and organizations alike.
+query ProjectBoard($login: String!, $viewer: Boolean!, $number: Int!) {
+  viewer @include(if: $viewer) {
+    projectV2(number: $number) { ...ProjectMetaFields items(first: 100) { ...ProjectItemPage } }
+  }
+  repositoryOwner(login: $login) @skip(if: $viewer) {
+    ... on ProjectV2Owner {
+      projectV2(number: $number) { ...ProjectMetaFields items(first: 100) { ...ProjectItemPage } }
+    }
+  }
+  rateLimit { cost remaining resetAt }
+}
+
 query ProjectMeta($projectId: ID!) {
   node(id: $projectId) {
-    ... on ProjectV2 {
-      id number title url updatedAt
-      owner {
-        __typename
-        ... on User { login }
-        ... on Organization { login }
-      }
-      fields(first: 50) {
-        nodes {
-          __typename
-          ... on ProjectV2FieldCommon { id name dataType }
-          ... on ProjectV2SingleSelectField { options { id name color description } }
-        }
-      }
-      views(first: 30) {
-        nodes {
-          id number name layout filter
-          verticalGroupByFields(first: 1) {
-            nodes { ... on ProjectV2FieldCommon { id } }
-          }
-          sortByFields(first: 1) { totalCount }
-        }
-      }
-    }
+    ... on ProjectV2 { ...ProjectMetaFields }
   }
   rateLimit { cost remaining resetAt }
 }
@@ -56,45 +42,72 @@ query ProjectMeta($projectId: ID!) {
 query ProjectItems($projectId: ID!, $after: String) {
   node(id: $projectId) {
     ... on ProjectV2 {
-      items(first: 100, after: $after) {
-        totalCount
-        pageInfo { hasNextPage endCursor }
-        nodes {
-          id type isArchived updatedAt
-          fieldValues(first: 20) {
-            nodes {
-              __typename
-              ... on ProjectV2ItemFieldSingleSelectValue { optionId field { ...FieldId } }
-              ... on ProjectV2ItemFieldTextValue { text field { ...FieldId } }
-              ... on ProjectV2ItemFieldNumberValue { number field { ...FieldId } }
-              ... on ProjectV2ItemFieldDateValue { date field { ...FieldId } }
-              ... on ProjectV2ItemFieldIterationValue { iterationId field { ...FieldId } }
-            }
-          }
-          content {
-            __typename
-            ... on DraftIssue {
-              id title updatedAt
-              assignees(first: 10) { nodes { ...UserLite } }
-            }
-            ... on Issue {
-              id number title url issueState: state updatedAt
-              repository { nameWithOwner }
-              assignees(first: 10) { nodes { ...UserLite } }
-              labels(first: 10) { nodes { name color } }
-            }
-            ... on PullRequest {
-              id number title url prState: state isDraft updatedAt
-              repository { nameWithOwner }
-              assignees(first: 10) { nodes { ...UserLite } }
-              labels(first: 10) { nodes { name color } }
-            }
-          }
-        }
-      }
+      items(first: 100, after: $after) { ...ProjectItemPage }
     }
   }
   rateLimit { cost remaining resetAt }
+}
+
+fragment ProjectMetaFields on ProjectV2 {
+  id number title url updatedAt
+  owner {
+    __typename
+    ... on User { login }
+    ... on Organization { login }
+  }
+  fields(first: 50) {
+    nodes {
+      __typename
+      ... on ProjectV2FieldCommon { id name dataType }
+      ... on ProjectV2SingleSelectField { options { id name color description } }
+    }
+  }
+  views(first: 30) {
+    nodes {
+      id number name layout filter
+      verticalGroupByFields(first: 1) {
+        nodes { ... on ProjectV2FieldCommon { id } }
+      }
+      sortByFields(first: 1) { totalCount }
+    }
+  }
+}
+
+fragment ProjectItemPage on ProjectV2ItemConnection {
+  totalCount
+  pageInfo { hasNextPage endCursor }
+  nodes {
+    id type isArchived updatedAt
+    fieldValues(first: 20) {
+      nodes {
+        __typename
+        ... on ProjectV2ItemFieldSingleSelectValue { optionId field { ...FieldId } }
+        ... on ProjectV2ItemFieldTextValue { text field { ...FieldId } }
+        ... on ProjectV2ItemFieldNumberValue { number field { ...FieldId } }
+        ... on ProjectV2ItemFieldDateValue { date field { ...FieldId } }
+        ... on ProjectV2ItemFieldIterationValue { iterationId field { ...FieldId } }
+      }
+    }
+    content {
+      __typename
+      ... on DraftIssue {
+        id title updatedAt
+        assignees(first: 10) { nodes { ...UserLite } }
+      }
+      ... on Issue {
+        id number title url issueState: state updatedAt
+        repository { nameWithOwner }
+        assignees(first: 10) { nodes { ...UserLite } }
+        labels(first: 10) { nodes { name color } }
+      }
+      ... on PullRequest {
+        id number title url prState: state isDraft updatedAt
+        repository { nameWithOwner }
+        assignees(first: 10) { nodes { ...UserLite } }
+        labels(first: 10) { nodes { name color } }
+      }
+    }
+  }
 }
 
 fragment FieldId on ProjectV2FieldConfiguration {

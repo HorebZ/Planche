@@ -63,20 +63,23 @@ pub(super) struct ProjectSummary {
 }
 
 #[derive(Deserialize)]
-pub(super) struct ResolveProjectData {
-    pub user: Option<ResolveOwner>,
-    pub organization: Option<ResolveOwner>,
+#[serde(rename_all = "camelCase")]
+pub(super) struct ProjectBoardData {
+    pub viewer: Option<BoardOwner>,
+    pub repository_owner: Option<BoardOwner>,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct ResolveOwner {
-    pub project_v2: Option<ProjectRef>,
+pub(super) struct BoardOwner {
+    pub project_v2: Option<BoardProject>,
 }
 
 #[derive(Deserialize)]
-pub(super) struct ProjectRef {
-    pub id: String,
+pub(super) struct BoardProject {
+    #[serde(flatten)]
+    pub meta: Project,
+    pub items: Connection<Item>,
 }
 
 #[derive(Deserialize)]
