@@ -1,5 +1,7 @@
 use serde::Deserialize;
 
+use crate::domain::ItemId;
+
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, thiserror::Error)]
@@ -35,6 +37,18 @@ pub enum Error {
     NoStatusField,
     #[error("the board columns use the field {0}, which is not a single select field")]
     UnsupportedColumnField(String),
+    #[error("no card matches `{0}`")]
+    CardNotFound(String),
+    #[error(
+        "`{query}` matches several cards, pass one of these item IDs instead:{}",
+        candidates.iter().map(|(id, title)| format!("\n  {id}  {title}")).collect::<String>()
+    )]
+    AmbiguousCard {
+        query: String,
+        candidates: Vec<(ItemId, String)>,
+    },
+    #[error("no column `{name}`, expected one of: {}", valid.join(", "))]
+    UnknownColumn { name: String, valid: Vec<String> },
     #[error("keychain error: {0}")]
     Keychain(String),
 }

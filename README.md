@@ -61,6 +61,8 @@ cargo run -p planche-cli -- auth login              # paste the token
 cargo run -p planche-cli -- projects                # your projects and your organizations'
 cargo run -p planche-cli -- board @me/2             # a board, columns by Status
 cargo run -p planche-cli -- board my-org/5 --view 3 --json
+cargo run -p planche-cli -- move @me/2 "#11" "In Progress"     # keeps the card's position
+cargo run -p planche-cli -- move @me/2 "#11" Done --after "#2" # or --top
 ```
 
 `PLANCHE_TOKEN` overrides the stored token.

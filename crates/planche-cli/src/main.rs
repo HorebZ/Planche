@@ -4,6 +4,7 @@ use std::process::ExitCode;
 use clap::{Parser, Subcommand};
 use planche_core::domain::{Board, ItemContent, ProjectList, RateUsage};
 use planche_core::github::{GithubClient, ops};
+use planche_core::intent::{self, Intent, Placement};
 use planche_core::{Error, auth};
 use serde::Serialize;
 
@@ -38,6 +39,21 @@ enum Command {
         /// Print the board as JSON
         #[arg(long)]
         json: bool,
+    },
+    /// Move a card to a column, keeping its position unless `--top` or `--after` is given
+    Move {
+        /// The project, as `<owner>/<number>` (`@me/<number>` for yours)
+        project: String,
+        /// The card: `#123`, `repo#123`, an item ID, or the start of its title
+        item: String,
+        /// The column name, or `none` to clear the field
+        column: String,
+        /// Put the card at the top of the column
+        #[arg(long, conflicts_with = "after")]
+        top: bool,
+        /// Put the card right after this one, named like `item`
+        #[arg(long)]
+        after: Option<String>,
     },
 }
 
@@ -84,7 +100,10 @@ fn exit_code(error: &Error) -> u8 {
         | Error::ViewNotFound(_)
         | Error::ViewNotBoard(_)
         | Error::NoStatusField
-        | Error::UnsupportedColumnField(_) => 2,
+        | Error::UnsupportedColumnField(_)
+        | Error::CardNotFound(_)
+        | Error::AmbiguousCard { .. }
+        | Error::UnknownColumn { .. } => 2,
         _ => 1,
     }
 }
@@ -141,6 +160,40 @@ async fn run(command: Command) -> Result<(), Failure> {
             } else {
                 print_board(&board, usage);
             }
+        }
+        Command::Move {
+            project,
+            item,
+            column,
+            top,
+            after,
+        } => {
+            let (owner, number) = parse_project(&project)?;
+            let client = GithubClient::new(auth::load_token()?)?;
+            let board = ops::fetch_board(&client, owner, number, None).await?;
+            let card = intent::find_card(&board, &item)?;
+            let target = intent::find_column(&board, &column)?;
+            let (placement, where_) = match after {
+                Some(after) => {
+                    let anchor = intent::find_card(&board, &after)?;
+                    if anchor.item_id == card.item_id {
+                        return Err(Failure::Usage("a card cannot go after itself".into()));
+                    }
+                    (
+                        Placement::After(anchor.item_id.clone()),
+                        format!(", after \"{}\"", anchor.title),
+                    )
+                }
+                None if top => (Placement::Top, ", at the top".to_owned()),
+                None => (Placement::Keep, String::new()),
+            };
+            let move_card = Intent::move_card(&board, &card.item_id, target, placement);
+            for operation in intent::to_operations(&move_card) {
+                ops::execute(&client, &operation).await?;
+            }
+            let column_name =
+                target.map_or_else(|| format!("No {}", board.field.name), |c| c.name.clone());
+            println!("Moved \"{}\" to {column_name}{where_}", card.title);
         }
     }
     Ok(())
