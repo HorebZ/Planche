@@ -308,14 +308,18 @@ pub async fn dispatch_intent(
 ) -> Result<Board> {
     let Intent::MoveCard { project_id, .. } = &intent;
     core.cache().enqueue(&intent)?;
-    if let Some(engine) = core.engine().await {
-        engine.send(SyncCommand::Flush).await;
-    }
-    core.board(project_id, view_id.as_ref())?
+    // Read the board before the engine sends: a fast failure would already have dropped the
+    // row, and the card would jump back before the front hears of the failure.
+    let board = core
+        .board(project_id, view_id.as_ref())?
         .ok_or_else(|| AppError {
             kind: ErrorKind::NotFound,
             message: format!("project {project_id} is not in the cache"),
-        })
+        })?;
+    if let Some(engine) = core.engine().await {
+        engine.send(SyncCommand::Flush).await;
+    }
+    Ok(board)
 }
 
 /// Syncs now and waits for the result.
