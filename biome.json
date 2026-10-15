@@ -1,7 +1,7 @@
 {
 	"$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
 	"files": {
-		"includes": ["scripts/**", "*.json", "app/**", "!app/src-tauri", "!app/dist"]
+		"includes": ["scripts/**", "*.json", "app/**", "!app/src-tauri", "!app/dist", "!app/src/ipc/bindings.ts"]
 	},
 	"formatter": {
 		"indentStyle": "tab",
@@ -13,6 +13,10 @@
 		}
 	},
 	"assist": {
-		"actions": { "source": { "organizeImports": "on" } }
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
 	}
 }

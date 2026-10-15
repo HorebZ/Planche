@@ -180,6 +180,20 @@ fn server_board(cache: &Cache, project: &ProjectId) -> Board {
     project_board(&meta, None, &items).unwrap()
 }
 
+/// Column names and card IDs in order, without the cache's flags and timestamps.
+fn layout(board: &Board) -> Vec<(String, Vec<ItemId>)> {
+    board
+        .columns
+        .iter()
+        .map(|c| {
+            (
+                c.name.clone(),
+                c.cards.iter().map(|card| card.item_id.clone()).collect(),
+            )
+        })
+        .collect()
+}
+
 fn column_of(board: &Board, item: &ItemId) -> String {
     board
         .columns
@@ -266,7 +280,10 @@ async fn the_same_move_on_an_up_to_date_snapshot_gives_the_same_board() {
 
     let server = server_board(&cache, &project);
     assert_eq!(column_of(&server, intent.item_id()), "Done");
-    assert_eq!(cache.board(&project, None).unwrap().unwrap(), server);
+    assert_eq!(
+        layout(&cache.board(&project, None).unwrap().unwrap()),
+        layout(&server)
+    );
 }
 
 #[tokio::test]
@@ -283,7 +300,10 @@ async fn a_failed_mutation_disappears_and_the_board_returns_to_the_server_state(
         .unwrap();
     assert!(matches!(outcomes.as_slice(), [Sent::Failed(..)]));
     assert_eq!(cache.pending_count(&project).unwrap(), 0);
-    assert_eq!(cache.board(&project, None).unwrap().unwrap(), server);
+    assert_eq!(
+        layout(&cache.board(&project, None).unwrap().unwrap()),
+        layout(&server)
+    );
 }
 
 #[tokio::test]
@@ -449,19 +469,31 @@ async fn two_connections_write_at_once_without_database_is_locked() {
     }
 }
 
+#[derive(Default)]
 struct FakeClock {
-    start: (SystemTime, Instant),
+    start: Option<(SystemTime, Instant)>,
     /// How long the Mac slept: the wall clock moved, the monotonic clock did not.
     slept: Mutex<Duration>,
+    /// Time awake: both clocks moved.
+    awake: Mutex<Duration>,
+}
+
+impl FakeClock {
+    fn new() -> Self {
+        Self {
+            start: Some((SystemTime::now(), Instant::now())),
+            ..Self::default()
+        }
+    }
 }
 
 impl Clock for FakeClock {
     fn wall(&self) -> SystemTime {
-        self.start.0 + *self.slept.lock().unwrap()
+        self.start.unwrap().0 + *self.slept.lock().unwrap() + *self.awake.lock().unwrap()
     }
 
     fn mono(&self) -> Instant {
-        self.start.1
+        self.start.unwrap().1 + *self.awake.lock().unwrap()
     }
 }
 
@@ -469,10 +501,7 @@ impl Clock for FakeClock {
 async fn a_wall_clock_jump_longer_than_the_interval_syncs_unless_sync_on_wake_is_off() {
     for sync_on_wake in [true, false] {
         let github = FakeGithub::new();
-        let clock = Arc::new(FakeClock {
-            start: (SystemTime::now(), Instant::now()),
-            slept: Mutex::default(),
-        });
+        let clock = Arc::new(FakeClock::new());
         let engine = sync::spawn(
             Cache::open(temp_cache(&format!("wake-{sync_on_wake}"))).unwrap(),
             github.clone(),
@@ -488,6 +517,34 @@ async fn a_wall_clock_jump_longer_than_the_interval_syncs_unless_sync_on_wake_is
         assert_eq!(woke.is_ok(), sync_on_wake, "sync_on_wake = {sync_on_wake}");
         let fetches = if sync_on_wake { 2 } else { 1 };
         assert_eq!(github.edit(|s| s.fetches), fetches);
+    }
+}
+
+#[tokio::test(start_paused = true)]
+async fn focus_syncs_when_the_last_sync_is_older_than_30_s_unless_manual() {
+    for (interval, after, expected) in [
+        (SyncInterval::FiveMinutes, 10, 1),
+        (SyncInterval::FiveMinutes, 31, 2),
+        (SyncInterval::Manual, 31, 1),
+    ] {
+        let github = FakeGithub::new();
+        let clock = Arc::new(FakeClock::new());
+        let engine = sync::spawn(
+            Cache::open(temp_cache(&format!("focus-{interval:?}-{after}"))).unwrap(),
+            github.clone(),
+            config(interval, true),
+            clock.clone(),
+        );
+        let mut events = engine.subscribe();
+        engine.send(SyncCommand::Now).await;
+        until_synced(&mut events).await;
+
+        *clock.awake.lock().unwrap() = Duration::from_secs(after);
+        engine.send(SyncCommand::Focus).await;
+        let synced = tokio::time::timeout(Duration::from_secs(5), until_synced(&mut events)).await;
+        let case = format!("{interval:?} after {after} s");
+        assert_eq!(synced.is_ok(), expected == 2, "{case}");
+        assert_eq!(github.edit(|s| s.fetches), expected, "{case}");
     }
 }
 
@@ -543,4 +600,55 @@ impl Remote for FakeOffline {
     fn usage(&self) -> RateUsage {
         RateUsage::default()
     }
+}
+
+#[tokio::test]
+async fn the_board_flags_pending_cards_and_cards_the_last_sync_changed() {
+    let github = FakeGithub::new();
+    let (_, mut cache, project) = synced("flags", &github).await;
+    let flagged = |cache: &Cache| {
+        let board = cache.board(&project, None).unwrap().unwrap();
+        let cards: Vec<_> = board.columns.into_iter().flat_map(|c| c.cards).collect();
+        let ids = |f: fn(&planche_core::domain::Card) -> bool| {
+            cards
+                .iter()
+                .filter(|c| f(c))
+                .map(|c| c.item_id.clone())
+                .collect::<Vec<_>>()
+        };
+        (
+            ids(|c| c.pending),
+            ids(|c| c.updated_by_sync),
+            board.pending_count,
+        )
+    };
+    assert_eq!(
+        flagged(&cache),
+        (vec![], vec![], 0),
+        "nothing after the first sync"
+    );
+
+    let board = server_board(&cache, &project);
+    let local = move_todo_card(&board, "Done");
+    cache.enqueue(&local).unwrap();
+    assert_eq!(flagged(&cache), (vec![local.item_id().clone()], vec![], 1));
+
+    // Someone else retitles another card on github.com.
+    let remote = github.edit(|s| {
+        let item = s
+            .items
+            .iter_mut()
+            .find(|i| &i.id != local.item_id())
+            .unwrap();
+        if let planche_core::domain::ItemContent::Issue { title, .. } = &mut item.content {
+            title.push_str(" (edited)");
+        }
+        item.updated_at = "2026-10-15T00:00:00Z".into();
+        item.id.clone()
+    });
+    sync_once(&mut cache, &github).await.unwrap();
+    assert_eq!(
+        flagged(&cache),
+        (vec![local.item_id().clone()], vec![remote], 1)
+    );
 }

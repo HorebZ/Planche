@@ -14,7 +14,8 @@ use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, 
 use crate::board::{self, project_board};
 use crate::domain::{
     Board, ContentId, Field, FieldId, IssueState, Item, ItemContent, ItemId, Label, OptionId,
-    ProjectId, ProjectMeta, PullRequestState, SelectOption, User, UserId, View, ViewId, ViewLayout,
+    OwnerProjects, ProjectId, ProjectList, ProjectMeta, ProjectSummary, PullRequestState,
+    SelectOption, User, UserId, View, ViewId, ViewLayout,
 };
 use crate::error::{Error, Result};
 use crate::intent::{self, Intent, Placement};
@@ -116,7 +117,75 @@ impl Cache {
         let Some((meta, items)) = self.snapshot(project)? else {
             return Ok(None);
         };
-        board::project(&meta, view, &items, &self.intents(project)?).map(Some)
+        let mut board = board::project(&meta, view, &items, &self.intents(project)?)?;
+        let unacked: Vec<ItemId> = {
+            let mut statement = self.conn.prepare_cached(
+                "SELECT DISTINCT item_id FROM pending_mutation
+                 WHERE project_id = ?1 AND status IN ('pending', 'in_flight') AND item_id IS NOT NULL",
+            )?;
+            statement
+                .query_map([project.as_str()], |r| r.get(0).map(ItemId))?
+                .collect::<rusqlite::Result<_>>()?
+        };
+        let changed: Vec<ItemId> = match self.get(&changed_key(project))? {
+            Some(json) => serde_json::from_str(&json).map_err(|e| Error::Cache(e.to_string()))?,
+            None => Vec::new(),
+        };
+        for card in board.columns.iter_mut().flat_map(|c| &mut c.cards) {
+            card.pending = unacked.contains(&card.item_id);
+            card.updated_by_sync = changed.contains(&card.item_id);
+        }
+        board.pending_count = self.pending_count(project)?;
+        board.synced_at = self.synced_at(project)?;
+        Ok(Some(board))
+    }
+
+    /// The owner login and number of a cached project.
+    pub fn project_ref(&self, project: &ProjectId) -> Result<Option<(String, u32)>> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT owner_login, number FROM project WHERE id = ?1",
+                [project.as_str()],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .optional()?)
+    }
+
+    /// The cached projects by owner, for a project list without the network.
+    pub fn projects(&self) -> Result<ProjectList> {
+        let mut statement = self.conn.prepare_cached(
+            "SELECT id, owner_login, owner_kind, number, title, url, closed FROM project
+             ORDER BY owner_kind = 'org', owner_login COLLATE NOCASE, number",
+        )?;
+        let mut owners: Vec<OwnerProjects> = Vec::new();
+        for row in statement.query_map([], |r| {
+            Ok((
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)? == "org",
+                ProjectSummary {
+                    id: ProjectId(r.get(0)?),
+                    number: r.get(3)?,
+                    title: r.get(4)?,
+                    url: r.get(5)?,
+                    closed: r.get(6)?,
+                },
+            ))
+        })? {
+            let (login, is_org, project) = row?;
+            match owners.last_mut() {
+                Some(owner) if owner.login == login => owner.projects.push(project),
+                _ => owners.push(OwnerProjects {
+                    login,
+                    is_org,
+                    projects: vec![project],
+                }),
+            }
+        }
+        Ok(ProjectList {
+            owners,
+            sso_blocked: Vec::new(),
+        })
     }
 
     /// The last known server state of the project.
@@ -274,6 +343,11 @@ impl Cache {
         items: &[Item],
         viewer: bool,
     ) -> Result<()> {
+        let before: HashMap<ItemId, Item> = self
+            .items(&meta.id)?
+            .into_iter()
+            .map(|i| (i.id.clone(), i))
+            .collect();
         let tx = self.write()?;
         let project = meta.id.as_str();
         // A project deleted and recreated under the same number has a new ID.
@@ -315,6 +389,28 @@ impl Cache {
         if viewer {
             set_kv(&tx, "viewer_login", &meta.owner)?;
         }
+        // Our own acked moves come back in this snapshot. They are not news from the server.
+        let acked: Vec<ItemId> = tx
+            .prepare_cached(
+                "SELECT item_id FROM pending_mutation
+                 WHERE project_id = ?1 AND status = 'acked' AND item_id IS NOT NULL",
+            )?
+            .query_map([project], |r| r.get(0).map(ItemId))?
+            .collect::<rusqlite::Result<_>>()?;
+        let changed: Vec<&ItemId> = if before.is_empty() {
+            Vec::new()
+        } else {
+            items
+                .iter()
+                .filter(|i| before.get(&i.id) != Some(*i) && !acked.contains(&i.id))
+                .map(|i| &i.id)
+                .collect()
+        };
+        set_kv(
+            &tx,
+            &changed_key(&meta.id),
+            &serde_json::to_string(&changed).expect("ids serialize"),
+        )?;
         settle_acked(&tx, &meta.id, project_board(meta, None, items).ok())?;
         tx.commit()?;
         Ok(())
@@ -327,7 +423,8 @@ impl Cache {
             .transaction_with_behavior(TransactionBehavior::Immediate)?)
     }
 
-    fn meta(&self, project: &ProjectId) -> Result<Option<ProjectMeta>> {
+    /// The cached metadata of the project: fields, options and views.
+    pub fn meta(&self, project: &ProjectId) -> Result<Option<ProjectMeta>> {
         let id = project.as_str();
         let Some(mut meta) = self
             .conn
@@ -517,6 +614,11 @@ fn migrate(conn: &mut Connection) -> Result<()> {
     }
     tx.commit()?;
     Ok(())
+}
+
+/// The `kv` key holding the item IDs the last sync of `project` changed.
+fn changed_key(project: &ProjectId) -> String {
+    format!("changed:{project}")
 }
 
 fn set_kv(conn: &Connection, key: &str, value: &str) -> Result<()> {

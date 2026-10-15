@@ -4,9 +4,11 @@
 use std::collections::HashMap;
 use std::future::Future;
 use std::str::FromStr;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use serde::{Deserialize, Serialize};
+use specta::Type;
 use tokio::sync::{broadcast, mpsc};
 
 use crate::board::project_board;
@@ -67,11 +69,11 @@ fn fault(name: &str) -> bool {
         && std::env::var("PLANCHE_FAULT").is_ok_and(|f| f.split(',').any(|f| f.trim() == name))
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
 pub struct SyncReport {
     pub project: ProjectId,
     /// Items fetched, archived ones included.
-    pub items: usize,
+    pub items: u32,
     /// Points this sync cost.
     pub cost: u32,
     pub usage: RateUsage,
@@ -80,7 +82,7 @@ pub struct SyncReport {
 }
 
 /// `None` stands for a card absent from that board.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
 pub struct CardChange {
     pub title: String,
     pub from: Option<String>,
@@ -122,7 +124,7 @@ pub async fn full_sync<R: Remote>(
     let usage = remote.usage();
     Ok(SyncReport {
         project: meta.id,
-        items: items.len(),
+        items: items.len() as u32,
         cost: usage.cost_total - cost_before,
         usage,
         changes: match (before, after) {
@@ -218,7 +220,8 @@ async fn send<R: Remote>(remote: &R, intent: &Intent) -> Result<()> {
     Ok(())
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "snake_case")]
 pub enum SyncInterval {
     OneMinute,
     #[default]
@@ -307,6 +310,31 @@ impl Clock for SystemClock {
     }
 }
 
+/// The sync settings, stored in `kv` as `sync_interval` and `sync_on_wake`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct SyncPrefs {
+    pub interval: SyncInterval,
+    pub on_wake: bool,
+}
+
+impl SyncPrefs {
+    /// The stored settings, with `5m` and `true` by default.
+    pub fn load(cache: &Cache) -> Result<Self> {
+        Ok(Self {
+            interval: cache
+                .get("sync_interval")?
+                .and_then(|v| v.parse().ok())
+                .unwrap_or_default(),
+            on_wake: cache.get("sync_on_wake")?.as_deref() != Some("false"),
+        })
+    }
+
+    pub fn save(self, cache: &Cache) -> Result<()> {
+        cache.set("sync_interval", self.interval.as_str())?;
+        cache.set("sync_on_wake", if self.on_wake { "true" } else { "false" })
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SyncConfig {
     /// The project, as `<owner>/<number>` with `@me` for the viewer.
@@ -317,16 +345,14 @@ pub struct SyncConfig {
 }
 
 impl SyncConfig {
-    /// Reads `sync_interval` and `sync_on_wake` from `kv`, with `5m` and `true` by default.
+    /// The project with the stored `SyncPrefs`.
     pub fn load(cache: &Cache, owner: &str, number: u32) -> Result<Self> {
+        let prefs = SyncPrefs::load(cache)?;
         Ok(Self {
             owner: owner.to_owned(),
             number,
-            interval: cache
-                .get("sync_interval")?
-                .and_then(|v| v.parse().ok())
-                .unwrap_or_default(),
-            sync_on_wake: cache.get("sync_on_wake")?.as_deref() != Some("false"),
+            interval: prefs.interval,
+            sync_on_wake: prefs.on_wake,
         })
     }
 }
@@ -337,16 +363,36 @@ pub enum SyncCommand {
     Now,
     /// The window got focus: sync when the last sync is older than 30 s. `Manual` ignores it.
     Focus,
+    /// New settings, applied from now on.
+    Configure(SyncPrefs),
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, Type)]
 pub struct SyncStatus {
-    pub syncing: bool,
-    pub page: u32,
-    pub pages: u32,
-    pub items_total: u32,
-    /// When the engine retries after a failure, for the offline countdown.
-    pub retry_at: Option<SystemTime>,
+    pub state: SyncState,
+    /// Unix time in milliseconds of this engine's last successful sync.
+    pub last_sync_at: Option<f64>,
+    /// Unix time in milliseconds of the next retry after a failure, for the offline countdown.
+    pub retry_at: Option<f64>,
+    /// Queued intents GitHub has not acknowledged yet.
+    pub pending: u32,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum SyncState {
+    #[default]
+    Idle,
+    Syncing {
+        page: u32,
+        pages: u32,
+        items_total: u32,
+    },
+    Offline,
+    RateLimited,
+    Error {
+        message: String,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -373,6 +419,7 @@ pub enum SyncEvent {
 pub struct SyncHandle {
     commands: mpsc::Sender<SyncCommand>,
     events: broadcast::Sender<SyncEvent>,
+    status: Arc<Mutex<SyncStatus>>,
 }
 
 impl SyncHandle {
@@ -383,6 +430,11 @@ impl SyncHandle {
 
     pub fn subscribe(&self) -> broadcast::Receiver<SyncEvent> {
         self.events.subscribe()
+    }
+
+    /// The last status the engine published.
+    pub fn status(&self) -> SyncStatus {
+        self.status.lock().expect("status lock").clone()
     }
 }
 
@@ -402,18 +454,25 @@ pub fn spawn<R: Remote>(
 ) -> SyncHandle {
     let (commands, receiver) = mpsc::channel(16);
     let (events, _) = broadcast::channel(64);
+    let status = Arc::new(Mutex::new(SyncStatus::default()));
     let engine = Engine {
         cache,
         remote,
         config,
         clock,
         events: events.clone(),
+        status: status.clone(),
         due_at: None,
         failures: 0,
         last_sync: None,
+        last_success: None,
     };
     tokio::spawn(engine.run(receiver));
-    SyncHandle { commands, events }
+    SyncHandle {
+        commands,
+        events,
+        status,
+    }
 }
 
 struct Engine<R> {
@@ -422,10 +481,13 @@ struct Engine<R> {
     config: SyncConfig,
     clock: Arc<dyn Clock>,
     events: broadcast::Sender<SyncEvent>,
+    status: Arc<Mutex<SyncStatus>>,
     /// The next automatic sync, or the next retry after a failure.
     due_at: Option<Instant>,
     failures: u32,
     last_sync: Option<Instant>,
+    /// Unix milliseconds of the last successful sync.
+    last_success: Option<f64>,
 }
 
 impl<R: Remote> Engine<R> {
@@ -433,11 +495,8 @@ impl<R: Remote> Engine<R> {
         if let Err(error) = self.cache.reset_in_flight() {
             self.failed(error);
         }
-        self.due_at = self
-            .config
-            .interval
-            .duration()
-            .map(|d| self.clock.mono() + d);
+        self.schedule();
+        self.publish(SyncState::Idle, None);
         let mut last_tick = (self.clock.wall(), self.clock.mono());
         loop {
             tokio::select! {
@@ -452,6 +511,13 @@ impl<R: Remote> Engine<R> {
                             self.cycle().await;
                         }
                     }
+                    Some(SyncCommand::Configure(prefs)) => {
+                        self.config.interval = prefs.interval;
+                        self.config.sync_on_wake = prefs.on_wake;
+                        if self.failures == 0 {
+                            self.schedule();
+                        }
+                    }
                 },
                 () = tokio::time::sleep(TICK) => {
                     let (wall, mono) = (self.clock.wall(), self.clock.mono());
@@ -464,8 +530,10 @@ impl<R: Remote> Engine<R> {
                         self.cycle().await;
                     } else if self.failures == 0 {
                         // Sends what another process queued, such as `planche move` offline.
-                        if let Err(error) = self.flush().await {
-                            self.failed(error);
+                        match self.flush().await {
+                            Ok(true) => self.publish(SyncState::Idle, None),
+                            Ok(false) => {}
+                            Err(error) => self.failed(error),
                         }
                     }
                 }
@@ -473,29 +541,40 @@ impl<R: Remote> Engine<R> {
         }
     }
 
+    /// The next automatic sync, one interval from now.
+    fn schedule(&mut self) {
+        self.due_at = self
+            .config
+            .interval
+            .duration()
+            .map(|d| self.clock.mono() + d);
+    }
+
     /// Flushes the queue, then fetches the project.
     async fn cycle(&mut self) {
         self.last_sync = Some(self.clock.mono());
-        self.emit(SyncEvent::Status(SyncStatus {
-            syncing: true,
-            ..SyncStatus::default()
-        }));
+        let syncing = |page, pages, items_total| SyncState::Syncing {
+            page,
+            pages,
+            items_total,
+        };
+        self.publish(syncing(0, 0, 0), None);
         let result = match self.flush().await {
-            Ok(()) => {
-                let events = self.events.clone();
+            Ok(_) => {
+                let (status, events) = (self.status.clone(), self.events.clone());
+                let base = self.status();
                 full_sync(
                     &mut self.cache,
                     &self.remote,
                     &self.config.owner,
                     self.config.number,
                     |page, pages, items_total| {
-                        let _ = events.send(SyncEvent::Status(SyncStatus {
-                            syncing: true,
-                            page,
-                            pages,
-                            items_total,
-                            retry_at: None,
-                        }));
+                        let next = SyncStatus {
+                            state: syncing(page, pages, items_total),
+                            ..base.clone()
+                        };
+                        *status.lock().expect("status lock") = next.clone();
+                        let _ = events.send(SyncEvent::Status(next));
                     },
                 )
                 .await
@@ -516,26 +595,30 @@ impl<R: Remote> Engine<R> {
                     .duration_since(UNIX_EPOCH)
                     .unwrap_or_default();
                 let reset_in = report.usage.reset_at.map_or(Duration::ZERO, |at| {
-                    Duration::from_secs(at).saturating_sub(now)
+                    Duration::from_secs(at.into()).saturating_sub(now)
                 });
                 let next_in = next_interval(self.config.interval, report.cost, remaining, reset_in);
                 self.due_at = next_in.map(|d| self.clock.mono() + d);
-                self.emit(SyncEvent::Status(SyncStatus::default()));
+                self.last_success = Some(unix_ms(self.clock.wall()));
+                self.publish(SyncState::Idle, None);
                 self.emit(SyncEvent::Synced { report, next_in });
             }
             Err(error) => self.failed(error),
         }
     }
 
-    async fn flush(&mut self) -> Result<()> {
+    /// Sends the queue. `Ok(true)` when it sent or dropped at least one row.
+    async fn flush(&mut self) -> Result<bool> {
         let Some(project) = self
             .cache
             .project_id(&self.config.owner, self.config.number)?
         else {
-            return Ok(());
+            return Ok(false);
         };
         let events = self.events.clone();
+        let mut any = false;
         flush(&mut self.cache, &self.remote, &project, |sent| {
+            any = true;
             let _ = events.send(match sent {
                 Sent::Ok(mutation) => SyncEvent::MutationOk(mutation),
                 Sent::Failed(mutation, error) => SyncEvent::MutationFailed {
@@ -544,34 +627,69 @@ impl<R: Remote> Engine<R> {
                 },
             });
         })
-        .await
+        .await?;
+        Ok(any)
     }
 
     /// Retries with an exponential backoff from 2 s to 60 s, or after `retry-after`.
     fn failed(&mut self, error: Error) {
         self.failures += 1;
         let backoff = Duration::from_secs(1 << self.failures.min(6)).min(MAX_BACKOFF);
-        let retry_in = match error {
-            Error::RateLimited { retry_after_secs } => {
-                backoff.max(Duration::from_secs(retry_after_secs))
-            }
-            _ => backoff,
+        let (retry_in, state) = match &error {
+            Error::RateLimited { retry_after_secs } => (
+                backoff.max(Duration::from_secs(*retry_after_secs)),
+                SyncState::RateLimited,
+            ),
+            Error::Network(_) => (backoff, SyncState::Offline),
+            error => (
+                backoff,
+                SyncState::Error {
+                    message: error.to_string(),
+                },
+            ),
         };
         self.due_at = Some(self.clock.mono() + retry_in);
-        self.emit(SyncEvent::Status(SyncStatus {
-            retry_at: Some(self.clock.wall() + retry_in),
-            ..SyncStatus::default()
-        }));
+        self.publish(state, Some(self.clock.wall() + retry_in));
         self.emit(SyncEvent::SyncFailed {
             error: Arc::new(error),
             retry_in,
         });
     }
 
+    fn status(&self) -> SyncStatus {
+        self.status.lock().expect("status lock").clone()
+    }
+
+    /// Stores and emits a new status, with the current count of pending rows.
+    fn publish(&mut self, state: SyncState, retry_at: Option<SystemTime>) {
+        let pending = self
+            .cache
+            .project_id(&self.config.owner, self.config.number)
+            .ok()
+            .flatten()
+            .and_then(|project| self.cache.pending_count(&project).ok())
+            .unwrap_or(0);
+        let status = SyncStatus {
+            state,
+            last_sync_at: self.last_success,
+            retry_at: retry_at.map(unix_ms),
+            pending,
+        };
+        *self.status.lock().expect("status lock") = status.clone();
+        self.emit(SyncEvent::Status(status));
+    }
+
     fn emit(&self, event: SyncEvent) {
         // No subscriber is fine: the app may not listen yet.
         let _ = self.events.send(event);
     }
+}
+
+fn unix_ms(time: SystemTime) -> f64 {
+    time.duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs_f64()
+        * 1000.0
 }
 
 #[cfg(test)]
