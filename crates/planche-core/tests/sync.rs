@@ -469,19 +469,31 @@ async fn two_connections_write_at_once_without_database_is_locked() {
     }
 }
 
+#[derive(Default)]
 struct FakeClock {
-    start: (SystemTime, Instant),
+    start: Option<(SystemTime, Instant)>,
     /// How long the Mac slept: the wall clock moved, the monotonic clock did not.
     slept: Mutex<Duration>,
+    /// Time awake: both clocks moved.
+    awake: Mutex<Duration>,
+}
+
+impl FakeClock {
+    fn new() -> Self {
+        Self {
+            start: Some((SystemTime::now(), Instant::now())),
+            ..Self::default()
+        }
+    }
 }
 
 impl Clock for FakeClock {
     fn wall(&self) -> SystemTime {
-        self.start.0 + *self.slept.lock().unwrap()
+        self.start.unwrap().0 + *self.slept.lock().unwrap() + *self.awake.lock().unwrap()
     }
 
     fn mono(&self) -> Instant {
-        self.start.1
+        self.start.unwrap().1 + *self.awake.lock().unwrap()
     }
 }
 
@@ -489,10 +501,7 @@ impl Clock for FakeClock {
 async fn a_wall_clock_jump_longer_than_the_interval_syncs_unless_sync_on_wake_is_off() {
     for sync_on_wake in [true, false] {
         let github = FakeGithub::new();
-        let clock = Arc::new(FakeClock {
-            start: (SystemTime::now(), Instant::now()),
-            slept: Mutex::default(),
-        });
+        let clock = Arc::new(FakeClock::new());
         let engine = sync::spawn(
             Cache::open(temp_cache(&format!("wake-{sync_on_wake}"))).unwrap(),
             github.clone(),
@@ -508,6 +517,34 @@ async fn a_wall_clock_jump_longer_than_the_interval_syncs_unless_sync_on_wake_is
         assert_eq!(woke.is_ok(), sync_on_wake, "sync_on_wake = {sync_on_wake}");
         let fetches = if sync_on_wake { 2 } else { 1 };
         assert_eq!(github.edit(|s| s.fetches), fetches);
+    }
+}
+
+#[tokio::test(start_paused = true)]
+async fn focus_syncs_when_the_last_sync_is_older_than_30_s_unless_manual() {
+    for (interval, after, expected) in [
+        (SyncInterval::FiveMinutes, 10, 1),
+        (SyncInterval::FiveMinutes, 31, 2),
+        (SyncInterval::Manual, 31, 1),
+    ] {
+        let github = FakeGithub::new();
+        let clock = Arc::new(FakeClock::new());
+        let engine = sync::spawn(
+            Cache::open(temp_cache(&format!("focus-{interval:?}-{after}"))).unwrap(),
+            github.clone(),
+            config(interval, true),
+            clock.clone(),
+        );
+        let mut events = engine.subscribe();
+        engine.send(SyncCommand::Now).await;
+        until_synced(&mut events).await;
+
+        *clock.awake.lock().unwrap() = Duration::from_secs(after);
+        engine.send(SyncCommand::Focus).await;
+        let synced = tokio::time::timeout(Duration::from_secs(5), until_synced(&mut events)).await;
+        let case = format!("{interval:?} after {after} s");
+        assert_eq!(synced.is_ok(), expected == 2, "{case}");
+        assert_eq!(github.edit(|s| s.fetches), expected, "{case}");
     }
 }
 
