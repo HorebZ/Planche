@@ -4,11 +4,10 @@ use serde::de::IgnoredAny;
 use serde_json::json;
 
 use super::{GithubClient, decode, wire};
-use crate::board::project_board;
 use crate::domain::{
-    Board, ContentId, Field, FieldId, IssueState, Item, ItemContent, Label, OptionId,
-    OwnerProjects, ProjectId, ProjectList, ProjectMeta, ProjectSummary, PullRequestState,
-    SelectOption, User, UserId, View, ViewId, ViewLayout, Viewer,
+    ContentId, Field, FieldId, IssueState, Item, ItemContent, Label, OptionId, OwnerProjects,
+    ProjectId, ProjectList, ProjectMeta, ProjectSummary, PullRequestState, SelectOption, User,
+    UserId, View, ViewId, ViewLayout, Viewer,
 };
 use crate::error::{Error, Result};
 use crate::intent::Operation;
@@ -161,22 +160,6 @@ pub async fn board_page(
         meta_from_wire(project.meta)?,
         items_page_from_wire(project.items),
     ))
-}
-
-/// Fetches every page of `<owner>/<number>` and builds the board.
-pub async fn fetch_board(
-    client: &GithubClient,
-    owner: &str,
-    number: u32,
-    view: Option<u32>,
-) -> Result<Board> {
-    let (meta, mut page) = board_page(client, owner, number).await?;
-    let mut items = std::mem::take(&mut page.items);
-    while let Some(cursor) = page.next_cursor {
-        page = items_page(client, &meta.id, &cursor).await?;
-        items.append(&mut page.items);
-    }
-    project_board(&meta, view, &items)
 }
 
 /// The 100 items after `cursor`.
