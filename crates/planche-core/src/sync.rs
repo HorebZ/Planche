@@ -365,6 +365,8 @@ pub enum SyncCommand {
     Focus,
     /// New settings, applied from now on.
     Configure(SyncPrefs),
+    /// Send the queue now, without a sync: a user action was just queued.
+    Flush,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, Type)]
@@ -511,6 +513,18 @@ impl<R: Remote> Engine<R> {
                             self.cycle().await;
                         }
                     }
+                    Some(SyncCommand::Flush) => match self.flush().await {
+                        Ok(true) => {
+                            // Something went through, so GitHub is reachable again.
+                            if self.failures > 0 {
+                                self.failures = 0;
+                                self.schedule();
+                            }
+                            self.publish(SyncState::Idle, None);
+                        }
+                        Ok(false) => self.republish(),
+                        Err(error) => self.failed(error),
+                    },
                     Some(SyncCommand::Configure(prefs)) => {
                         self.config.interval = prefs.interval;
                         self.config.sync_on_wake = prefs.on_wake;
@@ -658,6 +672,15 @@ impl<R: Remote> Engine<R> {
 
     fn status(&self) -> SyncStatus {
         self.status.lock().expect("status lock").clone()
+    }
+
+    /// Emits the current status again, with a fresh count of pending rows.
+    fn republish(&mut self) {
+        let SyncStatus {
+            state, retry_at, ..
+        } = self.status();
+        let retry_at = retry_at.map(|ms| UNIX_EPOCH + Duration::from_secs_f64(ms / 1000.0));
+        self.publish(state, retry_at);
     }
 
     /// Stores and emits a new status, with the current count of pending rows.

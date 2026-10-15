@@ -135,6 +135,13 @@ pub(super) struct View {
     pub layout: String,
     pub filter: Option<String>,
     pub vertical_group_by_fields: Nodes<FieldRef>,
+    pub sort_by_fields: Count,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct Count {
+    pub total_count: u32,
 }
 
 #[derive(Deserialize)]
