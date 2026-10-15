@@ -51,7 +51,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
 					) : cards === 0 ? (
 						<EmptyBoard board={board.data} />
 					) : (
-						<Board board={board.data} offline={offline} onMove={move} />
+						<Board board={board.data} onMove={move} />
 					)}
 				</div>
 			</main>

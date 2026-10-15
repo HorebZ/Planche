@@ -42,7 +42,8 @@ test("a card dragged under the first card of Done lands second, and the scene ma
 	await expect.poll(() => numbers(column(page, "Done"))).toEqual([220, 226, 215, 211]);
 	await expect.poll(() => numbers(column(page, "Todo"))).toEqual([223, 219]);
 	await expect(page.locator('[data-slot="drag-help-bar"]')).toHaveCount(0);
-	// Online, a queued move does not show "Pending".
+	// "Pending" shows where the card was dropped, until the move is acknowledged.
+	await expect(card(page, 226).getByText("Pending")).toBeVisible();
 	await expect(card(page, 226).getByText("Pending")).toHaveCount(0);
 });
 
@@ -72,7 +73,8 @@ test("a failed move comes back and says so", async ({ page }) => {
 	await open(page, "rollback");
 	await lift(page, card(page, 226), card(page, 220));
 	await page.mouse.up();
-	await expect.poll(() => numbers(column(page, "Done"))).toEqual([220, 226, 215, 211]);
+	// The refusal comes at once, so the card may never be seen in Done; the toast and the
+	// card back in its slot are what the user sees.
 	await expect(page.getByText(`Couldn't move "Show linked PRs in issue detail". Reverted.`)).toBeVisible();
 	await expect.poll(() => numbers(column(page, "Todo"))).toEqual([226, 223, 219]);
 });
@@ -92,6 +94,8 @@ test("a sorted view moves cards between columns but not within one", async ({ pa
 	await lift(page, card(page, 219), card(page, 226), false);
 	await page.mouse.up();
 	await expect.poll(() => numbers(column(page, "Todo"))).toEqual([226, 223, 219]);
+	// The card slides back to its slot for 200 ms; the next press must find it there.
+	await page.waitForTimeout(300);
 	await lift(page, card(page, 219), card(page, 220));
 	await page.mouse.up();
 	await expect.poll(() => numbers(column(page, "Done"))).toContain(219);

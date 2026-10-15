@@ -265,15 +265,19 @@ export function installMockBackend(scenario: Scenario) {
 			});
 			board = pending(moveCard(before, intent), true);
 			if (scenario !== "offline") {
-				setTimeout(async () => {
-					if (scenario === "rollback") {
-						board = before;
-						await emit("mutation-failed", { intent, message: "PLANCHE_FAULT=fail_mutations" });
-					} else {
-						board = pending(board ?? before, false);
-					}
-					await changed();
-				}, 300);
+				setTimeout(
+					async () => {
+						if (scenario === "rollback") {
+							board = before;
+							await emit("mutation-failed", { intent, message: "PLANCHE_FAULT=fail_mutations" });
+						} else {
+							board = pending(board ?? before, false);
+						}
+						await changed();
+						// A refused move fails at once, like PLANCHE_FAULT=fail_mutations; an accepted one takes a moment.
+					},
+					scenario === "rollback" ? 0 : 300,
+				);
 			}
 			return board;
 		},

@@ -14,7 +14,7 @@ import {
 	useSensor,
 	useSensors,
 } from "@dnd-kit/core";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { DragBubble, DragHelpBar } from "@/components/ui/drag";
 import { IssueCard } from "@/components/ui/issue-card";
 import { type Card as BoardCard, type Board as BoardData, commands, type Intent, type ItemId } from "@/ipc/bindings";
@@ -22,6 +22,7 @@ import { useUi } from "@/stores/ui";
 import { cardData } from "./Card";
 import { Column, type Landing } from "./Column";
 import { markDropFrame, startFrames, stopFrames } from "./dragPerf";
+import { flip, type Rect } from "./flip";
 
 /** A spot on the board: a column, and an index among its cards without the lifted one. */
 type Spot = { column: number; index: number };
@@ -45,12 +46,11 @@ const collision: CollisionDetection = (args) => {
 
 type BoardProps = {
 	board: BoardData;
-	offline: boolean;
 	onMove: (intent: Intent) => Promise<unknown>;
 };
 
 /** The board: one column per option, each scrolling on its own. Cards move by drag or keyboard. */
-export function Board({ board, offline, onMove }: BoardProps) {
+export function Board({ board, onMove }: BoardProps) {
 	usePaintedMark();
 	const setDragging = useUi((s) => s.setDragging);
 	const [drag, setDragState] = useState<Drag | null>(null);
@@ -156,9 +156,12 @@ export function Board({ board, offline, onMove }: BoardProps) {
 	);
 
 	const droppedAt = useRef<number | null>(null);
+	// Where the lifted card was let go, so it slides from there to its slot after the commit.
+	const settle = useRef<{ id: ItemId; from: Rect } | null>(null);
 	const end = useCallback(
-		async (drop: boolean) => {
+		async (drop: boolean, released: Rect | null) => {
 			const current = dragRef.current;
+			if (current && released) settle.current = { id: current.id, from: released };
 			setDrag(null);
 			stopFrames();
 			if (!drop || !current) return setDragging(false);
@@ -179,10 +182,22 @@ export function Board({ board, offline, onMove }: BoardProps) {
 		droppedAt.current = null;
 	}, [board]);
 
-	const dropAnimation = useMemo(() => {
-		const duration = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--pl-dur-slow"));
-		return { duration: Number.isNaN(duration) ? 200 : duration, easing: "cubic-bezier(0.2, 0, 0, 1)" };
-	}, []);
+	// The drop: the card leaves the overlay and slides into its slot, wherever that is.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the optimistic board can commit after the drag state clears
+	useLayoutEffect(() => {
+		if (drag || !settle.current) return;
+		const { id, from } = settle.current;
+		settle.current = null;
+		flip(id, from, true);
+	}, [drag, board]);
+
+	// A failed move: once the board puts the card back, it slides from where it was dropped.
+	const reverting = useUi((s) => s.reverting);
+	const setReverting = useUi((s) => s.setReverting);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: runs on each new board until the card has moved back
+	useLayoutEffect(() => {
+		if (reverting && flip(reverting.id, reverting.from)) setReverting(null);
+	}, [board, reverting, setReverting]);
 
 	const landingFor = (column: number): Landing | null =>
 		drag && drag.to.column === column
@@ -197,8 +212,8 @@ export function Board({ board, offline, onMove }: BoardProps) {
 			measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
 			onDragStart={onDragStart}
 			onDragMove={onDragMove}
-			onDragEnd={(_: DragEndEvent) => end(true)}
-			onDragCancel={() => end(false)}
+			onDragEnd={({ active }: DragEndEvent) => end(true, active.rect.current.translated)}
+			onDragCancel={({ active }) => end(false, active.rect.current.translated)}
 		>
 			<div className="relative h-full">
 				<div data-slot="board" className="flex h-full items-start gap-2.5 overflow-x-auto px-3.5 py-3">
@@ -209,13 +224,12 @@ export function Board({ board, offline, onMove }: BoardProps) {
 							index={index}
 							activeId={drag?.id ?? null}
 							landing={landingFor(index)}
-							offline={offline}
 						/>
 					))}
 				</div>
 				{drag ? <DragHelpBar className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2" /> : null}
 			</div>
-			<DragOverlay dropAnimation={dropAnimation}>
+			<DragOverlay dropAnimation={null}>
 				{drag && target ? (
 					<div className="relative">
 						<IssueCard {...cardData(drag.card)} dragState="lifted" tabIndex={-1} />

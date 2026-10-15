@@ -20,6 +20,14 @@ const [first]: { board: Board; intent: Intent }[] = JSON.parse(
 test("a move shows at once, and a mutation-failed puts the cached board back", async () => {
 	const original = first.board;
 	const moved = moveCard(original, first.intent);
+	// The optimistic board marks the moved card Pending until Rust answers.
+	const optimistic: Board = {
+		...moved,
+		columns: moved.columns.map((c) => ({
+			...c,
+			cards: c.cards.map((card) => (card.item_id === first.intent.item_id ? { ...card, pending: true } : card)),
+		})),
+	};
 	const calls: string[] = [];
 	mockIPC(
 		(cmd, args) => {
@@ -39,7 +47,7 @@ test("a move shows at once, and a mutation-failed puts the cached board back", a
 
 	const sent = dispatchMove(client, original.project.id, null, first.intent);
 	// The same tick as the drop, before Rust answers.
-	expect(client.getQueryData(query.queryKey)).toEqual(moved);
+	expect(client.getQueryData(query.queryKey)).toEqual(optimistic);
 	await sent;
 	expect(calls).toContain("dispatch_intent");
 	expect(client.getQueryData(query.queryKey)).toEqual(moved);

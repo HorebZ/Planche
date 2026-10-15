@@ -190,13 +190,3 @@
 		cursor: default;
 	}
 }
-
-/* A failed move slides the card back. Only the card animates, not the whole page. */
-::view-transition-group(*) {
-	animation-duration: var(--pl-dur-slow);
-	animation-timing-function: var(--pl-ease);
-}
-::view-transition-old(root),
-::view-transition-new(root) {
-	animation: none;
-}

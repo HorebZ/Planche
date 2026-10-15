@@ -19,13 +19,12 @@ type ColumnProps = {
 	/** The lifted card, shown here as a ghost when it comes from this column. */
 	activeId: ItemId | null;
 	landing: Landing | null;
-	offline: boolean;
 };
 
 type Row = { kind: "card"; card: BoardColumnData["cards"][number] } | { kind: "placeholder"; height: number };
 
 /** A column whose cards scroll inside it. Only the cards in view are mounted. */
-export function Column({ column, index, activeId, landing, offline }: ColumnProps) {
+export function Column({ column, index, activeId, landing }: ColumnProps) {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const { setNodeRef } = useDroppable({ id: `column:${index}` });
 	const rows = useMemo<Row[]>(() => {
@@ -75,7 +74,7 @@ export function Column({ column, index, activeId, landing, offline }: ColumnProp
 									style={{ transform: `translateY(${item.start}px)` }}
 								>
 									{row.kind === "card" ? (
-										<Card card={row.card} ghost={row.card.item_id === activeId} offline={offline} />
+										<Card card={row.card} ghost={row.card.item_id === activeId} />
 									) : (
 										<CardPlaceholder height={row.height} />
 									)}
