@@ -22,8 +22,9 @@ const issueCardVariants = cva(
 type DragState = NonNullable<VariantProps<typeof issueCardVariants>["dragState"]>;
 
 type CardBase = {
-	repo: string;
-	number: number;
+	/** Absent for drafts and redacted items. */
+	repo?: string;
+	number?: number;
 	title: string;
 	labels: CardLabel[];
 	assignees: AvatarUser[];
@@ -142,8 +143,8 @@ export function IssueCard(card: IssueCardProps) {
 				</div>
 			) : null}
 			<div className="flex h-[18px] items-center gap-[5px] pl-[21px] font-mono text-2xs text-fg-3">
-				<span>{repo}</span>
-				<span className="text-fg-2">#{number}</span>
+				{repo ? <span>{repo}</span> : null}
+				{number != null ? <span className="text-fg-2">#{number}</span> : null}
 				{pending ? (
 					<span className="inline-flex items-center gap-[3px] font-medium font-sans text-warning">
 						<Clock className="size-[13px]" aria-hidden />

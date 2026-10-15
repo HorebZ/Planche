@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><title>Planche</title>
+  
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FAF6EE"></stop>
+      <stop offset="1" stop-color="#E6DCCA"></stop>
+    </linearGradient>
+    <filter id="drop" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#281E0F" flood-opacity=".28"></feDropShadow>
+    </filter>
+  </defs>
+  <g transform="translate(100 100) scale(8.24)" filter="url(#drop)">
+    <rect width="100" height="100" rx="22.5" fill="url(#paper)"></rect>
+    <rect x="18" y="18" width="18" height="26" rx="2.5" fill="#1B1A17"></rect>
+    <rect x="18" y="49" width="18" height="33" rx="2.5" fill="#1B1A17"></rect>
+    <rect x="41" y="18" width="18" height="16" rx="2.5" fill="#1B1A17"></rect>
+    <rect x="41" y="39" width="18" height="16" rx="2.5" fill="#1B1A17"></rect>
+    <rect x="41" y="60" width="18" height="22" rx="2.5" fill="#1B1A17"></rect>
+    <rect x="64" y="18" width="18" height="38" rx="2.5" fill="#D9542B"></rect>
+    <rect x="64" y="61" width="18" height="21" rx="2.5" fill="#1B1A17"></rect>
+  </g>
+</svg>
