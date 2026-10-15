@@ -59,7 +59,11 @@ impl GithubClient {
         );
         let (headers, body) = self.send(request).await?;
         let (data, rate_limit) = decode::<T>(&body)?;
-        self.record(rate_limit, header_u32(&headers, "x-ratelimit-limit"));
+        self.record(
+            rate_limit,
+            header_u32(&headers, "x-ratelimit-limit"),
+            header_u32(&headers, "x-ratelimit-reset").map(u64::from),
+        );
         Ok(Reply {
             data,
             scopes: header_str(&headers, "x-oauth-scopes").map(str::to_owned),
@@ -94,7 +98,7 @@ impl GithubClient {
         Ok((headers, body))
     }
 
-    fn record(&self, rate_limit: Option<RateLimit>, limit: Option<u32>) {
+    fn record(&self, rate_limit: Option<RateLimit>, limit: Option<u32>, reset_at: Option<u64>) {
         let mut usage = self.usage.lock().unwrap();
         if let Some(rate_limit) = rate_limit {
             usage.cost_total += rate_limit.cost.unwrap_or(0);
@@ -102,6 +106,9 @@ impl GithubClient {
         }
         if limit.is_some() {
             usage.limit = limit;
+        }
+        if reset_at.is_some() {
+            usage.reset_at = reset_at;
         }
     }
 }

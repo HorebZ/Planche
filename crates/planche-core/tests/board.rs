@@ -13,7 +13,7 @@ fn meta(json: &Value) -> ProjectMeta {
     decode_project_meta(&json.to_string()).unwrap()
 }
 
-/// Both item pages, as `project_items` would concatenate them.
+/// Both item pages, as a full sync concatenates them.
 fn pages() -> [Value; 2] {
     [
         fixture_json("project_items_page1.json"),
@@ -41,7 +41,7 @@ fn titles(board: &planche_core::domain::Board) -> Vec<(String, Vec<String>)> {
         .map(|c| {
             (
                 c.name.clone(),
-                c.cards.iter().map(|card| card.title.clone()).collect(),
+                c.cards.iter().map(|card| card.title().to_owned()).collect(),
             )
         })
         .collect()
@@ -110,7 +110,7 @@ fn a_redacted_item_becomes_the_redacted_card() {
         .filter(|c| c.content == ItemContent::Redacted)
         .collect();
     assert_eq!(redacted.len(), 1);
-    assert_eq!(redacted[0].title, "Redacted item");
+    assert_eq!(redacted[0].title(), "Redacted item");
 }
 
 #[test]

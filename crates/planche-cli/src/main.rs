@@ -181,7 +181,7 @@ async fn run(command: Command) -> Result<(), Failure> {
                     }
                     (
                         Placement::After(anchor.item_id.clone()),
-                        format!(", after \"{}\"", anchor.title),
+                        format!(", after \"{}\"", anchor.title()),
                     )
                 }
                 None if top => (Placement::Top, ", at the top".to_owned()),
@@ -193,7 +193,7 @@ async fn run(command: Command) -> Result<(), Failure> {
             }
             let column_name =
                 target.map_or_else(|| format!("No {}", board.field.name), |c| c.name.clone());
-            println!("Moved \"{}\" to {column_name}{where_}", card.title);
+            println!("Moved \"{}\" to {column_name}{where_}", card.title());
         }
     }
     Ok(())
@@ -264,7 +264,7 @@ fn print_board(board: &Board, usage: RateUsage) {
             } else {
                 format!("  {repo}")
             };
-            println!("  {reference:<7} {}{repo}", card.title);
+            println!("  {reference:<7} {}{repo}", card.title());
         }
     }
     println!();
