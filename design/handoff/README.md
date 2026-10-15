@@ -81,7 +81,7 @@ Toutes visibles dans `design/Planche Ecrans.dc.html` (colonne gauche clair, droi
    - **5c error** (réseau) : bandeau sous la toolbar (marge `10px 14px 0`, rayon 8, fond `--pl-danger-soft`) avec l'icône wifi_off, « Can't reach api.github.com » 600 `--pl-danger`, « Changes are kept locally and will be pushed when you're back online. », compte à rebours mono « Retrying in 24s » et le bouton « Retry now ⌘R ». La toolbar affiche « Offline » en `--pl-danger` ; la sidebar affiche « Offline · 1 change pending ». Mises à jour optimistes conservées, avec badge Pending.
    - **5d empty** : colonnes vides (zone h64 ring 1px `--pl-border`, « Drop cards here »). Carte centrée 360 px (`--pl-elevated`, `--pl-shadow-pop`, rayon 12) contenant le pictogramme des 3 cases, « This board is empty », sous-texte, et deux boutons : « New issue C » (primaire, focus) et « Add from repo… A ».
 6. **onboarding** (fenêtre 780×540, pas de sidebar d'app)
-   - Grille `280px 1fr`. À gauche : panneau vibrancy avec l'icône 64 px, le logotype « PLANCHE » (Archivo, `wdth` 72, 850, 28 px, capitales), le tagline, et la version en bas.
+   - Grille `280px 1fr`. À gauche : panneau vibrancy avec l'icône 64 px, le wordmark « PLANCHE. » (`assets/logotype`), le tagline, et la version en bas.
    - À droite (padding `64px 48px 32px`) : « Step 1 of 2 », titre 24/30 700, texte explicatif, champ token h34 en mono, lien « Create a token with the right scopes ↗ », liste « Required scopes » (repo, read:org, project).
    - **6a vérification** : le champ a le focus (ring inset 1px `--pl-focus` + halo 3px `--pl-accent-soft`), « Checking… » + spinner, scope `project` en cours, « Continue » désactivé.
    - **6b validé** : « ✓ Valid » en `--pl-success`, bloc compte (avatar, « Signed in as camille-r · 5 projects found »), tous les scopes cochés, « Continue ↵ » actif et focus.
@@ -127,10 +127,17 @@ Source de vérité : `tokens/planche-tokens.css` (variables `--pl-*`, clair sur 
 - **Ombres** : card, drag, pop, window, ring (valeurs dans le CSS).
 
 ## Assets
-- `assets/planche-icon-1024.svg` : icône d'app (direction A « Cases »), corps 824 px sur une toile de 1024 avec ombre. À exporter en PNG 16, 32, 64, 128, 256, 512 et 1024 (@1x/@2x) pour `AppIcon.appiconset` / `.icns`.
-- `assets/planche-icon-small.svg` : dessin simplifié à utiliser pour les tailles 16 et 32 px.
-- `assets/planche-menubar-template.svg` : glyphe de barre de menus, noir + alpha, à utiliser avec `isTemplate = true`.
-- **Logotype** : texte « PLANCHE » en Archivo (Google Fonts, axe `wdth` à 72, graisse 850, capitales, `letter-spacing:.005em`). Couleurs de marque : encre `#1B1A17`, vermillon `#D9542B`, papier `#EDE5D6`.
+- `assets/icon/` : icône d'app (direction A « Cases »).
+  - `planche-icon.svg` : corps 824 px sur une toile de 1024 avec ombre, pour le Dock et le Finder.
+  - `planche-icon-small.svg` : dessin simplifié pour 16 et 32 px.
+  - `planche-icon-flat.svg` : la tuile pleine, sans marge ni ombre, pour l'interface (onboarding).
+  - `png/` : exports en 16 à 2048 px, et la tuile pleine en 256, 512 et 1024 px.
+  - `AppIcon.iconset/` et `AppIcon.appiconset/` (avec `Contents.json`) : les tailles macOS en @1x/@2x. `AppIcon.icns` vient de `iconutil -c icns AppIcon.iconset`.
+  - L'app copie `AppIcon.icns` et les PNG 32, 128, 128@2x et 512 dans `app/src-tauri/icons/`.
+- `assets/logotype/` : le wordmark « PLANCHE. » et le lockup icône + wordmark, en `ink` (fond clair), `paper` (fond sombre), `black` et `white`, en SVG et en PNG (`png/`).
+  - Couleurs de marque : encre `#1B1A17`, papier `#F4EEE3`, vermillon `#D9542B` (`#E8673F` sur fond sombre).
+  - L'app dessine le wordmark en SVG inline (`Logotype`), avec les tokens `--pl-logo-ink` et `--pl-logo-dot`.
+- `assets/menubar/` : `plancheTemplate.svg` et ses PNG @1x, @2x et @3x, noir + alpha, à utiliser avec `isTemplate = true`.
 - **Icônes UI** : Material Symbols Rounded dans la maquette, à remplacer par la librairie du repo.
 
 ## Files
