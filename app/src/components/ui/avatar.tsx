@@ -53,15 +53,21 @@ export function Avatar({ src, alt, size = 18, className, ...props }: AvatarProps
 type AvatarStackProps = Omit<ComponentProps<"div">, "children"> & {
 	users: AvatarUser[];
 	size?: AvatarSize;
+	/** The background the stack sits on, which the ring between avatars matches. */
+	on?: "surface" | "bg";
 };
 
-export function AvatarStack({ users, size = 20, className, ...props }: AvatarStackProps) {
+export function AvatarStack({ users, size = 20, on = "surface", className, ...props }: AvatarStackProps) {
 	return (
 		<div data-slot="avatar-stack" className={cn("flex", className)} {...props}>
 			{users.map((user, index) => (
 				<span
 					key={user.login}
-					className={cn("inline-flex rounded-full shadow-[0_0_0_2px_var(--pl-surface)]", index > 0 && "-ml-1")}
+					className={cn(
+						"inline-flex rounded-full",
+						on === "surface" ? "shadow-[0_0_0_2px_var(--pl-surface)]" : "shadow-[0_0_0_2px_var(--pl-bg)]",
+						index > 0 && "-ml-1",
+					)}
 				>
 					<Avatar src={user.avatarUrl} alt={user.login} size={size} />
 				</span>

@@ -1,6 +1,16 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
+/* Archivo for the logotype only, embedded so the onboarding renders offline. Latin subset. */
+@font-face {
+	font-family: "Archivo";
+	font-style: normal;
+	font-weight: 100 900;
+	font-stretch: 62% 125%;
+	font-display: block;
+	src: url("../assets/fonts/archivo-latin-wdth.woff2") format("woff2-variations");
+}
+
 /* Only Planche tokens exist as utilities. Tailwind's default palette and scales are removed. */
 @theme {
 	--color-*: initial;
@@ -45,6 +55,7 @@
 
 	--font-sans: var(--pl-font);
 	--font-mono: var(--pl-font-mono);
+	--font-logo: "Archivo", var(--pl-font);
 
 	--text-2xs: var(--pl-text-2xs);
 	--text-2xs--line-height: 14px;
@@ -178,6 +189,9 @@
 		line-height: 17px;
 		letter-spacing: -0.003em;
 		-webkit-font-smoothing: antialiased;
+	}
+	.font-logo {
+		font-variation-settings: "wdth" 72;
 	}
 	:focus-visible {
 		outline: none;

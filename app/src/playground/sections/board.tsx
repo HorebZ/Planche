@@ -69,6 +69,9 @@ export function BoardSection() {
 						<State label="stack 20">
 							<AvatarStack users={[camille, theo, lea, amina]} size={20} />
 						</State>
+						<State label="stack 20 on bg">
+							<AvatarStack users={[camille, theo, lea, amina]} size={20} on="bg" />
+						</State>
 					</Row>
 					<Row label="label">
 						<LabelChip name={labels.bug.name} color={labels.bug.color} />
