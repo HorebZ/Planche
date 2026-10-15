@@ -136,6 +136,8 @@ pub struct View {
     pub layout: ViewLayout,
     /// Ignored in v1: the board shows every unarchived item.
     pub filter: Option<String>,
+    /// False when the view sorts by a field, so a card cannot be reordered by hand.
+    pub manual_order: bool,
     /// The field a board view uses for its columns.
     pub group_by: Option<FieldId>,
 }
@@ -242,6 +244,8 @@ pub struct BoardProject {
 pub struct BoardView {
     pub number: u32,
     pub name: String,
+    /// False when the view sorts by a field: cards move between columns, not within one.
+    pub manual_order: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]

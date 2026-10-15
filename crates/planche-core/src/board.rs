@@ -82,6 +82,7 @@ pub fn project_board(meta: &ProjectMeta, view: Option<u32>, items: &[Item]) -> R
         view: view.map(|v| BoardView {
             number: v.number,
             name: v.name.clone(),
+            manual_order: v.manual_order,
         }),
         field: BoardField {
             id: field.id.clone(),

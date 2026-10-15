@@ -288,6 +288,7 @@ fn meta_from_wire(p: wire::Project) -> Result<ProjectMeta> {
                     name: v.name,
                     layout,
                     filter: v.filter,
+                    manual_order: v.sort_by_fields.total_count == 0,
                     group_by: v
                         .vertical_group_by_fields
                         .nodes

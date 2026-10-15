@@ -10,7 +10,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -109,7 +110,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -203,7 +205,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -302,7 +305,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -396,7 +400,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -495,7 +500,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -588,7 +594,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -689,7 +696,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -783,7 +791,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -884,7 +893,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -977,7 +987,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -1076,7 +1087,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -1170,7 +1182,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -1269,7 +1282,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -1370,7 +1384,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -1476,7 +1491,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -1570,7 +1586,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -1669,7 +1686,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -1763,7 +1781,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -1862,7 +1881,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -1956,7 +1976,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -2055,7 +2076,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -2149,7 +2171,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -2250,7 +2273,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -2344,7 +2368,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -2443,7 +2468,8 @@
    },
    "view": {
     "number": 2,
-    "name": "Board"
+    "name": "Board",
+    "manual_order": true
    },
    "field": {
     "id": "PVTSSF_status",
@@ -2471,6 +2497,203 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
+      },
+      {
+       "item_id": "PVTI_C",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_D",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
+      }
+     ]
+    }
+   ],
+   "pending_count": 0,
+   "synced_at": null
+  }
+ },
+ {
+  "name": "after the next card in the same column moves the card down",
+  "board": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board",
+    "manual_order": true
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
+      },
+      {
+       "item_id": "PVTI_B",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
+      },
+      {
+       "item_id": "PVTI_C",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_D",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
+      }
+     ]
+    }
+   ],
+   "pending_count": 0,
+   "synced_at": null
+  },
+  "intent": {
+   "type": "move_card",
+   "project_id": "PVT_1",
+   "item_id": "PVTI_A",
+   "field_id": "PVTSSF_status",
+   "to": "todo",
+   "placement": {
+    "after": "PVTI_B"
+   }
+  },
+  "expected": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board",
+    "manual_order": true
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_B",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
+      },
+      {
+       "item_id": "PVTI_A",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
        "assignees": [],
        "pending": false,
        "updated_by_sync": false

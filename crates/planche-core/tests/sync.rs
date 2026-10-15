@@ -548,6 +548,35 @@ async fn focus_syncs_when_the_last_sync_is_older_than_30_s_unless_manual() {
     }
 }
 
+#[tokio::test]
+async fn flush_sends_the_queue_without_a_sync() {
+    let github = FakeGithub::new();
+    let (path, cache, project) = synced("flush", &github).await;
+    let intent = move_todo_card(&server_board(&cache, &project), "Done");
+    drop(cache);
+    let engine = sync::spawn(
+        Cache::open(&path).unwrap(),
+        github.clone(),
+        config(SyncInterval::Manual, true),
+        Arc::new(SystemClock),
+    );
+    let mut events = engine.subscribe();
+    Cache::open(&path).unwrap().enqueue(&intent).unwrap();
+    engine.send(SyncCommand::Flush).await;
+    loop {
+        match events.recv().await.unwrap() {
+            SyncEvent::MutationOk(m) => {
+                assert_eq!(m.intent, intent);
+                break;
+            }
+            SyncEvent::Synced { .. } => panic!("Flush must not sync"),
+            _ => {}
+        }
+    }
+    assert_eq!(github.edit(|s| s.fetches), 1, "only the first sync fetched");
+    assert_eq!(github.edit(|s| s.executed.clone()), to_operations(&intent));
+}
+
 fn config(interval: SyncInterval, sync_on_wake: bool) -> SyncConfig {
     SyncConfig {
         owner: "@me".into(),
