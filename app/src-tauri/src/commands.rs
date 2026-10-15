@@ -9,6 +9,7 @@ use planche_core::cache::Cache;
 use planche_core::domain::{Board, ProjectId, ProjectList, ProjectMeta, ViewId};
 use planche_core::error::Error;
 use planche_core::github::{GithubClient, ops};
+use planche_core::intent::Intent;
 use planche_core::sync::{
     self, SyncCommand, SyncConfig, SyncEvent, SyncHandle, SyncPrefs, SyncReport, SyncStatus,
     SystemClock,
@@ -294,6 +295,27 @@ pub async fn get_board(
     view_id: Option<ViewId>,
 ) -> Result<Option<Board>> {
     core.board(&project_id, view_id.as_ref())
+}
+
+/// Queues a user action, asks the engine to send it now, and returns the board with it
+/// applied. The front shows that board in place of its own optimistic one.
+#[tauri::command]
+#[specta::specta]
+pub async fn dispatch_intent(
+    core: State<'_, Core>,
+    intent: Intent,
+    view_id: Option<ViewId>,
+) -> Result<Board> {
+    let Intent::MoveCard { project_id, .. } = &intent;
+    core.cache().enqueue(&intent)?;
+    if let Some(engine) = core.engine().await {
+        engine.send(SyncCommand::Flush).await;
+    }
+    core.board(project_id, view_id.as_ref())?
+        .ok_or_else(|| AppError {
+            kind: ErrorKind::NotFound,
+            message: format!("project {project_id} is not in the cache"),
+        })
 }
 
 /// Syncs now and waits for the result.
