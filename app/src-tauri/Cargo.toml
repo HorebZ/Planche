@@ -2,8 +2,8 @@
 name = "planche-app"
 version = "0.1.0"
 description = "Planche desktop app"
-authors = ["you"]
-edition = "2024"
+edition.workspace = true
+publish.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -18,16 +18,15 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+planche-core = { path = "../../crates/planche-core" }
+serde.workspace = true
+serde_json.workspace = true
+specta.workspace = true
+specta-typescript.workspace = true
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+tauri-specta.workspace = true
+tokio.workspace = true
 
-
-# Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
-[profile.release]
-codegen-units = 1
-lto = true
-opt-level = 3
-panic = "abort"
-strip = true
+[lints]
+workspace = true

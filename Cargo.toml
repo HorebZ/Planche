@@ -1,7 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/*"]
-exclude = ["app/src-tauri"]
+members = ["crates/*", "app/src-tauri"]
 
 [workspace.package]
 version = "0.1.0"
@@ -22,5 +21,16 @@ rpassword = "7"
 rusqlite = { version = "0.40", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+specta = { version = "=2.0.0-rc.25", features = ["derive"] }
+specta-typescript = "=0.0.12"
+tauri-specta = { version = "=2.0.0-rc.25", features = ["derive", "typescript"] }
 thiserror = "2"
 tokio = { version = "1", features = ["rt", "macros"] }
+
+# Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true

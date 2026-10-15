@@ -46,6 +46,8 @@ pub fn project_board(meta: &ProjectMeta, view: Option<u32>, items: &[Item]) -> R
             item_id: item.id.clone(),
             position,
             content: item.content.clone(),
+            pending: false,
+            updated_by_sync: false,
         };
         let column = item.option_for(&field.id).and_then(|option| {
             columns
@@ -86,6 +88,8 @@ pub fn project_board(meta: &ProjectMeta, view: Option<u32>, items: &[Item]) -> R
             name: field.name.clone(),
         },
         columns,
+        pending_count: 0,
+        synced_at: None,
     })
 }
 

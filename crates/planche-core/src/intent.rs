@@ -3,12 +3,13 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
+use specta::Type;
 
 use crate::domain::{Board, Card, Column, FieldId, ItemContent, ItemId, OptionId, ProjectId};
 use crate::error::{Error, Result};
 
 /// Stored as JSON in `pending_mutation.intent`, and replayed by `fixtures/move_cases.json`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Intent {
     MoveCard {
@@ -21,7 +22,7 @@ pub enum Intent {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "snake_case")]
 pub enum Placement {
     /// Leaves the card's position in the project unchanged.
@@ -296,6 +297,8 @@ mod tests {
                 assignees: vec![],
                 labels: vec![],
             },
+            pending: false,
+            updated_by_sync: false,
         }
     }
 
@@ -339,6 +342,8 @@ mod tests {
                 column("progress", "In Progress", vec![]),
                 column("done", "Done", vec![]),
             ],
+            pending_count: 0,
+            synced_at: None,
         }
     }
 

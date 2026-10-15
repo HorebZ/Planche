@@ -62,7 +62,7 @@ impl GithubClient {
         self.record(
             rate_limit,
             header_u32(&headers, "x-ratelimit-limit"),
-            header_u32(&headers, "x-ratelimit-reset").map(u64::from),
+            header_u32(&headers, "x-ratelimit-reset"),
         );
         Ok(Reply {
             data,
@@ -98,7 +98,7 @@ impl GithubClient {
         Ok((headers, body))
     }
 
-    fn record(&self, rate_limit: Option<RateLimit>, limit: Option<u32>, reset_at: Option<u64>) {
+    fn record(&self, rate_limit: Option<RateLimit>, limit: Option<u32>, reset_at: Option<u32>) {
         let mut usage = self.usage.lock().unwrap();
         if let Some(rate_limit) = rate_limit {
             usage.cost_total += rate_limit.cost.unwrap_or(0);
