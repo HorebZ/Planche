@@ -12,6 +12,9 @@ pub(super) struct PageInfo {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct Connection<T> {
+    /// Requested for items only.
+    #[serde(default)]
+    pub total_count: Option<u32>,
     pub page_info: PageInfo,
     pub nodes: Vec<Option<T>>,
 }
@@ -88,25 +91,31 @@ pub(super) struct ProjectMetaData {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(super) struct Project {
     pub id: String,
     pub number: u32,
     pub title: String,
     pub url: String,
-    pub owner: Login,
+    pub updated_at: String,
+    pub owner: Owner,
     pub fields: Nodes<Field>,
     pub views: Nodes<View>,
 }
 
 #[derive(Deserialize)]
-pub(super) struct Login {
+pub(super) struct Owner {
+    #[serde(rename = "__typename")]
+    pub typename: String,
     pub login: String,
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(super) struct Field {
     pub id: String,
     pub name: String,
+    pub data_type: String,
     pub options: Option<Vec<SelectOption>>,
 }
 
@@ -148,6 +157,7 @@ pub(super) struct ItemsProject {
 pub(super) struct Item {
     pub id: String,
     pub is_archived: bool,
+    pub updated_at: String,
     pub field_values: Nodes<FieldValue>,
     pub content: Option<Content>,
 }

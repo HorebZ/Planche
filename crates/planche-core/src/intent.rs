@@ -1,9 +1,15 @@
 //! User actions, and the GitHub mutations that carry them out.
 
+use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
+
 use crate::domain::{Board, Card, Column, FieldId, ItemContent, ItemId, OptionId, ProjectId};
 use crate::error::{Error, Result};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// Stored as JSON in `pending_mutation.intent`, and replayed by `fixtures/move_cases.json`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum Intent {
     MoveCard {
         project_id: ProjectId,
@@ -15,7 +21,8 @@ pub enum Intent {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Placement {
     /// Leaves the card's position in the project unchanged.
     Keep,
@@ -61,6 +68,100 @@ impl Intent {
             placement,
         }
     }
+}
+
+impl Intent {
+    pub fn item_id(&self) -> &ItemId {
+        let Self::MoveCard { item_id, .. } = self;
+        item_id
+    }
+}
+
+/// The board once GitHub has applied `intent`. Applying an intent the board already
+/// reflects changes nothing, so a replayed intent cannot move a card twice.
+pub fn apply(mut board: Board, intent: &Intent) -> Board {
+    let Intent::MoveCard {
+        project_id,
+        item_id,
+        field_id,
+        to,
+        placement,
+    } = intent;
+    let column_of = |board: &Board, option: Option<&OptionId>| {
+        board
+            .columns
+            .iter()
+            .position(|c| c.option_id.as_ref() == option)
+    };
+    if *project_id != board.project.id {
+        return board;
+    }
+    let Some(from) = board
+        .columns
+        .iter()
+        .position(|c| c.cards.iter().any(|card| &card.item_id == item_id))
+    else {
+        return board;
+    };
+    // Another field than the columns' leaves the card in its column.
+    let option = if *field_id == board.field.id {
+        to.clone()
+    } else {
+        board.columns[from].option_id.clone()
+    };
+    if option.is_some() && column_of(&board, option.as_ref()).is_none() {
+        return board;
+    }
+
+    let mut order: Vec<&Card> = board.columns.iter().flat_map(|c| &c.cards).collect();
+    order.sort_by_key(|c| c.position);
+    let mut order: Vec<ItemId> = order.into_iter().map(|c| c.item_id.clone()).collect();
+    let old_rank = order
+        .iter()
+        .position(|id| id == item_id)
+        .expect("card is on the board");
+    order.remove(old_rank);
+    let rank = match placement {
+        Placement::Keep => old_rank,
+        Placement::Top => 0,
+        Placement::After(anchor) => order
+            .iter()
+            .position(|id| id == anchor)
+            .map_or(old_rank, |i| i + 1),
+    };
+    order.insert(rank, item_id.clone());
+    let ranks: HashMap<ItemId, u32> = order.into_iter().zip(0..).collect();
+
+    let index = board.columns[from]
+        .cards
+        .iter()
+        .position(|c| &c.item_id == item_id)
+        .expect("card is in its column");
+    let card = board.columns[from].cards.remove(index);
+    let to = column_of(&board, option.as_ref()).unwrap_or_else(|| {
+        board.columns.insert(
+            0,
+            Column {
+                option_id: None,
+                name: format!("No {}", board.field.name),
+                color: None,
+                cards: Vec::new(),
+            },
+        );
+        0
+    });
+    board.columns[to].cards.push(card);
+    for column in &mut board.columns {
+        for card in &mut column.cards {
+            card.position = ranks[&card.item_id];
+        }
+        column.cards.sort_by_key(|c| c.position);
+    }
+    // `project_board` shows "No <field>" only when it holds a card.
+    board
+        .columns
+        .retain(|c| c.option_id.is_some() || !c.cards.is_empty());
+    board
 }
 
 pub fn to_operations(intent: &Intent) -> Vec<Operation> {
@@ -120,7 +221,7 @@ pub fn find_card<'a>(board: &'a Board, query: &str) -> Result<&'a Card> {
     let matches = by_reference.unwrap_or_else(|| {
         let prefix = query.to_lowercase();
         cards()
-            .filter(|c| c.title.to_lowercase().starts_with(&prefix))
+            .filter(|c| c.title().to_lowercase().starts_with(&prefix))
             .collect()
     });
     match matches.as_slice() {
@@ -130,7 +231,7 @@ pub fn find_card<'a>(board: &'a Board, query: &str) -> Result<&'a Card> {
             query: query.to_owned(),
             candidates: matches
                 .iter()
-                .map(|c| (c.item_id.clone(), c.title.clone()))
+                .map(|c| (c.item_id.clone(), c.title().to_owned()))
                 .collect(),
         }),
     }
@@ -184,7 +285,7 @@ mod tests {
     fn issue(item: &str, number: u32, repo: &str, title: &str) -> Card {
         Card {
             item_id: ItemId(item.into()),
-            title: title.into(),
+            position: 0,
             content: ItemContent::Issue {
                 id: ContentId(format!("I_{item}")),
                 number,
@@ -249,6 +350,51 @@ mod tests {
             to: to.map(|o| OptionId(o.into())),
             placement,
         }
+    }
+
+    #[derive(Deserialize)]
+    struct MoveCase {
+        name: String,
+        board: Board,
+        intent: Intent,
+        expected: Board,
+    }
+
+    #[test]
+    fn every_move_case_gives_its_expected_board_and_is_idempotent() {
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../fixtures/move_cases.json"
+        );
+        let cases: Vec<MoveCase> =
+            serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+        assert!(cases.len() >= 10);
+        for case in cases {
+            let once = apply(case.board, &case.intent);
+            assert_eq!(once, case.expected, "{}", case.name);
+            assert_eq!(
+                apply(once, &case.intent),
+                case.expected,
+                "{} twice",
+                case.name
+            );
+        }
+    }
+
+    #[test]
+    fn intent_json_names_its_type_and_placement() {
+        let json = serde_json::to_value(move_11(
+            Some("done"),
+            Placement::After(ItemId("PVTI_2".into())),
+        ))
+        .unwrap();
+        assert_eq!(
+            json,
+            serde_json::json!({
+                "type": "move_card", "project_id": "PVT_1", "item_id": "PVTI_11",
+                "field_id": "PVTSSF_status", "to": "done", "placement": { "after": "PVTI_2" }
+            })
+        );
     }
 
     #[test]

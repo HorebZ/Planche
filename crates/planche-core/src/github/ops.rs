@@ -123,42 +123,13 @@ pub async fn project_meta(client: &GithubClient, project: &ProjectId) -> Result<
     meta_from_wire(project_node(reply.data.node)?)
 }
 
-/// Every item of the project, in `POSITION` order, following `endCursor` until the last page.
-pub async fn project_items(client: &GithubClient, project: &ProjectId) -> Result<Vec<Item>> {
-    project_items_after(client, project, None).await
-}
-
-async fn project_items_after(
-    client: &GithubClient,
-    project: &ProjectId,
-    mut after: Option<String>,
-) -> Result<Vec<Item>> {
-    let mut items = Vec::new();
-    loop {
-        let reply = client
-            .query::<wire::ProjectItemsData>(
-                QUERIES,
-                "ProjectItems",
-                json!({ "projectId": project, "after": after }),
-            )
-            .await?;
-        let page = items_page_from_wire(project_node(reply.data.node)?.items);
-        items.extend(page.items);
-        match page.next_cursor {
-            Some(cursor) => after = Some(cursor),
-            None => return Ok(items),
-        }
-    }
-}
-
-/// Fetches `<owner>/<number>`, where `@me` is the viewer, and builds the board. A project
-/// under 100 items takes a single request.
-pub async fn fetch_board(
+/// Fetches the metadata and the first 100 items of `<owner>/<number>`, where `@me` is the
+/// viewer, in one request. `items_page` follows `next_cursor`.
+pub async fn board_page(
     client: &GithubClient,
     owner: &str,
     number: u32,
-    view: Option<u32>,
-) -> Result<Board> {
+) -> Result<(ProjectMeta, ItemsPage)> {
     let not_found = || Error::ProjectNotFound {
         owner: owner.to_owned(),
         number,
@@ -186,13 +157,42 @@ pub async fn fetch_board(
         .or(reply.data.repository_owner)
         .and_then(|o| o.project_v2)
         .ok_or_else(not_found)?;
-    let meta = meta_from_wire(project.meta)?;
-    let first = items_page_from_wire(project.items);
-    let mut items = first.items;
-    if let Some(cursor) = first.next_cursor {
-        items.extend(project_items_after(client, &meta.id, Some(cursor)).await?);
+    Ok((
+        meta_from_wire(project.meta)?,
+        items_page_from_wire(project.items),
+    ))
+}
+
+/// Fetches every page of `<owner>/<number>` and builds the board.
+pub async fn fetch_board(
+    client: &GithubClient,
+    owner: &str,
+    number: u32,
+    view: Option<u32>,
+) -> Result<Board> {
+    let (meta, mut page) = board_page(client, owner, number).await?;
+    let mut items = std::mem::take(&mut page.items);
+    while let Some(cursor) = page.next_cursor {
+        page = items_page(client, &meta.id, &cursor).await?;
+        items.append(&mut page.items);
     }
     project_board(&meta, view, &items)
+}
+
+/// The 100 items after `cursor`.
+pub async fn items_page(
+    client: &GithubClient,
+    project: &ProjectId,
+    cursor: &str,
+) -> Result<ItemsPage> {
+    let reply = client
+        .query::<wire::ProjectItemsData>(
+            QUERIES,
+            "ProjectItems",
+            json!({ "projectId": project, "after": cursor }),
+        )
+        .await?;
+    Ok(items_page_from_wire(project_node(reply.data.node)?.items))
 }
 
 /// Sends one mutation.
@@ -239,6 +239,8 @@ pub fn decode_project_meta(body: &str) -> Result<ProjectMeta> {
 pub struct ItemsPage {
     pub items: Vec<Item>,
     pub next_cursor: Option<String>,
+    /// Items in the whole project, archived ones included.
+    pub total_count: u32,
 }
 
 /// Decodes a captured `ProjectItems` response body.
@@ -261,7 +263,9 @@ fn meta_from_wire(p: wire::Project) -> Result<ProjectMeta> {
         number: p.number,
         title: p.title,
         url: p.url,
+        owner_is_org: p.owner.typename == "Organization",
         owner: p.owner.login,
+        updated_at: p.updated_at,
         fields: p
             .fields
             .nodes
@@ -270,6 +274,7 @@ fn meta_from_wire(p: wire::Project) -> Result<ProjectMeta> {
             .map(|f| Field {
                 id: FieldId(f.id),
                 name: f.name,
+                data_type: f.data_type,
                 options: f.options.map(|options| {
                     options
                         .into_iter()
@@ -315,6 +320,7 @@ fn meta_from_wire(p: wire::Project) -> Result<ProjectMeta> {
 
 fn items_page_from_wire(page: wire::Connection<wire::Item>) -> ItemsPage {
     ItemsPage {
+        total_count: page.total_count.unwrap_or_default(),
         items: page
             .nodes
             .into_iter()
@@ -342,6 +348,7 @@ fn item_from_wire(item: wire::Item) -> Item {
     Item {
         id: crate::domain::ItemId(item.id),
         archived: item.is_archived,
+        updated_at: item.updated_at,
         single_selects,
         content: item
             .content

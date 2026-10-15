@@ -3,6 +3,19 @@ use crate::domain::{
     ViewLayout,
 };
 use crate::error::{Error, Result};
+use crate::intent::{self, Intent};
+
+/// The board as displayed: the server snapshot with the pending intents replayed in order.
+pub fn project(
+    meta: &ProjectMeta,
+    view: Option<u32>,
+    items: &[Item],
+    pending: &[Intent],
+) -> Result<Board> {
+    Ok(pending
+        .iter()
+        .fold(project_board(meta, view, items)?, intent::apply))
+}
 
 /// Builds the board the way github.com shows it.
 ///
@@ -28,10 +41,10 @@ pub fn project_board(meta: &ProjectMeta, view: Option<u32>, items: &[Item]) -> R
         .collect();
     let mut no_value = Vec::new();
 
-    for item in items.iter().filter(|i| !i.archived) {
+    for (position, item) in (0..).zip(items.iter().filter(|i| !i.archived)) {
         let card = Card {
             item_id: item.id.clone(),
-            title: item.content.title().to_owned(),
+            position,
             content: item.content.clone(),
         };
         let column = item.option_for(&field.id).and_then(|option| {
