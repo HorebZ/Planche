@@ -23,6 +23,8 @@
 }
 
 @theme inline {
+	/* The handoff's 4 px base. In rem it would follow the 13 px root font size and shrink every gap. */
+	--spacing: 4px;
 	--color-white: white;
 	--color-bg: var(--pl-bg);
 	--color-bg-sunken: var(--pl-bg-sunken);
