@@ -1,6 +1,7 @@
 import { QueryClient, queryOptions, useMutation, useQuery } from "@tanstack/react-query";
-import { toast } from "@/components/ui/toast";
-import { commands, events, type ProjectId, type SyncPrefs, type SyncStatus, type ViewId } from "./bindings";
+import { notify } from "@/components/ui/toast";
+import { useUi } from "@/stores/ui";
+import { type Board, commands, events, type ProjectId, type SyncPrefs, type SyncStatus, type ViewId } from "./bindings";
 
 /** The cache in Rust is the source of truth, so queries refetch on events, not on a timer. */
 export function createQueryClient() {
@@ -85,21 +86,62 @@ export function errorMessage(error: unknown) {
 	return typeof error === "object" && error && "message" in error ? String(error.message) : String(error);
 }
 
+/** The title of a card in any cached board, for a toast. */
+function cardTitle(client: QueryClient, itemId: string) {
+	for (const [, board] of client.getQueriesData<Board | null>({ queryKey: ["board"] })) {
+		const card = board?.columns.flatMap((c) => c.cards).find((c) => c.item_id === itemId);
+		if (card) return card.kind === "redacted" ? "Redacted item" : card.title;
+	}
+	return "the card";
+}
+
+/** Runs `update` inside a view transition when the webview has them, so a moved card slides. */
+function withTransition(update: () => Promise<unknown>) {
+	if (!document.startViewTransition) return update();
+	return document.startViewTransition(async () => {
+		await update();
+		// Let React commit the new board before the browser takes the second snapshot.
+		await new Promise(requestAnimationFrame);
+	}).finished;
+}
+
 /** Keeps the queries in step with the events Rust emits. Returns the unsubscribe function. */
 export async function listenToCore(client: QueryClient) {
+	// Board changes that arrive while a card is lifted, applied after the drop.
+	const deferred = new Set<string>();
+	const refresh = async (projectId: string) => {
+		const reverting = useUi.getState().reverting;
+		const update = () =>
+			Promise.all([
+				client.invalidateQueries({ queryKey: ["board", projectId] }),
+				client.invalidateQueries({ queryKey: ["project", projectId] }),
+			]);
+		if (!reverting) return update();
+		await withTransition(update);
+		useUi.getState().setReverting(null);
+	};
+	const stopDrop = useUi.subscribe((state, previous) => {
+		if (previous.dragging && !state.dragging) {
+			for (const projectId of deferred) refresh(projectId);
+			deferred.clear();
+		}
+	});
 	const unlisten = await Promise.all([
 		events.boardChanged.listen(({ payload }) => {
-			client.invalidateQueries({ queryKey: ["board", payload.project_id] });
-			client.invalidateQueries({ queryKey: ["project", payload.project_id] });
+			if (useUi.getState().dragging) deferred.add(payload.project_id);
+			else refresh(payload.project_id);
 		}),
 		events.syncStatus.listen(({ payload }) => {
 			client.setQueryData<SyncStatus>(syncStatusQuery.queryKey, payload);
 		}),
 		events.mutationFailed.listen(({ payload }) => {
-			toast.error(`A move failed and was undone: ${payload.message}`);
+			// Rust has dropped the row; the board-changed that follows brings the card back.
+			useUi.getState().setReverting(payload.intent.item_id);
+			notify(`Couldn't move "${cardTitle(client, payload.intent.item_id)}". Reverted.`, "error");
 		}),
 	]);
 	return () => {
+		stopDrop();
 		for (const stop of unlisten) stop();
 	};
 }

@@ -1,17 +1,263 @@
-import { useEffect, useRef } from "react";
-import { type Board as BoardData, commands } from "@/ipc/bindings";
-import { Column } from "./Column";
+import {
+	type CollisionDetection,
+	closestCenter,
+	DndContext,
+	type DragEndEvent,
+	type DragMoveEvent,
+	DragOverlay,
+	type DragStartEvent,
+	type KeyboardCoordinateGetter,
+	KeyboardSensor,
+	MeasuringStrategy,
+	PointerSensor,
+	pointerWithin,
+	useSensor,
+	useSensors,
+} from "@dnd-kit/core";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { DragBubble, DragHelpBar } from "@/components/ui/drag";
+import { IssueCard } from "@/components/ui/issue-card";
+import { type Card as BoardCard, type Board as BoardData, commands, type Intent, type ItemId } from "@/ipc/bindings";
+import { useUi } from "@/stores/ui";
+import { cardData } from "./Card";
+import { Column, type Landing } from "./Column";
+import { markDropFrame, startFrames, stopFrames } from "./dragPerf";
 
-/** The read-only board: one column per option, each scrolling on its own. */
-export function Board({ board }: { board: BoardData }) {
+/** A spot on the board: a column, and an index among its cards without the lifted one. */
+type Spot = { column: number; index: number };
+
+type Drag = { id: ItemId; card: BoardCard; from: Spot; to: Spot; height: number; keyboard: boolean };
+
+const CARD_GAP = 5;
+
+/** The cards of a column, without the lifted one. */
+function others(board: BoardData, column: number, id: ItemId) {
+	return board.columns[column].cards.filter((c) => c.item_id !== id);
+}
+
+/** The card under the pointer wins over its column; outside every column, the nearest one. */
+const collision: CollisionDetection = (args) => {
+	const hits = pointerWithin(args);
+	const card = hits.find((hit) => !String(hit.id).startsWith("column:"));
+	if (card) return [card];
+	return hits.length > 0 ? hits : closestCenter(args);
+};
+
+type BoardProps = {
+	board: BoardData;
+	offline: boolean;
+	onMove: (intent: Intent) => Promise<unknown>;
+};
+
+/** The board: one column per option, each scrolling on its own. Cards move by drag or keyboard. */
+export function Board({ board, offline, onMove }: BoardProps) {
 	usePaintedMark();
-	return (
-		<div data-slot="board" className="flex h-full items-start gap-2.5 overflow-x-auto px-3.5 py-3">
-			{board.columns.map((column) => (
-				<Column key={column.option_id ?? "none"} column={column} />
-			))}
-		</div>
+	const setDragging = useUi((s) => s.setDragging);
+	const [drag, setDragState] = useState<Drag | null>(null);
+	const dragRef = useRef<Drag | null>(null);
+	const setDrag = useCallback((next: Drag | null) => {
+		dragRef.current = next;
+		setDragState(next);
+	}, []);
+	const boardRef = useRef(board);
+	boardRef.current = board;
+	const manualOrder = board.view?.manual_order ?? true;
+
+	// Arrows move the landing spot itself, then the overlay follows it.
+	const coordinateGetter = useCallback<KeyboardCoordinateGetter>(
+		(event, { currentCoordinates }) => {
+			const current = dragRef.current;
+			if (!current) return undefined;
+			const b = boardRef.current;
+			let { column, index } = current.to;
+			const size = (c: number) => others(b, c, current.id).length;
+			switch (event.code) {
+				case "ArrowRight":
+					column = Math.min(column + 1, b.columns.length - 1);
+					index = Math.min(index, size(column));
+					break;
+				case "ArrowLeft":
+					column = Math.max(column - 1, 0);
+					index = Math.min(index, size(column));
+					break;
+				case "ArrowDown":
+					if (manualOrder) index = Math.min(index + 1, size(column));
+					break;
+				case "ArrowUp":
+					if (manualOrder) index = Math.max(index - 1, 0);
+					break;
+				default:
+					return undefined;
+			}
+			event.preventDefault();
+			setDrag({ ...current, to: { column, index } });
+			return slotCoordinates(b, current.id, { column, index }) ?? currentCoordinates;
+		},
+		[manualOrder, setDrag],
 	);
+
+	const sensors = useSensors(
+		useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+		useSensor(KeyboardSensor, {
+			coordinateGetter,
+			keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space", "Enter"] },
+		}),
+	);
+
+	const locate = useCallback((id: ItemId): Spot | null => {
+		const b = boardRef.current;
+		for (const [column, c] of b.columns.entries()) {
+			const index = c.cards.findIndex((card) => card.item_id === id);
+			if (index >= 0) return { column, index };
+		}
+		return null;
+	}, []);
+
+	const onDragStart = useCallback(
+		({ active, activatorEvent }: DragStartEvent) => {
+			const id = String(active.id);
+			const from = locate(id);
+			if (!from) return;
+			const card = boardRef.current.columns[from.column].cards[from.index];
+			const height = active.rect.current.initial?.height ?? 86;
+			setDrag({ id, card, from, to: from, height, keyboard: activatorEvent instanceof KeyboardEvent });
+			setDragging(true);
+			startFrames();
+		},
+		[locate, setDrag, setDragging],
+	);
+
+	const onDragMove = useCallback(
+		({ active, over, activatorEvent, delta }: DragMoveEvent) => {
+			const current = dragRef.current;
+			if (!current || current.keyboard || !over) return;
+			const b = boardRef.current;
+			const overId = String(over.id);
+			let to: Spot;
+			if (overId.startsWith("column:")) {
+				const column = Number(overId.slice("column:".length));
+				to = { column, index: others(b, column, current.id).length };
+			} else {
+				const spot = locate(overId);
+				if (!spot || overId === current.id) return;
+				const index = others(b, spot.column, current.id).findIndex((c) => c.item_id === overId);
+				const pointerY =
+					activatorEvent instanceof PointerEvent || activatorEvent instanceof MouseEvent
+						? activatorEvent.clientY + delta.y
+						: (active.rect.current.translated?.top ?? 0);
+				const below = pointerY > over.rect.top + over.rect.height / 2;
+				to = { column: spot.column, index: below ? index + 1 : index };
+			}
+			// A sorted view keeps each column's order: only the column changes.
+			if (!manualOrder) to = to.column === current.from.column ? current.from : { column: to.column, index: 0 };
+			if (to.column !== current.to.column || to.index !== current.to.index) setDrag({ ...current, to });
+		},
+		[locate, manualOrder, setDrag],
+	);
+
+	const droppedAt = useRef<number | null>(null);
+	const end = useCallback(
+		async (drop: boolean) => {
+			const current = dragRef.current;
+			setDrag(null);
+			stopFrames();
+			if (!drop || !current) return setDragging(false);
+			const intent = intentFor(boardRef.current, current, manualOrder);
+			if (!intent) return setDragging(false);
+			droppedAt.current = performance.now();
+			// Board changes held during the drag apply once Rust has the move queued.
+			await onMove(intent);
+			setDragging(false);
+		},
+		[manualOrder, onMove, setDrag, setDragging],
+	);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: runs after each commit of a new board, the one a drop causes
+	useLayoutEffect(() => {
+		if (droppedAt.current == null) return;
+		markDropFrame(droppedAt.current);
+		droppedAt.current = null;
+	}, [board]);
+
+	const dropAnimation = useMemo(() => {
+		const duration = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--pl-dur-slow"));
+		return { duration: Number.isNaN(duration) ? 200 : duration, easing: "cubic-bezier(0.2, 0, 0, 1)" };
+	}, []);
+
+	const landingFor = (column: number): Landing | null =>
+		drag && drag.to.column === column
+			? { index: drag.to.index, height: drag.height, fromHere: drag.from.column === column }
+			: null;
+	const target = drag ? board.columns[drag.to.column] : null;
+
+	return (
+		<DndContext
+			sensors={sensors}
+			collisionDetection={collision}
+			measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+			onDragStart={onDragStart}
+			onDragMove={onDragMove}
+			onDragEnd={(_: DragEndEvent) => end(true)}
+			onDragCancel={() => end(false)}
+		>
+			<div className="relative h-full">
+				<div data-slot="board" className="flex h-full items-start gap-2.5 overflow-x-auto px-3.5 py-3">
+					{board.columns.map((column, index) => (
+						<Column
+							key={column.option_id ?? "none"}
+							column={column}
+							index={index}
+							activeId={drag?.id ?? null}
+							landing={landingFor(index)}
+							offline={offline}
+						/>
+					))}
+				</div>
+				{drag ? <DragHelpBar className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2" /> : null}
+			</div>
+			<DragOverlay dropAnimation={dropAnimation}>
+				{drag && target ? (
+					<div className="relative">
+						<IssueCard {...cardData(drag.card)} dragState="lifted" tabIndex={-1} />
+						<DragBubble className="absolute top-full left-[82px] mt-1.5">
+							Move to {target.name} · position {drag.to.index + 1}
+						</DragBubble>
+					</div>
+				) : null}
+			</DragOverlay>
+		</DndContext>
+	);
+}
+
+/** The move a drop asks for, or `null` when the card lands where it was. */
+function intentFor(board: BoardData, drag: Drag, manualOrder: boolean): Intent | null {
+	const sameColumn = drag.to.column === drag.from.column;
+	if (sameColumn && (!manualOrder || drag.to.index === drag.from.index)) return null;
+	const before = others(board, drag.to.column, drag.id)[drag.to.index - 1];
+	return {
+		type: "move_card",
+		project_id: board.project.id,
+		item_id: drag.id,
+		field_id: board.field.id,
+		to: board.columns[drag.to.column].option_id,
+		placement: !manualOrder ? "keep" : before ? { after: before.item_id } : "top",
+	};
+}
+
+/** The top-left corner of a landing spot, for the keyboard sensor. */
+function slotCoordinates(board: BoardData, id: ItemId, spot: Spot) {
+	const cards = others(board, spot.column, id);
+	const at = cards[spot.index];
+	const element = at
+		? document.querySelector(`[data-item-id="${at.item_id}"]`)
+		: document.querySelector(`[data-column-index="${spot.column}"]`);
+	if (!element) return undefined;
+	const rect = element.getBoundingClientRect();
+	if (at) return { x: rect.left, y: rect.top };
+	// The end of the column: under its last card, or under its header when it has none.
+	const last = cards.at(-1);
+	const lastRect = last && document.querySelector(`[data-item-id="${last.item_id}"]`)?.getBoundingClientRect();
+	return { x: rect.left + 5, y: lastRect ? lastRect.bottom + CARD_GAP : rect.top + 38 };
 }
 
 /** Reports the first paint of a cached board to Rust, for the 500 ms budget. Dev server, or a

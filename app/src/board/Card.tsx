@@ -1,6 +1,8 @@
+import { useSortable } from "@dnd-kit/sortable";
 import { memo } from "react";
 import { IssueCard, type IssueCardData } from "@/components/ui/issue-card";
 import type { Card as BoardCard } from "@/ipc/bindings";
+import { useUi } from "@/stores/ui";
 
 /** The repository name without its owner, as the card shows it. */
 function shortRepo(repo: string) {
@@ -42,8 +44,30 @@ export function cardData(card: BoardCard): IssueCardData {
 	}
 }
 
-export const Card = memo(function Card({ card }: { card: BoardCard }) {
+type CardProps = {
+	card: BoardCard;
+	/** The card is lifted, and this is the spot it left. */
+	ghost?: boolean;
+	/** "Pending" shows only while GitHub is unreachable; online, a move lands within a second. */
+	offline?: boolean;
+};
+
+/** A card that drags and takes drops. The lifted copy lives in the board's DragOverlay. */
+export const Card = memo(function Card({ card, ghost = false, offline = false }: CardProps) {
+	const { setNodeRef, attributes, listeners } = useSortable({ id: card.item_id });
+	const reverting = useUi((s) => s.reverting === card.item_id);
 	return (
-		<IssueCard {...cardData(card)} data-item-id={card.item_id} pending={card.pending} updated={card.updated_by_sync} />
+		<IssueCard
+			{...cardData(card)}
+			ref={setNodeRef}
+			{...attributes}
+			{...listeners}
+			data-item-id={card.item_id}
+			aria-roledescription="card"
+			dragState={ghost ? "ghost" : undefined}
+			pending={card.pending && offline}
+			updated={card.updated_by_sync}
+			style={reverting ? { viewTransitionName: "reverting-card" } : undefined}
+		/>
 	);
 });
