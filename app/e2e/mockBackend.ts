@@ -4,12 +4,14 @@
  */
 import { emit } from "@tauri-apps/api/event";
 import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
+import { moveCard } from "../src/board/moveCard";
 import type {
 	AppError,
 	AuthStatus,
 	Board,
 	Card,
 	Column,
+	Intent,
 	ProjectList,
 	ProjectMeta,
 	SyncPrefs,
@@ -26,7 +28,9 @@ export type Scenario =
 	| "checking"
 	| "valid"
 	| "invalid"
-	| "big";
+	| "big"
+	| "rollback"
+	| "sorted";
 
 const PROJECT = "PVT_planche";
 
@@ -78,7 +82,7 @@ function mockupBoard(): Board {
 	position = 0;
 	return {
 		project: { id: PROJECT, number: 1, title: "Planche — v1.2", url: "https://github.com/orgs/planche/projects/1" },
-		view: { number: 1, name: "Board" },
+		view: { number: 1, name: "Board", manual_order: true },
 		field: { id: "PVTSSF_status", name: "Status" },
 		columns: [
 			column("backlog", "Backlog", "GRAY", [
@@ -150,6 +154,11 @@ function boardFor(scenario: Scenario): Board | null {
 			board.columns[3].cards[0].updated_by_sync = true;
 			return board;
 		}
+		case "sorted": {
+			const board = mockupBoard();
+			if (board.view) board.view.manual_order = false;
+			return board;
+		}
 		case "offline": {
 			const board = mockupBoard();
 			board.columns[2].cards[0].pending = true;
@@ -207,6 +216,8 @@ export function installMockBackend(scenario: Scenario) {
 	mockWindows("main");
 	let prefs: SyncPrefs = { interval: "five_minutes", on_wake: true };
 	let auth = onboarding(scenario) ? signedOut : signedIn;
+	let board = boardFor(scenario);
+	const changed = () => emit("board-changed", { project_id: PROJECT });
 	const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
 		auth_status: () => auth,
 		auth_set_token: async () => {
@@ -235,9 +246,37 @@ export function installMockBackend(scenario: Scenario) {
 			owner_is_org: true,
 			updated_at: "",
 			fields: [],
-			views: [{ id: "PVTV_1", number: 1, name: "Board", layout: "Board", filter: null, group_by: null }],
+			views: [
+				{ id: "PVTV_1", number: 1, name: "Board", layout: "Board", filter: null, group_by: null, manual_order: true },
+			],
 		}),
-		get_board: () => boardFor(scenario),
+		get_board: () => board,
+		// Like Rust: queue, return the board with the move, then send it in the background.
+		dispatch_intent: (args) => {
+			const intent = args.intent as Intent;
+			const before = board;
+			if (!before) throw new Error("mockBackend: no board to move a card on");
+			const pending = (b: Board, value: boolean): Board => ({
+				...b,
+				columns: b.columns.map((c) => ({
+					...c,
+					cards: c.cards.map((card) => (card.item_id === intent.item_id ? { ...card, pending: value } : card)),
+				})),
+			});
+			board = pending(moveCard(before, intent), true);
+			if (scenario !== "offline") {
+				setTimeout(async () => {
+					if (scenario === "rollback") {
+						board = before;
+						await emit("mutation-failed", { intent, message: "PLANCHE_FAULT=fail_mutations" });
+					} else {
+						board = pending(board ?? before, false);
+					}
+					await changed();
+				}, 300);
+			}
+			return board;
+		},
 		refresh_project: () => ({ project: PROJECT, items: 17, cost: 4, usage: {}, changes: [] }),
 		sync_status: () => statusFor(scenario),
 		get_sync_prefs: () => prefs,
