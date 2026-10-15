@@ -1,3 +1,4 @@
+import { useSortable } from "@dnd-kit/sortable";
 import { memo } from "react";
 import { IssueCard, type IssueCardData } from "@/components/ui/issue-card";
 import type { Card as BoardCard } from "@/ipc/bindings";
@@ -42,8 +43,26 @@ export function cardData(card: BoardCard): IssueCardData {
 	}
 }
 
-export const Card = memo(function Card({ card }: { card: BoardCard }) {
+type CardProps = {
+	card: BoardCard;
+	/** The card is lifted, and this is the spot it left. */
+	ghost?: boolean;
+};
+
+/** A card that drags and takes drops. The lifted copy lives in the board's DragOverlay. */
+export const Card = memo(function Card({ card, ghost = false }: CardProps) {
+	const { setNodeRef, attributes, listeners } = useSortable({ id: card.item_id });
 	return (
-		<IssueCard {...cardData(card)} data-item-id={card.item_id} pending={card.pending} updated={card.updated_by_sync} />
+		<IssueCard
+			{...cardData(card)}
+			ref={setNodeRef}
+			{...attributes}
+			{...listeners}
+			data-item-id={card.item_id}
+			aria-roledescription="card"
+			dragState={ghost ? "ghost" : undefined}
+			pending={card.pending}
+			updated={card.updated_by_sync}
+		/>
 	);
 });

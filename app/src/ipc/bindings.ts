@@ -48,6 +48,11 @@ export const commands = {
 } | null>("get_board", { projectId, viewId }),
 	/**  Syncs now and waits for the result. */
 	refreshProject: (projectId: ProjectId) => __TAURI_INVOKE<SyncReport>("refresh_project", { projectId }),
+	/**
+	 *  Queues a user action, asks the engine to send it now, and returns the board with it
+	 *  applied. The front shows that board in place of its own optimistic one.
+	 */
+	dispatchIntent: (intent: Intent, viewId: string | null) => __TAURI_INVOKE<Board>("dispatch_intent", { intent, viewId }),
 	syncStatus: () => __TAURI_INVOKE<SyncStatus>("sync_status"),
 	getSyncPrefs: () => __TAURI_INVOKE<SyncPrefs>("get_sync_prefs"),
 	setSyncPrefs: (prefs: SyncPrefs) => __TAURI_INVOKE<SyncPrefs>("set_sync_prefs", { prefs }),
@@ -107,6 +112,8 @@ export type BoardProject = {
 export type BoardView = {
 	number: number,
 	name: string,
+	/**  False when the view sorts by a field: cards move between columns, not within one. */
+	manual_order: boolean,
 };
 
 export type Card = {
@@ -286,6 +293,8 @@ export type View = {
 	layout: ViewLayout,
 	/**  Ignored in v1: the board shows every unarchived item. */
 	filter: string | null,
+	/**  False when the view sorts by a field, so a card cannot be reordered by hand. */
+	manual_order: boolean,
 	/**  The field a board view uses for its columns. */
 	group_by: FieldId | null,
 };
