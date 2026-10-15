@@ -1,0 +1,2217 @@
+[
+ {
+  "name": "keep lands the card in project order",
+  "board": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_B",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_C",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_D",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      }
+     ]
+    }
+   ]
+  },
+  "intent": {
+   "type": "move_card",
+   "project_id": "PVT_1",
+   "item_id": "PVTI_C",
+   "field_id": "PVTSSF_status",
+   "to": "progress",
+   "placement": "keep"
+  },
+  "expected": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_B",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_C",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_D",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "name": "keep puts a card above a later one",
+  "board": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_B",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_C",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_D",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      }
+     ]
+    }
+   ]
+  },
+  "intent": {
+   "type": "move_card",
+   "project_id": "PVT_1",
+   "item_id": "PVTI_A",
+   "field_id": "PVTSSF_status",
+   "to": "done",
+   "placement": "keep"
+  },
+  "expected": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_B",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_C",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_D",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_E",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "name": "top puts the card first in the project",
+  "board": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_B",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_C",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_D",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      }
+     ]
+    }
+   ]
+  },
+  "intent": {
+   "type": "move_card",
+   "project_id": "PVT_1",
+   "item_id": "PVTI_E",
+   "field_id": "PVTSSF_status",
+   "to": "todo",
+   "placement": "top"
+  },
+  "expected": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_A",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_B",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_C",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_D",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": []
+    }
+   ]
+  }
+ },
+ {
+  "name": "after a card in the target column",
+  "board": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_B",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_C",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_D",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      }
+     ]
+    }
+   ]
+  },
+  "intent": {
+   "type": "move_card",
+   "project_id": "PVT_1",
+   "item_id": "PVTI_A",
+   "field_id": "PVTSSF_status",
+   "to": "done",
+   "placement": {
+    "after": "PVTI_E"
+   }
+  },
+  "expected": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_B",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_C",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_D",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_A",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "name": "after a card in another column follows project order",
+  "board": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_B",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_C",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_D",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      }
+     ]
+    }
+   ]
+  },
+  "intent": {
+   "type": "move_card",
+   "project_id": "PVT_1",
+   "item_id": "PVTI_E",
+   "field_id": "PVTSSF_status",
+   "to": "todo",
+   "placement": {
+    "after": "PVTI_A"
+   }
+  },
+  "expected": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_E",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_B",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_C",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_D",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": []
+    }
+   ]
+  }
+ },
+ {
+  "name": "top within the same column reorders it",
+  "board": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_B",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_C",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_D",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      }
+     ]
+    }
+   ]
+  },
+  "intent": {
+   "type": "move_card",
+   "project_id": "PVT_1",
+   "item_id": "PVTI_C",
+   "field_id": "PVTSSF_status",
+   "to": "todo",
+   "placement": "top"
+  },
+  "expected": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_C",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_A",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_B",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_D",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "name": "no option adds the No Status column",
+  "board": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_B",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_C",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_D",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      }
+     ]
+    }
+   ]
+  },
+  "intent": {
+   "type": "move_card",
+   "project_id": "PVT_1",
+   "item_id": "PVTI_B",
+   "field_id": "PVTSSF_status",
+   "to": null,
+   "placement": "keep"
+  },
+  "expected": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": null,
+     "name": "No Status",
+     "color": null,
+     "cards": [
+      {
+       "item_id": "PVTI_B",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_C",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_D",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "name": "leaving No Status empty removes the column",
+  "board": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": null,
+     "name": "No Status",
+     "color": null,
+     "cards": [
+      {
+       "item_id": "PVTI_B",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_C",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_D",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      }
+     ]
+    }
+   ]
+  },
+  "intent": {
+   "type": "move_card",
+   "project_id": "PVT_1",
+   "item_id": "PVTI_B",
+   "field_id": "PVTSSF_status",
+   "to": "todo",
+   "placement": "keep"
+  },
+  "expected": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_B",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_C",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_D",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "name": "a move already applied changes nothing",
+  "board": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_B",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_C",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_D",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      }
+     ]
+    }
+   ]
+  },
+  "intent": {
+   "type": "move_card",
+   "project_id": "PVT_1",
+   "item_id": "PVTI_C",
+   "field_id": "PVTSSF_status",
+   "to": "progress",
+   "placement": "keep"
+  },
+  "expected": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_B",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_C",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_D",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "name": "an unknown card changes nothing",
+  "board": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_B",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_C",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_D",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      }
+     ]
+    }
+   ]
+  },
+  "intent": {
+   "type": "move_card",
+   "project_id": "PVT_1",
+   "item_id": "PVTI_Z",
+   "field_id": "PVTSSF_status",
+   "to": "done",
+   "placement": "keep"
+  },
+  "expected": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_B",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_C",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_D",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "name": "an unknown option changes nothing",
+  "board": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_B",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_C",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_D",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      }
+     ]
+    }
+   ]
+  },
+  "intent": {
+   "type": "move_card",
+   "project_id": "PVT_1",
+   "item_id": "PVTI_A",
+   "field_id": "PVTSSF_status",
+   "to": "deleted-option",
+   "placement": "keep"
+  },
+  "expected": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_B",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_C",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_D",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "name": "another field keeps the column and moves the position",
+  "board": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_B",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_C",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_D",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      }
+     ]
+    }
+   ]
+  },
+  "intent": {
+   "type": "move_card",
+   "project_id": "PVT_1",
+   "item_id": "PVTI_E",
+   "field_id": "PVTSSF_priority",
+   "to": "high",
+   "placement": {
+    "after": "PVTI_A"
+   }
+  },
+  "expected": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_B",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_C",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_D",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "name": "another project changes nothing",
+  "board": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_B",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_C",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_D",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      }
+     ]
+    }
+   ]
+  },
+  "intent": {
+   "type": "move_card",
+   "project_id": "PVT_2",
+   "item_id": "PVTI_A",
+   "field_id": "PVTSSF_status",
+   "to": "done",
+   "placement": "keep"
+  },
+  "expected": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board"
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_A",
+       "title": "Card A",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_B",
+       "position": 1,
+       "kind": "draft",
+       "id": "DI_B",
+       "title": "Card B",
+       "assignees": []
+      },
+      {
+       "item_id": "PVTI_C",
+       "position": 2,
+       "kind": "draft",
+       "id": "DI_C",
+       "title": "Card C",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "progress",
+     "name": "In Progress",
+     "color": "YELLOW",
+     "cards": [
+      {
+       "item_id": "PVTI_D",
+       "position": 3,
+       "kind": "draft",
+       "id": "DI_D",
+       "title": "Card D",
+       "assignees": []
+      }
+     ]
+    },
+    {
+     "option_id": "done",
+     "name": "Done",
+     "color": "GREEN",
+     "cards": [
+      {
+       "item_id": "PVTI_E",
+       "position": 4,
+       "kind": "draft",
+       "id": "DI_E",
+       "title": "Card E",
+       "assignees": []
+      }
+     ]
+    }
+   ]
+  }
+ }
+]

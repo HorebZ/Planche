@@ -52,14 +52,14 @@ pub struct Viewer {
     pub avatar_url: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct User {
     pub id: UserId,
     pub login: String,
     pub avatar_url: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Label {
     pub name: String,
     /// Hex color without `#`, as GitHub sends it.
@@ -97,6 +97,8 @@ pub struct ProjectMeta {
     pub title: String,
     pub url: String,
     pub owner: String,
+    pub owner_is_org: bool,
+    pub updated_at: String,
     pub fields: Vec<Field>,
     pub views: Vec<View>,
 }
@@ -105,6 +107,8 @@ pub struct ProjectMeta {
 pub struct Field {
     pub id: FieldId,
     pub name: String,
+    /// GitHub's `ProjectV2FieldType`, such as `SINGLE_SELECT` or `TITLE`.
+    pub data_type: String,
     /// `Some` only for single-select fields.
     pub options: Option<Vec<SelectOption>>,
 }
@@ -139,6 +143,7 @@ pub struct View {
 pub struct Item {
     pub id: ItemId,
     pub archived: bool,
+    pub updated_at: String,
     pub single_selects: Vec<(FieldId, OptionId)>,
     pub content: ItemContent,
 }
@@ -152,14 +157,14 @@ impl Item {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum IssueState {
     Open,
     Closed,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PullRequestState {
     Open,
@@ -167,7 +172,7 @@ pub enum PullRequestState {
     Merged,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ItemContent {
     Draft {
@@ -211,7 +216,7 @@ impl ItemContent {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Board {
     pub project: BoardProject,
     pub view: Option<BoardView>,
@@ -220,7 +225,7 @@ pub struct Board {
     pub columns: Vec<Column>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BoardProject {
     pub id: ProjectId,
     pub number: u32,
@@ -228,19 +233,19 @@ pub struct BoardProject {
     pub url: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BoardView {
     pub number: u32,
     pub name: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BoardField {
     pub id: FieldId,
     pub name: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Column {
     /// `None` for the "No <field>" column.
     pub option_id: Option<OptionId>,
@@ -249,12 +254,19 @@ pub struct Column {
     pub cards: Vec<Card>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Card {
     pub item_id: ItemId,
-    pub title: String,
+    /// Rank among the board's cards in project order. GitHub orders a card across every column.
+    pub position: u32,
     #[serde(flatten)]
     pub content: ItemContent,
+}
+
+impl Card {
+    pub fn title(&self) -> &str {
+        self.content.title()
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
@@ -263,6 +275,8 @@ pub struct RateUsage {
     pub cost_total: u32,
     pub remaining: Option<u32>,
     pub limit: Option<u32>,
+    /// Unix time of the next quota reset, from `x-ratelimit-reset`.
+    pub reset_at: Option<u64>,
 }
 
 #[cfg(test)]

@@ -63,9 +63,16 @@ cargo run -p planche-cli -- board @me/2             # a board, columns by Status
 cargo run -p planche-cli -- board my-org/5 --view 3 --json
 cargo run -p planche-cli -- move @me/2 "#11" "In Progress"     # keeps the card's position
 cargo run -p planche-cli -- move @me/2 "#11" Done --after "#2" # or --top
+cargo run -p planche-cli -- board @me/2 --offline   # the cached board, without the network
+cargo run -p planche-cli -- sync @me/2              # send queued moves, then refresh the cache
+cargo run -p planche-cli -- sync --watch @me/2 --interval 1m   # 1m, 5m, 15m or manual
 ```
 
 `PLANCHE_TOKEN` overrides the stored token.
+
+The board lives in a SQLite cache at `~/Library/Application Support/dev.planche.app/cache.sqlite`. `PLANCHE_CACHE` overrides the path. `board` prints the cached board at once, then refreshes it from GitHub. A move shows at once and goes into a queue. When GitHub is unreachable, the move stays queued, and the next `sync` sends it.
+
+In debug builds, `PLANCHE_FAULT` injects failures: `fail_page_2`, `fail_mutations`, `hang_before_ack` and `ratelimit_low`.
 
 ## Testing
 
