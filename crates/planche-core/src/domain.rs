@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
+use specta::Type;
 
 macro_rules! id_type {
     ($($(#[$doc:meta])* $name:ident),+ $(,)?) => {$(
         $(#[$doc])*
-        #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+        #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Type)]
         #[serde(transparent)]
         pub struct $name(pub String);
 
@@ -44,7 +45,7 @@ id_type! {
     ContentId,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
 pub struct Viewer {
     pub id: UserId,
     pub login: String,
@@ -52,21 +53,21 @@ pub struct Viewer {
     pub avatar_url: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct User {
     pub id: UserId,
     pub login: String,
     pub avatar_url: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct Label {
     pub name: String,
     /// Hex color without `#`, as GitHub sends it.
     pub color: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
 pub struct ProjectList {
     /// The viewer first, then organizations by login.
     pub owners: Vec<OwnerProjects>,
@@ -74,14 +75,14 @@ pub struct ProjectList {
     pub sso_blocked: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
 pub struct OwnerProjects {
     pub login: String,
     pub is_org: bool,
     pub projects: Vec<ProjectSummary>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
 pub struct ProjectSummary {
     pub id: ProjectId,
     pub number: u32,
@@ -90,7 +91,7 @@ pub struct ProjectSummary {
     pub url: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
 pub struct ProjectMeta {
     pub id: ProjectId,
     pub number: u32,
@@ -103,7 +104,7 @@ pub struct ProjectMeta {
     pub views: Vec<View>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
 pub struct Field {
     pub id: FieldId,
     pub name: String,
@@ -113,21 +114,21 @@ pub struct Field {
     pub options: Option<Vec<SelectOption>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
 pub struct SelectOption {
     pub id: OptionId,
     pub name: String,
     pub color: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Type)]
 pub enum ViewLayout {
     Board,
     Table,
     Roadmap,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
 pub struct View {
     pub id: ViewId,
     pub number: u32,
@@ -157,14 +158,14 @@ impl Item {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "snake_case")]
 pub enum IssueState {
     Open,
     Closed,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "snake_case")]
 pub enum PullRequestState {
     Open,
@@ -172,7 +173,7 @@ pub enum PullRequestState {
     Merged,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ItemContent {
     Draft {
@@ -216,16 +217,20 @@ impl ItemContent {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct Board {
     pub project: BoardProject,
     pub view: Option<BoardView>,
     pub field: BoardField,
     /// "No <field>" first when some items have no value, then one column per option.
     pub columns: Vec<Column>,
+    /// Queued intents GitHub has not acknowledged yet.
+    pub pending_count: u32,
+    /// When the last full sync finished, in UTC. `None` before the first one.
+    pub synced_at: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct BoardProject {
     pub id: ProjectId,
     pub number: u32,
@@ -233,19 +238,19 @@ pub struct BoardProject {
     pub url: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct BoardView {
     pub number: u32,
     pub name: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct BoardField {
     pub id: FieldId,
     pub name: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct Column {
     /// `None` for the "No <field>" column.
     pub option_id: Option<OptionId>,
@@ -254,13 +259,17 @@ pub struct Column {
     pub cards: Vec<Card>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct Card {
     pub item_id: ItemId,
     /// Rank among the board's cards in project order. GitHub orders a card across every column.
     pub position: u32,
     #[serde(flatten)]
     pub content: ItemContent,
+    /// A queued intent GitHub has not acknowledged yet touches this card.
+    pub pending: bool,
+    /// The last sync changed this card.
+    pub updated_by_sync: bool,
 }
 
 impl Card {
@@ -269,14 +278,14 @@ impl Card {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Type)]
 pub struct RateUsage {
     /// Sum of `rateLimit.cost` over every request made by this client.
     pub cost_total: u32,
     pub remaining: Option<u32>,
     pub limit: Option<u32>,
     /// Unix time of the next quota reset, from `x-ratelimit-reset`.
-    pub reset_at: Option<u64>,
+    pub reset_at: Option<u32>,
 }
 
 #[cfg(test)]

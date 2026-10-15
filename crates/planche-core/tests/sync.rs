@@ -180,6 +180,20 @@ fn server_board(cache: &Cache, project: &ProjectId) -> Board {
     project_board(&meta, None, &items).unwrap()
 }
 
+/// Column names and card IDs in order, without the cache's flags and timestamps.
+fn layout(board: &Board) -> Vec<(String, Vec<ItemId>)> {
+    board
+        .columns
+        .iter()
+        .map(|c| {
+            (
+                c.name.clone(),
+                c.cards.iter().map(|card| card.item_id.clone()).collect(),
+            )
+        })
+        .collect()
+}
+
 fn column_of(board: &Board, item: &ItemId) -> String {
     board
         .columns
@@ -266,7 +280,10 @@ async fn the_same_move_on_an_up_to_date_snapshot_gives_the_same_board() {
 
     let server = server_board(&cache, &project);
     assert_eq!(column_of(&server, intent.item_id()), "Done");
-    assert_eq!(cache.board(&project, None).unwrap().unwrap(), server);
+    assert_eq!(
+        layout(&cache.board(&project, None).unwrap().unwrap()),
+        layout(&server)
+    );
 }
 
 #[tokio::test]
@@ -283,7 +300,10 @@ async fn a_failed_mutation_disappears_and_the_board_returns_to_the_server_state(
         .unwrap();
     assert!(matches!(outcomes.as_slice(), [Sent::Failed(..)]));
     assert_eq!(cache.pending_count(&project).unwrap(), 0);
-    assert_eq!(cache.board(&project, None).unwrap().unwrap(), server);
+    assert_eq!(
+        layout(&cache.board(&project, None).unwrap().unwrap()),
+        layout(&server)
+    );
 }
 
 #[tokio::test]
@@ -543,4 +563,55 @@ impl Remote for FakeOffline {
     fn usage(&self) -> RateUsage {
         RateUsage::default()
     }
+}
+
+#[tokio::test]
+async fn the_board_flags_pending_cards_and_cards_the_last_sync_changed() {
+    let github = FakeGithub::new();
+    let (_, mut cache, project) = synced("flags", &github).await;
+    let flagged = |cache: &Cache| {
+        let board = cache.board(&project, None).unwrap().unwrap();
+        let cards: Vec<_> = board.columns.into_iter().flat_map(|c| c.cards).collect();
+        let ids = |f: fn(&planche_core::domain::Card) -> bool| {
+            cards
+                .iter()
+                .filter(|c| f(c))
+                .map(|c| c.item_id.clone())
+                .collect::<Vec<_>>()
+        };
+        (
+            ids(|c| c.pending),
+            ids(|c| c.updated_by_sync),
+            board.pending_count,
+        )
+    };
+    assert_eq!(
+        flagged(&cache),
+        (vec![], vec![], 0),
+        "nothing after the first sync"
+    );
+
+    let board = server_board(&cache, &project);
+    let local = move_todo_card(&board, "Done");
+    cache.enqueue(&local).unwrap();
+    assert_eq!(flagged(&cache), (vec![local.item_id().clone()], vec![], 1));
+
+    // Someone else retitles another card on github.com.
+    let remote = github.edit(|s| {
+        let item = s
+            .items
+            .iter_mut()
+            .find(|i| &i.id != local.item_id())
+            .unwrap();
+        if let planche_core::domain::ItemContent::Issue { title, .. } = &mut item.content {
+            title.push_str(" (edited)");
+        }
+        item.updated_at = "2026-10-15T00:00:00Z".into();
+        item.id.clone()
+    });
+    sync_once(&mut cache, &github).await.unwrap();
+    assert_eq!(
+        flagged(&cache),
+        (vec![local.item_id().clone()], vec![remote], 1)
+    );
 }

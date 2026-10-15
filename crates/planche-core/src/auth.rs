@@ -1,3 +1,6 @@
+use serde::Serialize;
+use specta::Type;
+
 use crate::domain::Viewer;
 use crate::error::{Error, Result};
 use crate::github::{GithubClient, ops};
@@ -39,6 +42,51 @@ pub async fn login(token: &str) -> Result<Viewer> {
         .set_password(token)
         .map_err(|e| Error::Keychain(e.to_string()))?;
     Ok(viewer)
+}
+
+/// Who the stored token signs in as. `login` is `None` without a token.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Type)]
+pub struct AuthStatus {
+    pub login: Option<String>,
+    pub avatar_url: Option<String>,
+    pub missing_scopes: Vec<String>,
+}
+
+impl AuthStatus {
+    fn signed_in(viewer: Viewer, missing_scopes: Vec<String>) -> Self {
+        Self {
+            login: Some(viewer.login),
+            avatar_url: Some(viewer.avatar_url),
+            missing_scopes,
+        }
+    }
+}
+
+/// Checks the stored token against GitHub. No token is not an error.
+pub async fn status() -> Result<AuthStatus> {
+    let token = match load_token() {
+        Ok(token) => token,
+        Err(Error::NotSignedIn) => return Ok(AuthStatus::default()),
+        Err(e) => return Err(e),
+    };
+    let (viewer, scopes) = ops::viewer(&GithubClient::new(token)?).await?;
+    Ok(AuthStatus::signed_in(
+        viewer,
+        missing_scopes(scopes.as_deref())?,
+    ))
+}
+
+/// Like `login`, for the onboarding: the status of the token it just stored.
+pub async fn set_token(token: &str) -> Result<AuthStatus> {
+    Ok(AuthStatus::signed_in(login(token).await?, Vec::new()))
+}
+
+/// Deletes the stored token. Deleting a missing token succeeds.
+pub fn sign_out() -> Result<()> {
+    match entry()?.delete_credential() {
+        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+        Err(e) => Err(Error::Keychain(e.to_string())),
+    }
 }
 
 /// Required scopes absent from an `x-oauth-scopes` header. A missing header means a

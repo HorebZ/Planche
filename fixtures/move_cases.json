@@ -28,7 +28,9 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_B",
@@ -36,7 +38,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_C",
@@ -44,7 +48,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -59,7 +65,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -74,11 +82,15 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   },
   "intent": {
    "type": "move_card",
@@ -115,7 +127,9 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_B",
@@ -123,7 +137,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -138,7 +154,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_D",
@@ -146,7 +164,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -161,11 +181,15 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   }
  },
  {
@@ -197,7 +221,9 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_B",
@@ -205,7 +231,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_C",
@@ -213,7 +241,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -228,7 +258,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -243,11 +275,15 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   },
   "intent": {
    "type": "move_card",
@@ -284,7 +320,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_C",
@@ -292,7 +330,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -307,7 +347,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -322,7 +364,9 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_E",
@@ -330,11 +374,15 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   }
  },
  {
@@ -366,7 +414,9 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_B",
@@ -374,7 +424,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_C",
@@ -382,7 +434,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -397,7 +451,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -412,11 +468,15 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   },
   "intent": {
    "type": "move_card",
@@ -453,7 +513,9 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_A",
@@ -461,7 +523,9 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_B",
@@ -469,7 +533,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_C",
@@ -477,7 +543,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -492,7 +560,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -502,7 +572,9 @@
      "color": "GREEN",
      "cards": []
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   }
  },
  {
@@ -534,7 +606,9 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_B",
@@ -542,7 +616,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_C",
@@ -550,7 +626,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -565,7 +643,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -580,11 +660,15 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   },
   "intent": {
    "type": "move_card",
@@ -623,7 +707,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_C",
@@ -631,7 +717,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -646,7 +734,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -661,7 +751,9 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_A",
@@ -669,11 +761,15 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   }
  },
  {
@@ -705,7 +801,9 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_B",
@@ -713,7 +811,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_C",
@@ -721,7 +821,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -736,7 +838,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -751,11 +855,15 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   },
   "intent": {
    "type": "move_card",
@@ -794,7 +902,9 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_E",
@@ -802,7 +912,9 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_B",
@@ -810,7 +922,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_C",
@@ -818,7 +932,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -833,7 +949,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -843,7 +961,9 @@
      "color": "GREEN",
      "cards": []
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   }
  },
  {
@@ -875,7 +995,9 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_B",
@@ -883,7 +1005,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_C",
@@ -891,7 +1015,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -906,7 +1032,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -921,11 +1049,15 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   },
   "intent": {
    "type": "move_card",
@@ -962,7 +1094,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_A",
@@ -970,7 +1104,9 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_B",
@@ -978,7 +1114,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -993,7 +1131,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -1008,11 +1148,15 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   }
  },
  {
@@ -1044,7 +1188,9 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_B",
@@ -1052,7 +1198,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_C",
@@ -1060,7 +1208,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -1075,7 +1225,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -1090,11 +1242,15 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   },
   "intent": {
    "type": "move_card",
@@ -1131,7 +1287,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -1146,7 +1304,9 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_C",
@@ -1154,7 +1314,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -1169,7 +1331,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -1184,11 +1348,15 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   }
  },
  {
@@ -1220,7 +1388,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -1235,7 +1405,9 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_C",
@@ -1243,7 +1415,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -1258,7 +1432,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -1273,11 +1449,15 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   },
   "intent": {
    "type": "move_card",
@@ -1314,7 +1494,9 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_B",
@@ -1322,7 +1504,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_C",
@@ -1330,7 +1514,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -1345,7 +1531,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -1360,11 +1548,15 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   }
  },
  {
@@ -1396,7 +1588,9 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_B",
@@ -1404,7 +1598,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -1419,7 +1615,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_D",
@@ -1427,7 +1625,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -1442,11 +1642,15 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   },
   "intent": {
    "type": "move_card",
@@ -1483,7 +1687,9 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_B",
@@ -1491,7 +1697,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -1506,7 +1714,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_D",
@@ -1514,7 +1724,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -1529,11 +1741,15 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   }
  },
  {
@@ -1565,7 +1781,9 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_B",
@@ -1573,7 +1791,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_C",
@@ -1581,7 +1801,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -1596,7 +1818,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -1611,11 +1835,15 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   },
   "intent": {
    "type": "move_card",
@@ -1652,7 +1880,9 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_B",
@@ -1660,7 +1890,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_C",
@@ -1668,7 +1900,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -1683,7 +1917,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -1698,11 +1934,15 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   }
  },
  {
@@ -1734,7 +1974,9 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_B",
@@ -1742,7 +1984,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_C",
@@ -1750,7 +1994,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -1765,7 +2011,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -1780,11 +2028,15 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   },
   "intent": {
    "type": "move_card",
@@ -1821,7 +2073,9 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_B",
@@ -1829,7 +2083,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_C",
@@ -1837,7 +2093,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -1852,7 +2110,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -1867,11 +2127,15 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   }
  },
  {
@@ -1903,7 +2167,9 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_B",
@@ -1911,7 +2177,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_C",
@@ -1919,7 +2187,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -1934,7 +2204,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -1949,11 +2221,15 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   },
   "intent": {
    "type": "move_card",
@@ -1992,7 +2268,9 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_B",
@@ -2000,7 +2278,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_C",
@@ -2008,7 +2288,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -2023,7 +2305,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -2038,11 +2322,15 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   }
  },
  {
@@ -2074,7 +2362,9 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_B",
@@ -2082,7 +2372,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_C",
@@ -2090,7 +2382,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -2105,7 +2399,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -2120,11 +2416,15 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   },
   "intent": {
    "type": "move_card",
@@ -2161,7 +2461,9 @@
        "kind": "draft",
        "id": "DI_A",
        "title": "Card A",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_B",
@@ -2169,7 +2471,9 @@
        "kind": "draft",
        "id": "DI_B",
        "title": "Card B",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       },
       {
        "item_id": "PVTI_C",
@@ -2177,7 +2481,9 @@
        "kind": "draft",
        "id": "DI_C",
        "title": "Card C",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -2192,7 +2498,9 @@
        "kind": "draft",
        "id": "DI_D",
        "title": "Card D",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     },
@@ -2207,11 +2515,15 @@
        "kind": "draft",
        "id": "DI_E",
        "title": "Card E",
-       "assignees": []
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false
       }
      ]
     }
-   ]
+   ],
+   "pending_count": 0,
+   "synced_at": null
   }
  }
 ]
