@@ -4,7 +4,7 @@ export default defineConfig({
 	testDir: "e2e",
 	fullyParallel: true,
 	reporter: "list",
-	use: { baseURL: "http://localhost:1420" },
+	use: { baseURL: process.env.BASE_URL ?? "http://localhost:1420" },
 	projects: [{ name: "webkit", use: { ...devices["Desktop Safari"], viewport: { width: 1600, height: 1000 } } }],
 	webServer: {
 		command: "bun run dev",
