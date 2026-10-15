@@ -488,7 +488,7 @@ impl Cache {
             .collect::<rusqlite::Result<_>>()?;
 
         let mut statement = self.conn.prepare_cached(
-            "SELECT id, number, name, layout, filter, column_field_id FROM view
+            "SELECT id, number, name, layout, filter, column_field_id, manual_order FROM view
              WHERE project_id = ?1 ORDER BY rowid",
         )?;
         meta.views = statement
@@ -505,6 +505,7 @@ impl Cache {
                     layout,
                     filter: r.get(4)?,
                     group_by: r.get::<_, Option<String>>(5)?.map(FieldId),
+                    manual_order: r.get(6)?,
                 })
             })?
             .collect::<rusqlite::Result<_>>()?;
@@ -657,8 +658,8 @@ fn write_meta(tx: &Transaction, meta: &ProjectMeta) -> Result<()> {
         }
     }
     let mut view = tx.prepare_cached(
-        "INSERT INTO view (id, project_id, number, name, layout, filter, column_field_id)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        "INSERT INTO view (id, project_id, number, name, layout, filter, column_field_id, manual_order)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
     )?;
     for v in &meta.views {
         let layout = match v.layout {
@@ -679,7 +680,8 @@ fn write_meta(tx: &Transaction, meta: &ProjectMeta) -> Result<()> {
             v.name,
             layout,
             v.filter,
-            group_by
+            group_by,
+            v.manual_order
         ])?;
     }
     Ok(())

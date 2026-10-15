@@ -216,3 +216,20 @@ fn a_table_view_is_not_a_board() {
         format!("view {} is not a board", table.number)
     );
 }
+
+#[test]
+fn a_view_sorted_by_a_field_has_no_manual_order() {
+    let sorted = |count: u32| {
+        let mut meta_json = fixture_json("project_meta.json");
+        for view in meta_json["data"]["node"]["views"]["nodes"]
+            .as_array_mut()
+            .unwrap()
+        {
+            view["sortByFields"]["totalCount"] = json!(count);
+        }
+        let board = project_board(&meta(&meta_json), None, &items(&pages())).unwrap();
+        board.view.unwrap().manual_order
+    };
+    assert!(sorted(0));
+    assert!(!sorted(1));
+}
