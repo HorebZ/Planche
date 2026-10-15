@@ -16,6 +16,8 @@ export const commands = {
 	authSignOut: () => __TAURI_INVOKE<null>("auth_sign_out"),
 	/**  GitHub's list, or the cached projects when GitHub is unreachable. */
 	listProjects: () => __TAURI_INVOKE<ProjectList>("list_projects"),
+	/**  The projects in the cache, at once, while `list_projects` asks GitHub. */
+	cachedProjects: () => __TAURI_INVOKE<ProjectList>("cached_projects"),
 	/**  Makes `project_id` the open project: its engine syncs it, and the app reopens it next time. */
 	openProject: (projectId: ProjectId) => __TAURI_INVOKE<null>("open_project", { projectId }),
 	/**  The project the app opened last. */

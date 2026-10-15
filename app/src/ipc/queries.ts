@@ -19,6 +19,10 @@ export const projectQuery = (projectId: ProjectId) =>
 
 export const authQuery = queryOptions({ queryKey: ["auth"], queryFn: () => commands.authStatus() });
 export const projectsQuery = queryOptions({ queryKey: ["projects"], queryFn: () => commands.listProjects() });
+const cachedProjectsQuery = queryOptions({
+	queryKey: ["projects", "cached"],
+	queryFn: () => commands.cachedProjects(),
+});
 export const currentProjectQuery = queryOptions({
 	queryKey: ["current-project"],
 	queryFn: () => commands.currentProject(),
@@ -39,8 +43,11 @@ export function useAuth() {
 	return useQuery(authQuery);
 }
 
+/** GitHub's list, with the cached projects until it arrives. It takes seconds with many organizations. */
 export function useProjects(enabled = true) {
-	return useQuery({ ...projectsQuery, enabled });
+	const cached = useQuery({ ...cachedProjectsQuery, enabled });
+	const listed = useQuery({ ...projectsQuery, enabled });
+	return { ...listed, data: listed.data ?? cached.data };
 }
 
 export function useCurrentProject() {

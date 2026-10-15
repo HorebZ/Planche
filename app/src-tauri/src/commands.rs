@@ -250,6 +250,13 @@ pub async fn list_projects(core: State<'_, Core>) -> Result<ProjectList> {
     }
 }
 
+/// The projects in the cache, at once, while `list_projects` asks GitHub.
+#[tauri::command]
+#[specta::specta]
+pub async fn cached_projects(core: State<'_, Core>) -> Result<ProjectList> {
+    Ok(core.cache().projects()?)
+}
+
 /// Makes `project_id` the open project: its engine syncs it, and the app reopens it next time.
 #[tauri::command]
 #[specta::specta]
