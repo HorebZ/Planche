@@ -55,8 +55,15 @@ pub fn relay(app: AppHandle, project: ProjectId, mut events: Receiver<SyncEvent>
                     println!("sync failed: {error}");
                     Ok(())
                 }
-                SyncEvent::MutationOk(_) => changed.emit(&app),
+                SyncEvent::MutationOk(mutation) => {
+                    println!("mutation ok: {}", mutation.intent.item_id());
+                    changed.emit(&app)
+                }
                 SyncEvent::MutationFailed { mutation, error } => {
+                    println!(
+                        "mutation failed, rolled back: {} ({error})",
+                        mutation.intent.item_id()
+                    );
                     let _ = MutationFailed {
                         intent: mutation.intent,
                         message: error.to_string(),
