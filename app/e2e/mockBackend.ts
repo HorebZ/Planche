@@ -223,6 +223,7 @@ export function installMockBackend(scenario: Scenario) {
 			return null;
 		},
 		list_projects: () => projects,
+		cached_projects: () => projects,
 		open_project: () => null,
 		current_project: () => (onboarding(scenario) ? null : PROJECT),
 		get_project: (): ProjectMeta => ({

@@ -19,6 +19,7 @@ fn builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::auth_set_token,
             commands::auth_sign_out,
             commands::list_projects,
+            commands::cached_projects,
             commands::open_project,
             commands::current_project,
             commands::get_project,
