@@ -30,6 +30,9 @@
 
 	--pl-accent: light-dark(oklch(0.56 0.18 38), oklch(0.7 0.16 42));
 	--pl-accent-fg: light-dark(#ffffff, #1c1209);
+	/* The logotype's brand colors, from design/handoff/assets/logotype (ink and paper). */
+	--pl-logo-ink: light-dark(#1b1a17, #f4eee3);
+	--pl-logo-dot: light-dark(#d9542b, #e8673f);
 	--pl-accent-soft: light-dark(oklch(0.56 0.18 38 / 0.1), oklch(0.7 0.16 42 / 0.14));
 	--pl-focus: light-dark(oklch(0.56 0.18 38), oklch(0.74 0.15 45));
 

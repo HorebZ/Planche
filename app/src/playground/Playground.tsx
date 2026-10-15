@@ -3,6 +3,7 @@ import { BoardSection } from "./sections/board";
 import { ButtonsSection } from "./sections/buttons";
 import { ControlsSection } from "./sections/controls";
 import { OverlaysSection } from "./sections/overlays";
+import { ShellSection } from "./sections/shell";
 import { TokensSection } from "./sections/tokens";
 
 const sections = [
@@ -12,6 +13,7 @@ const sections = [
 	{ id: "banner", Component: BannerSection },
 	{ id: "overlays", Component: OverlaysSection },
 	{ id: "board", Component: BoardSection },
+	{ id: "shell", Component: ShellSection },
 ];
 
 export default function Playground() {

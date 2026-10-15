@@ -30,6 +30,8 @@ const fieldVariants = cva(
 
 export type InputProps = ComponentProps<"input"> & {
 	icon?: ReactNode;
+	/** Trailing content inside the field, such as a status. */
+	suffix?: ReactNode;
 	mono?: boolean;
 	invalid?: boolean;
 	"data-preview"?: string;
@@ -38,6 +40,7 @@ export type InputProps = ComponentProps<"input"> & {
 export function Input({
 	className,
 	icon,
+	suffix,
 	mono = false,
 	invalid = false,
 	disabled,
@@ -61,6 +64,7 @@ export function Input({
 				)}
 				{...props}
 			/>
+			{suffix}
 		</div>
 	);
 }
