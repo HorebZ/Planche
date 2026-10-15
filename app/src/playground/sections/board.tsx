@@ -1,7 +1,7 @@
 import { Avatar, AvatarStack } from "@/components/ui/avatar";
 import { BoardColumn } from "@/components/ui/board-column";
+import { DragBubble, DragHelpBar } from "@/components/ui/drag";
 import { CardPlaceholder, IssueCard, type IssueCardData } from "@/components/ui/issue-card";
-import { Kbd } from "@/components/ui/kbd";
 import { LabelChip } from "@/components/ui/label-chip";
 import { StatusChip, type StatusKey, StatusSquare, statusLabels } from "@/components/ui/status";
 import { Row, Section, State } from "../kit";
@@ -282,29 +282,8 @@ function DragMock() {
 				</BoardColumn>
 			</div>
 			<IssueCard {...dragCard} dragState="lifted" className="absolute top-[108px] left-[168px] z-10 w-[218px]" />
-			<div className="absolute top-[196px] left-[250px] z-20 flex h-[22px] items-center rounded-sm bg-fg px-2 font-medium text-[11.5px] text-bg shadow-pop">
-				Move to In progress · position 2
-			</div>
-			<div className="absolute bottom-0 left-1/2 z-20 flex h-[30px] -translate-x-1/2 items-center gap-3 rounded-lg bg-elevated px-3 text-fg-2 text-sm shadow-pop">
-				<span className="flex items-center gap-[5px]">
-					<Kbd>←</Kbd>
-					<Kbd>→</Kbd>
-					Column
-				</span>
-				<span className="flex items-center gap-[5px]">
-					<Kbd>↑</Kbd>
-					<Kbd>↓</Kbd>
-					Position
-				</span>
-				<span className="flex items-center gap-[5px]">
-					<Kbd>↵</Kbd>
-					Drop
-				</span>
-				<span className="flex items-center gap-[5px]">
-					<Kbd>esc</Kbd>
-					Cancel
-				</span>
-			</div>
+			<DragBubble className="absolute top-[196px] left-[250px] z-20">Move to In progress · position 2</DragBubble>
+			<DragHelpBar className="absolute bottom-0 left-1/2 z-20 -translate-x-1/2" />
 		</div>
 	);
 }

@@ -57,6 +57,11 @@ export function ToastCard({ tone = "info", message, action, className, ...props 
 	);
 }
 
+/** Shows a message in a ToastCard, the way the design draws a toast. */
+export function notify(message: ReactNode, tone: ToastTone = "info") {
+	return toast.custom(() => <ToastCard tone={tone} message={message} />);
+}
+
 type ToasterProps = ComponentProps<typeof Sonner>;
 
 export function Toaster({ id, className, toastOptions, ...props }: ToasterProps) {
