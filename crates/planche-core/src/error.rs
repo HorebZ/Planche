@@ -51,6 +51,30 @@ pub enum Error {
     UnknownColumn { name: String, valid: Vec<String> },
     #[error("keychain error: {0}")]
     Keychain(String),
+    #[error("cache error: {0}")]
+    Cache(String),
+    #[error(
+        "{owner}/{number} is not in the cache yet, run `planche board {owner}/{number}` once online"
+    )]
+    NotCached { owner: String, number: u32 },
+}
+
+impl Error {
+    /// Worth retrying later: the network, the rate limit, GitHub's side, or a token to fix.
+    /// Any other error from a mutation is definitive.
+    pub fn is_transient(&self) -> bool {
+        match self {
+            Self::Network(_) | Self::RateLimited { .. } | Self::Unauthorized => true,
+            Self::Http(status) => *status == 429 || *status >= 500,
+            _ => false,
+        }
+    }
+}
+
+impl From<rusqlite::Error> for Error {
+    fn from(error: rusqlite::Error) -> Self {
+        Self::Cache(error.to_string())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
