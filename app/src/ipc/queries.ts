@@ -1,4 +1,5 @@
 import { QueryClient, queryOptions, useMutation, useQuery } from "@tanstack/react-query";
+import { cardRect } from "@/board/flip";
 import { notify } from "@/components/ui/toast";
 import { useUi } from "@/stores/ui";
 import { type Board, commands, events, type ProjectId, type SyncPrefs, type SyncStatus, type ViewId } from "./bindings";
@@ -95,31 +96,15 @@ function cardTitle(client: QueryClient, itemId: string) {
 	return "the card";
 }
 
-/** Runs `update` inside a view transition when the webview has them, so a moved card slides. */
-function withTransition(update: () => Promise<unknown>) {
-	if (!document.startViewTransition) return update();
-	return document.startViewTransition(async () => {
-		await update();
-		// Let React commit the new board before the browser takes the second snapshot.
-		await new Promise(requestAnimationFrame);
-	}).finished;
-}
-
 /** Keeps the queries in step with the events Rust emits. Returns the unsubscribe function. */
 export async function listenToCore(client: QueryClient) {
 	// Board changes that arrive while a card is lifted, applied after the drop.
 	const deferred = new Set<string>();
-	const refresh = async (projectId: string) => {
-		const reverting = useUi.getState().reverting;
-		const update = () =>
-			Promise.all([
-				client.invalidateQueries({ queryKey: ["board", projectId] }),
-				client.invalidateQueries({ queryKey: ["project", projectId] }),
-			]);
-		if (!reverting) return update();
-		await withTransition(update);
-		useUi.getState().setReverting(null);
-	};
+	const refresh = (projectId: string) =>
+		Promise.all([
+			client.invalidateQueries({ queryKey: ["board", projectId] }),
+			client.invalidateQueries({ queryKey: ["project", projectId] }),
+		]);
 	const stopDrop = useUi.subscribe((state, previous) => {
 		if (previous.dragging && !state.dragging) {
 			for (const projectId of deferred) refresh(projectId);
@@ -135,8 +120,11 @@ export async function listenToCore(client: QueryClient) {
 			client.setQueryData<SyncStatus>(syncStatusQuery.queryKey, payload);
 		}),
 		events.mutationFailed.listen(({ payload }) => {
-			// Rust has dropped the row; the board-changed that follows brings the card back.
-			useUi.getState().setReverting(payload.intent.item_id);
+			// Rust has dropped the row; the board-changed that follows brings the card back, and
+			// the board slides it from where it is now.
+			const id = payload.intent.item_id;
+			const from = cardRect(id);
+			if (from) useUi.getState().setReverting({ id, from });
 			notify(`Couldn't move "${cardTitle(client, payload.intent.item_id)}". Reverted.`, "error");
 		}),
 	]);
