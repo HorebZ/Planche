@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..600,0..1,0&display=block">
+</helmet>
+<div style="width:100%;box-sizing:border-box;padding:28px;border-radius:16px;background:var(--pl-bg);color:var(--pl-fg);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;line-height:18px;letter-spacing:-0.005em;-webkit-font-smoothing:antialiased;display:grid;grid-template-columns:1fr 1fr;gap:30px 32px;box-shadow:0 0 0 1px var(--pl-border)">
+
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="font-size:11.5px;font-weight:500;color:var(--pl-fg-3)">Button · primary / secondary / ghost / focus / danger / disabled</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+      <button style="height:28px;display:flex;align-items:center;gap:8px;padding:0 5px 0 10px;border-radius:6px;border:0;background:var(--pl-primary);color:var(--pl-primary-fg);font:inherit;font-weight:500;outline:none" style-focus="box-shadow:0 0 0 2px var(--pl-bg),0 0 0 4px var(--pl-ring)">New issue<kbd style="font-family:inherit;font-size:11px;min-width:18px;height:18px;display:grid;place-items:center;border-radius:4px;background:rgba(128,128,128,.28)">C</kbd></button>
+      <button style="height:28px;padding:0 10px;border-radius:6px;border:0;background:var(--pl-card);box-shadow:var(--pl-shadow-card);color:var(--pl-fg);font:inherit;font-weight:500;outline:none" style-focus="box-shadow:0 0 0 2px var(--pl-ring)">Secondary</button>
+      <button style="height:28px;display:flex;align-items:center;gap:6px;padding:0 9px 0 7px;border-radius:6px;border:0;background:var(--pl-hover);color:var(--pl-fg);font:inherit;font-weight:500"><span style="font-family:'Material Symbols Rounded';font-size:16px;line-height:1">filter_list</span>Ghost · hover</button>
+      <button style="height:28px;padding:0 10px;border-radius:6px;border:0;background:var(--pl-card);color:var(--pl-fg);font:inherit;font-weight:500;box-shadow:var(--pl-shadow-card),0 0 0 2px var(--pl-ring)">Focus</button>
+      <button style="height:28px;padding:0 10px;border-radius:6px;border:0;background:var(--pl-danger-soft);color:var(--pl-danger);font:inherit;font-weight:500">Sign out</button>
+      <button disabled="" style="height:28px;padding:0 10px;border-radius:6px;border:0;background:var(--pl-hover);color:var(--pl-fg-3);font:inherit;font-weight:500">Disabled</button>
+      <button style="width:28px;height:28px;display:grid;place-items:center;border-radius:6px;border:0;background:transparent;color:var(--pl-fg-2);box-shadow:0 0 0 2px var(--pl-ring)"><span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1">more_horiz</span></button>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="font-size:11.5px;font-weight:500;color:var(--pl-fg-3)">Input · default / focus / error</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;gap:8px">
+        <div style="flex:1;height:30px;display:flex;align-items:center;gap:6px;padding:0 9px;border-radius:7px;background:var(--pl-surface);box-shadow:inset 0 0 0 1px var(--pl-border-strong);color:var(--pl-fg-3)"><span style="font-family:'Material Symbols Rounded';font-size:16px;line-height:1">search</span>Filter issues…</div>
+        <div style="flex:1;height:30px;display:flex;align-items:center;gap:6px;padding:0 9px;border-radius:7px;background:var(--pl-surface);box-shadow:inset 0 0 0 1px var(--pl-fg-3),0 0 0 3px var(--pl-active)">label:bug<span style="width:1.5px;height:15px;background:var(--pl-fg);margin-left:-5px"></span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <div style="height:30px;display:flex;align-items:center;padding:0 9px;border-radius:7px;background:var(--pl-surface);box-shadow:inset 0 0 0 1px var(--pl-danger);font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px">ghp_xxxx</div>
+        <span style="font-size:12px;color:var(--pl-danger);display:flex;align-items:center;gap:5px"><dc-import name="PlancheGlyph" status="deleted" size="12" hint-size="12px,12px"></dc-import>Token rejected (401). Check that it hasn't expired.</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="font-size:11.5px;font-weight:500;color:var(--pl-fg-3)">Statuts · priorités · progression · chips · kbd</div>
+    <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center">
+      <sc-for list="{{ statuses }}" as="t" hint-placeholder-count="7">
+        <span style="display:flex;align-items:center;gap:6px;font-size:12px"><dc-import name="PlancheGlyph" status="{{ t.st }}" hint-size="14px,14px"></dc-import>{{ t.name }}</span>
+      </sc-for>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+      <sc-for list="{{ prios }}" as="p" hint-placeholder-count="5">
+        <span style="width:22px;height:22px;border-radius:5px;box-shadow:inset 0 0 0 1px var(--pl-border);display:grid;place-items:center"><dc-import name="PlancheGlyph" priority="{{ p }}" hint-size="14px,14px"></dc-import></span>
+      </sc-for>
+      <span style="width:1px;height:16px;background:var(--pl-border)"></span>
+      <span style="height:22px;display:flex;align-items:center;gap:5px;padding:0 8px 0 6px;border-radius:11px;box-shadow:inset 0 0 0 1px var(--pl-border);font-size:11.5px;color:var(--pl-fg-2)"><dc-import name="PlancheGlyph" progress="0.4" size="12" hint-size="12px,12px"></dc-import>2/5</span>
+      <span style="height:22px;display:flex;align-items:center;gap:5px;padding:0 8px;border-radius:11px;box-shadow:inset 0 0 0 1px var(--pl-border);font-size:11.5px;color:var(--pl-fg-2)"><span style="width:6px;height:6px;border-radius:50%;background:oklch(0.63 0.19 25)"></span>bug</span>
+      <span style="height:22px;display:flex;align-items:center;gap:4px;padding:0 8px 0 6px;border-radius:11px;box-shadow:inset 0 0 0 1px var(--pl-border);font-size:11.5px;color:var(--pl-fg-2)"><span style="font-family:'Material Symbols Rounded';font-size:13px;line-height:1;color:var(--pl-s-review)">merge</span>#242</span>
+      <span style="width:1px;height:16px;background:var(--pl-border)"></span>
+      <kbd style="font-family:inherit;font-size:11px;min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;display:grid;place-items:center;border-radius:4px;box-shadow:inset 0 0 0 1px var(--pl-border-strong);color:var(--pl-fg-3)">⌘K</kbd>
+      <kbd style="font-family:inherit;font-size:11px;min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;display:grid;place-items:center;border-radius:4px;box-shadow:inset 0 0 0 1px var(--pl-border-strong);color:var(--pl-fg-3)">esc</kbd>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="font-size:11.5px;font-weight:500;color:var(--pl-fg-3)">Switch · Segmented · Checkbox · Avatar</div>
+    <div style="display:flex;gap:16px;align-items:center">
+      <span style="width:30px;height:18px;border-radius:9px;background:var(--pl-primary);position:relative"><span style="position:absolute;top:2px;left:14px;width:14px;height:14px;border-radius:50%;background:var(--pl-primary-fg);box-shadow:0 1px 2px rgba(0,0,0,.25)"></span></span>
+      <span style="width:30px;height:18px;border-radius:9px;background:var(--pl-border-strong);position:relative;box-shadow:0 0 0 2px var(--pl-bg),0 0 0 4px var(--pl-ring)"><span style="position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25)"></span></span>
+      <div style="display:flex;padding:2px;gap:2px;border-radius:7px;background:var(--pl-active)">
+        <span style="height:22px;display:flex;align-items:center;padding:0 9px;border-radius:5px;font-size:12px;font-weight:500;color:var(--pl-fg-2)">1 min</span>
+        <span style="height:22px;display:flex;align-items:center;padding:0 9px;border-radius:5px;font-size:12px;font-weight:500;background:var(--pl-card);box-shadow:var(--pl-shadow-card)">5 min</span>
+        <span style="height:22px;display:flex;align-items:center;padding:0 9px;border-radius:5px;font-size:12px;font-weight:500;color:var(--pl-fg-2)">Manual</span>
+      </div>
+      <span style="width:14px;height:14px;border-radius:4px;background:var(--pl-primary);color:var(--pl-primary-fg);display:grid;place-items:center;font-family:'Material Symbols Rounded';font-size:12px;line-height:1;font-variation-settings:'opsz' 20,'wght' 700">check</span>
+      <span style="width:14px;height:14px;border-radius:4px;box-shadow:inset 0 0 0 1.5px var(--pl-border-strong)"></span>
+      <span style="width:18px;height:18px;border-radius:50%;background:oklch(0.82 0.09 40);color:#2A2620;line-height:1;letter-spacing:0;padding-top:0.5px;box-sizing:border-box;font-size:8px;font-weight:700;display:grid;place-items:center">CR</span>
+      <span style="width:15px;height:15px;border-radius:50%;box-shadow:inset 0 0 0 1px var(--pl-fg-3);opacity:.6"></span>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="font-size:11.5px;font-weight:500;color:var(--pl-fg-3)">ContextMenu (clic droit) · Tooltip</div>
+    <div style="display:flex;gap:24px;align-items:flex-start">
+      <div style="width:236px;padding:4px;box-sizing:border-box;border-radius:10px;background:var(--pl-elevated);box-shadow:var(--pl-shadow-pop);display:flex;flex-direction:column;gap:1px">
+        <sc-for list="{{ menu }}" as="m" hint-placeholder-count="6">
+          <div style="height:30px;display:flex;align-items:center;gap:10px;padding:0 8px;border-radius:6px;background:{{ m.bg }};color:{{ m.fg }}"><span style="font-family:'Material Symbols Rounded';font-size:16px;line-height:1;color:var(--pl-fg-3);font-variation-settings:'wght' 400">{{ m.icon }}</span><span style="flex:1">{{ m.name }}</span><span style="font-size:11.5px;color:var(--pl-fg-3)">{{ m.key }}</span></div>
+        </sc-for>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:6px">
+        <div style="display:flex;align-items:center;gap:6px;height:24px;padding:0 4px 0 8px;border-radius:6px;background:var(--pl-primary);color:var(--pl-primary-fg);font-size:12px;font-weight:500;box-shadow:var(--pl-shadow-pop)">Open on GitHub<kbd style="font-family:inherit;font-size:11px;height:16px;padding:0 4px;display:grid;place-items:center;border-radius:4px;background:rgba(128,128,128,.3)">⌘O</kbd></div>
+        <button style="width:28px;height:28px;display:grid;place-items:center;border-radius:6px;border:0;background:var(--pl-hover);color:var(--pl-fg)"><span style="font-family:'Material Symbols Rounded';font-size:16px;line-height:1">open_in_new</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="font-size:11.5px;font-weight:500;color:var(--pl-fg-3)">Popover · sélecteur de labels (multi)</div>
+    <div style="width:260px;border-radius:10px;background:var(--pl-elevated);box-shadow:var(--pl-shadow-pop);overflow:hidden">
+      <div style="height:38px;display:flex;align-items:center;gap:6px;padding:0 12px;border-bottom:1px solid var(--pl-border)"><span>de</span><span style="width:1.5px;height:15px;background:var(--pl-fg);margin-left:-5px"></span></div>
+      <div style="padding:4px;display:flex;flex-direction:column;gap:1px">
+        <div style="height:30px;display:flex;align-items:center;gap:10px;padding:0 8px;border-radius:6px;background:var(--pl-active)"><span style="width:14px;height:14px;border-radius:4px;background:var(--pl-primary);color:var(--pl-primary-fg);display:grid;place-items:center;font-family:'Material Symbols Rounded';font-size:12px;line-height:1;font-variation-settings:'opsz' 20,'wght' 700">check</span><span style="width:6px;height:6px;border-radius:50%;background:oklch(0.65 0.16 350)"></span><span style="flex:1"><strong style="font-weight:600">de</strong>sign</span></div>
+        <div style="height:30px;display:flex;align-items:center;gap:10px;padding:0 8px;border-radius:6px"><span style="width:14px;height:14px;border-radius:4px;box-shadow:inset 0 0 0 1.5px var(--pl-border-strong)"></span><span style="width:6px;height:6px;border-radius:50%;background:oklch(0.6 0.03 250)"></span><span style="flex:1"><strong style="font-weight:600">de</strong>pendencies</span></div>
+        <div style="height:30px;display:flex;align-items:center;gap:10px;padding:0 8px;border-radius:6px;color:var(--pl-fg-2)"><span style="font-family:'Material Symbols Rounded';font-size:16px;line-height:1;width:14px">add</span><span style="flex:1">Create label “de”</span><span style="font-size:11.5px;color:var(--pl-fg-3)">⌘↵</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="font-size:11.5px;font-weight:500;color:var(--pl-fg-3)">Carte · repos / hover / focus clavier · Rangée de liste · repos / sélection</div>
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:6px;border-radius:10px;background:var(--pl-hover)">
+      <sc-for list="{{ cards }}" as="c" hint-placeholder-count="3">
+        <div style="background:var(--pl-card);border-radius:8px;box-shadow:{{ c.sh }};padding:9px 10px 10px;display:flex;flex-direction:column;gap:6px">
+          <span style="font-size:11.5px;color:var(--pl-fg-3)">app#223</span>
+          <div style="display:flex;gap:8px;align-items:flex-start"><span style="height:18px;display:flex;align-items:center"><dc-import name="PlancheGlyph" status="todo" hint-size="14px,14px"></dc-import></span><span style="font-weight:500">{{ c.label }}</span></div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:flex;flex-direction:column;border-radius:8px;box-shadow:inset 0 0 0 1px var(--pl-border);overflow:hidden">
+      <div style="height:38px;display:flex;align-items:center;gap:10px;padding:0 12px;border-bottom:1px solid var(--pl-border)"><dc-import name="PlancheGlyph" priority="medium" hint-size="14px,14px"></dc-import><span style="width:58px;font-size:12px;color:var(--pl-fg-3)">sync#209</span><dc-import name="PlancheGlyph" status="todo" hint-size="14px,14px"></dc-import><span style="flex:1;font-weight:500">Disk cache for GraphQL responses</span><span style="font-size:12px;color:var(--pl-fg-3)">Oct 8</span></div>
+      <div style="height:38px;display:flex;align-items:center;gap:10px;padding:0 12px;background:var(--pl-active)"><dc-import name="PlancheGlyph" priority="high" hint-size="14px,14px"></dc-import><span style="width:58px;font-size:12px;color:var(--pl-fg-3)">app#226</span><dc-import name="PlancheGlyph" status="todo" hint-size="14px,14px"></dc-import><span style="flex:1;font-weight:500">Sélection · J / K</span><span style="font-size:12px;color:var(--pl-fg-3)">Oct 13</span></div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="font-size:11.5px;font-weight:500;color:var(--pl-fg-3)">Toast · annulation après action</div>
+    <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start">
+      <div style="height:36px;display:flex;align-items:center;gap:10px;padding:0 6px 0 12px;border-radius:9px;background:var(--pl-elevated);box-shadow:var(--pl-shadow-pop)"><dc-import name="PlancheGlyph" status="progress" hint-size="14px,14px"></dc-import><span><span style="color:var(--pl-fg-3)">app#226</span> moved to In progress</span><button style="height:24px;display:flex;align-items:center;gap:6px;padding:0 4px 0 8px;border-radius:5px;border:0;background:var(--pl-hover);color:var(--pl-fg);font:inherit;font-size:12px;font-weight:500">Undo<kbd style="font-family:inherit;font-size:11px;height:16px;padding:0 4px;display:grid;place-items:center;border-radius:4px;box-shadow:inset 0 0 0 1px var(--pl-border-strong);color:var(--pl-fg-3)">⌘Z</kbd></button></div>
+      <div style="height:36px;display:flex;align-items:center;gap:10px;padding:0 12px;border-radius:9px;background:var(--pl-elevated);box-shadow:var(--pl-shadow-pop)"><dc-import name="PlancheGlyph" status="deleted" hint-size="14px,14px"></dc-import><span>Couldn't move <span style="color:var(--pl-fg-3)">app#231</span>: missing <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px">project</span> scope</span></div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1100,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      statuses: [['draft', 'Draft'], ['todo', 'Todo'], ['progress', 'In progress'], ['review', 'In review'], ['done', 'Done'], ['cancelled', 'Cancelled'], ['deleted', 'Deleted']].map(([st, name]) => ({ st, name })),
+      prios: ['none', 'urgent', 'high', 'medium', 'low'],
+      menu: [
+        ['open_in_full', 'Open', '↵', 0], ['radio_button_unchecked', 'Status', 'S', 1], ['person_add', 'Assign to me', 'I', 0],
+        ['sell', 'Labels…', 'L', 0], ['link', 'Copy link', '⌘⇧C', 0], ['do_not_disturb_on', 'Remove from project', '⌫', 2]
+      ].map(([icon, name, key, k]) => ({ icon, name, key, bg: k === 1 ? 'var(--pl-active)' : 'transparent', fg: k === 2 ? 'var(--pl-danger)' : 'var(--pl-fg)' })),
+      cards: [
+        { label: 'Repos', sh: 'var(--pl-shadow-card)' },
+        { label: 'Hover', sh: 'var(--pl-shadow-card), 0 0 0 1px var(--pl-border-strong)' },
+        { label: 'Focus J / K', sh: 'var(--pl-shadow-card), 0 0 0 2px var(--pl-ring)' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
