@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
-import { shortcuts } from "@/keyboard/shortcuts";
+import { keysFor } from "@/keyboard/shortcuts";
 
 /** 5c: GitHub is unreachable. Moves stay queued, and the engine retries at `retryAt`. */
 export function OfflineBanner({ retryAt, onRetry }: { retryAt: number | null; onRetry: () => void }) {
@@ -19,7 +19,7 @@ export function OfflineBanner({ retryAt, onRetry }: { retryAt: number | null; on
 				<Button className="h-6 text-xs" onClick={onRetry}>
 					Retry now
 					<Kbd size="sm" className="text-fg-3">
-						{shortcuts.syncNow.label}
+						{keysFor("sync.now").join("")}
 					</Kbd>
 				</Button>
 			}

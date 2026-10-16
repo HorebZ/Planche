@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
 import type { Board, Intent } from "@/ipc/bindings";
-import { moveCard } from "./moveCard";
+import { applyIntent } from "./moveCard";
 
 type MoveCase = { name: string; board: Board; intent: Intent; expected: Board };
 
@@ -14,7 +14,7 @@ test("the fixture has cases", () => {
 });
 
 test.each(cases.map((c) => [c.name, c] as const))("%s", (_, { board, intent, expected }) => {
-	const once = moveCard(board, intent);
+	const once = applyIntent(board, intent);
 	expect(once).toEqual(expected);
-	expect(moveCard(once, intent)).toEqual(expected);
+	expect(applyIntent(once, intent)).toEqual(expected);
 });

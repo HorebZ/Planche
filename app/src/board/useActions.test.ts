@@ -7,8 +7,8 @@ import { clearMocks, mockIPC } from "@tauri-apps/api/mocks";
 import { afterEach, expect, test } from "vitest";
 import type { Board, Intent } from "@/ipc/bindings";
 import { boardQuery, createQueryClient, listenToCore } from "@/ipc/queries";
-import { moveCard } from "./moveCard";
-import { dispatchMove } from "./useMoveCard";
+import { applyIntent } from "./moveCard";
+import { dispatchIntent } from "./useActions";
 
 afterEach(() => clearMocks());
 
@@ -19,7 +19,7 @@ const [first]: { board: Board; intent: Intent }[] = JSON.parse(
 
 test("a move shows at once, and a mutation-failed puts the cached board back", async () => {
 	const original = first.board;
-	const moved = moveCard(original, first.intent);
+	const moved = applyIntent(original, first.intent);
 	// The optimistic board marks the moved card Pending until Rust answers.
 	const optimistic: Board = {
 		...moved,
@@ -34,7 +34,7 @@ test("a move shows at once, and a mutation-failed puts the cached board back", a
 			calls.push(cmd);
 			if (cmd === "get_board") return original;
 			// Rust queues the move and returns the board with it replayed.
-			if (cmd === "dispatch_intent") return moveCard(original, (args as { intent: Intent }).intent);
+			if (cmd === "dispatch_intent") return applyIntent(original, (args as { intent: Intent }).intent);
 			throw new Error(`unexpected ${cmd}`);
 		},
 		{ shouldMockEvents: true },
@@ -45,7 +45,7 @@ test("a move shows at once, and a mutation-failed puts the cached board back", a
 	const unsubscribe = new QueryObserver(client, query).subscribe(() => {});
 	await expect.poll(() => client.getQueryData(query.queryKey)).toEqual(original);
 
-	const sent = dispatchMove(client, original.project.id, null, first.intent);
+	const sent = dispatchIntent(client, original.project.id, null, first.intent);
 	// The same tick as the drop, before Rust answers.
 	expect(client.getQueryData(query.queryKey)).toEqual(optimistic);
 	await sent;
