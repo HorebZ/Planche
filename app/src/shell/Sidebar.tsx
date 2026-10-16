@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,8 @@ import {
 import type { StatusKey } from "@/components/ui/status";
 import { commands, type ProjectId, type SyncInterval } from "@/ipc/bindings";
 import { useAuth, useProjects, useSetSyncPrefs, useSyncPrefs, useSyncStatus } from "@/ipc/queries";
-import { shortcuts } from "@/keyboard/shortcuts";
+import { keysFor } from "@/keyboard/shortcuts";
+import { useUi } from "@/stores/ui";
 import { footerText } from "./syncText";
 
 const intervals: { value: SyncInterval; label: string }[] = [
@@ -45,6 +46,11 @@ type AppSidebarProps = {
 	onSyncNow: () => void;
 };
 
+export async function signOut(queryClient: QueryClient) {
+	await commands.authSignOut();
+	await queryClient.invalidateQueries({ queryKey: ["auth"] });
+}
+
 export function AppSidebar({ projectId, cardCount, syncedAt, onSelect, onSyncNow }: AppSidebarProps) {
 	const queryClient = useQueryClient();
 	const auth = useAuth();
@@ -59,19 +65,12 @@ export function AppSidebar({ projectId, cardCount, syncedAt, onSelect, onSyncNow
 					</DropdownMenuTrigger>
 					<DropdownMenuContent className="w-[216px]">
 						<DropdownMenuLabel>Signed in as {login}</DropdownMenuLabel>
-						<DropdownMenuItem
-							variant="destructive"
-							onSelect={async () => {
-								await commands.authSignOut();
-								await queryClient.invalidateQueries({ queryKey: ["auth"] });
-							}}
-						>
+						<DropdownMenuItem variant="destructive" onSelect={() => signOut(queryClient)}>
 							Sign out
 						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
-				{/* The palette arrives with #9. */}
-				<SidebarSearch disabled />
+				<SidebarSearch onClick={() => useUi.getState().open({ type: "palette" })} />
 			</div>
 			<div className="flex min-h-0 flex-col gap-3.5 overflow-y-auto">
 				{projects.data?.owners.map((owner, index) => {
@@ -128,7 +127,7 @@ function SyncFooter({ syncedAt, onSyncNow }: { syncedAt: string | null; onSyncNo
 					<DropdownMenuSeparator />
 					<DropdownMenuItem onSelect={onSyncNow}>
 						Sync now
-						<DropdownMenuShortcut>{shortcuts.syncNow.label}</DropdownMenuShortcut>
+						<DropdownMenuShortcut>{keysFor("sync.now").join("")}</DropdownMenuShortcut>
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>

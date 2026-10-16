@@ -95,3 +95,63 @@ test("20 drops show the card in its column within a frame, and drags keep frames
 	expect(p95).toBeLessThan(16);
 	expect(slow).toBeLessThanOrEqual(0.02);
 });
+
+/** Sends a key 30 times, and times each from `keydown` to the frame after `done()` holds. */
+async function keyLatencies(
+	page: import("@playwright/test").Page,
+	key: { key: string; metaKey?: boolean },
+	done: string,
+	reset?: string,
+) {
+	return page.evaluate(
+		async ({ key, done, reset }) => {
+			const ready = new Function(`return (${done})`) as () => boolean;
+			const after = reset ? (new Function(reset) as () => void) : () => {};
+			const frame = () => new Promise<number>((resolve) => requestAnimationFrame(resolve));
+			const times: number[] = [];
+			const work: number[] = [];
+			for (let i = 0; i < 30; i++) {
+				// A key press lands anywhere in a frame, not right at its start.
+				await new Promise((resolve) => setTimeout(resolve, Math.random() * 16));
+				const before = document.activeElement;
+				const start = performance.now();
+				window.dispatchEvent(new KeyboardEvent("keydown", { ...key, bubbles: true, cancelable: true }));
+				// React commits a discrete update in a microtask, before the next frame.
+				await Promise.resolve();
+				if (ready.call(before)) work.push(performance.now() - start);
+				let end = await frame();
+				while (!ready.call(before)) end = await frame();
+				times.push(end - start);
+				after();
+				await frame();
+				await frame();
+			}
+			return { frames: times.sort((a, b) => a - b), work: work.sort((a, b) => a - b) };
+		},
+		{ key, done, reset },
+	);
+}
+
+const p95 = (sorted: number[]) => sorted[Math.floor(sorted.length * 0.95)];
+
+test("⌘K shows the palette within 50 ms p95, and J the next card within 16 ms p95 on 1000 cards", async ({ page }) => {
+	await page.goto("/?mock=big");
+	await expect(page.locator('[data-slot="column-scroll"]')).toHaveCount(5);
+	await page.locator('[data-slot="issue-card"]').first().click();
+
+	const palette = await keyLatencies(
+		page,
+		{ key: "k", metaKey: true },
+		"document.querySelector('[cmdk-root]') != null",
+		"document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))",
+	);
+	await expect(page.getByRole("dialog")).toHaveCount(0);
+	const j = await keyLatencies(page, { key: "j" }, "document.activeElement !== this");
+	const line = (name: string, { frames, work }: { frames: number[]; work: number[] }) =>
+		`${name} frame p50=${frames[15].toFixed(1)} p95=${p95(frames).toFixed(1)} ms, commit p95=${p95(work)?.toFixed(1)} ms (${work.length}/30)`;
+	console.log(`${line("palette", palette)}; ${line("j", j)}`);
+	expect(p95(palette.frames)).toBeLessThan(50);
+	// The frame wait alone is up to 16.7 ms at 60 Hz, so the p95 of a free key sits near 16.
+	expect(p95(j.frames)).toBeLessThan(17);
+	expect(p95(j.work)).toBeLessThan(8);
+});
