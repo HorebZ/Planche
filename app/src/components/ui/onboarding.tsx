@@ -5,7 +5,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/cn";
 
-/** The full-bleed app icon from design/handoff/assets/icon, as the onboarding shows it. */
+/** The full-bleed app icon from design/brand/icon, as the onboarding shows it. */
 export function AppIcon({ size = 64, className, style, ...props }: ComponentProps<"img"> & { size?: number }) {
 	return (
 		<img
@@ -21,7 +21,7 @@ export function AppIcon({ size = 64, className, style, ...props }: ComponentProp
 	);
 }
 
-/** The "PLANCHE." wordmark from design/handoff/assets/logotype, inline so it takes the theme. */
+/** The "PLANCHE." wordmark from design/brand/logotype, inline so it takes the theme. */
 export function Logotype({ className, ...props }: ComponentProps<"svg">) {
 	return (
 		<svg

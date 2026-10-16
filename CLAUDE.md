@@ -7,7 +7,7 @@ Native macOS client for GitHub Projects v2. Tauri 2 shell, React webview, all lo
 - `crates/planche-core` owns the domain, the GitHub GraphQL client, the SQLite cache, and the sync engine. It has no Tauri dependency.
 - `crates/planche-cli` and `app/src-tauri` are thin shells over `planche-core`. Neither contains GitHub or cache logic.
 - `app/src` is the React frontend. It reaches the system only through `app/src/ipc/bindings.ts`.
-- `design/` is the visual source of truth. Read `design/AGENT.MD` and `design/handoff/README.md` before any UI work.
+- `design/` is the visual source of truth. Read `design/AGENTS.md` and `design/SPEC.md` before any UI work.
 - The roadmap lives in GitHub issues, starting at #1. Each phase issue lists its files, steps, tests, and live scenarios.
 
 ## Commands
@@ -38,7 +38,7 @@ Native macOS client for GitHub Projects v2. Tauri 2 shell, React webview, all lo
 
 ## Design
 
-- UI is built only from the tokens in `app/src/styles/tokens.css` and the components in `app/src/components/ui/`. See `design/AGENT.MD`.
+- UI is built only from the tokens in `app/src/styles/tokens.css` and the components in `app/src/components/ui/`. See `design/AGENTS.md`.
 - Never improvise a color. No hex, `rgb()`, `oklch()`, or Tailwind palette class such as `bg-gray-100` outside `tokens.css`. GitHub label and option colors are data and may be applied inline. `bun run --cwd app check:design` enforces this.
 - Never use `dark:` utilities. Each color token is a `light-dark()` value, so `prefers-color-scheme` drives the theme. A `.light` or `.dark` class forces a theme on any subtree, including `<html>`.
 - Radix portals must render into `usePortalContainer()` so overlays inherit the theme of the subtree that opened them.
