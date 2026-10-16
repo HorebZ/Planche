@@ -1,3 +1,5 @@
+use std::sync::{Mutex, PoisonError};
+
 use serde::Serialize;
 use specta::Type;
 
@@ -8,9 +10,13 @@ use crate::github::{GithubClient, ops};
 const KEYCHAIN_SERVICE: &str = "dev.planche.app";
 const KEYCHAIN_ACCOUNT: &str = "github-token";
 
+// Each dev rebuild changes the binary's ad-hoc signature, so macOS forgets "Always allow"
+// and prompts on every keychain read. One read per process keeps that to one prompt.
+static TOKEN: Mutex<Option<String>> = Mutex::new(None);
+
 pub const REQUIRED_SCOPES: [&str; 3] = ["repo", "read:org", "project"];
 
-/// The token from `PLANCHE_TOKEN`, else from the macOS keychain.
+/// The token from `PLANCHE_TOKEN`, else from the macOS keychain, read once per process.
 pub fn load_token() -> Result<String> {
     if let Some(token) = std::env::var("PLANCHE_TOKEN")
         .ok()
@@ -18,11 +24,27 @@ pub fn load_token() -> Result<String> {
     {
         return Ok(token.trim().to_owned());
     }
-    match entry()?.get_password() {
+    cached(|| match entry()?.get_password() {
         Ok(token) => Ok(token),
         Err(keyring::Error::NoEntry) => Err(Error::NotSignedIn),
         Err(e) => Err(Error::Keychain(e.to_string())),
+    })
+}
+
+/// The cached token, else the token `read` returns. Only a success is cached. The lock
+/// is held during `read` so concurrent first calls share one keychain prompt.
+fn cached(read: impl FnOnce() -> Result<String>) -> Result<String> {
+    let mut cache = TOKEN.lock().unwrap_or_else(PoisonError::into_inner);
+    if let Some(token) = cache.as_ref() {
+        return Ok(token.clone());
     }
+    let token = read()?;
+    *cache = Some(token.clone());
+    Ok(token)
+}
+
+fn remember(token: Option<String>) {
+    *TOKEN.lock().unwrap_or_else(PoisonError::into_inner) = token;
 }
 
 /// Checks the token against GitHub and its scopes, then stores it in the keychain.
@@ -41,6 +63,7 @@ pub async fn login(token: &str) -> Result<Viewer> {
     entry()?
         .set_password(token)
         .map_err(|e| Error::Keychain(e.to_string()))?;
+    remember(Some(token.to_owned()));
     Ok(viewer)
 }
 
@@ -83,6 +106,7 @@ pub async fn set_token(token: &str) -> Result<AuthStatus> {
 
 /// Deletes the stored token. Deleting a missing token succeeds.
 pub fn sign_out() -> Result<()> {
+    remember(None);
     match entry()?.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
         Err(e) => Err(Error::Keychain(e.to_string())),
@@ -129,6 +153,32 @@ mod tests {
                 .unwrap()
                 .is_empty()
         );
+    }
+
+    #[test]
+    fn auth_token_cache_reads_once_until_cleared() {
+        use std::cell::Cell;
+        let reads = Cell::new(0);
+        let read = |result: Result<String>| {
+            reads.set(reads.get() + 1);
+            result
+        };
+
+        remember(None);
+        assert!(matches!(
+            cached(|| read(Err(Error::NotSignedIn))),
+            Err(Error::NotSignedIn)
+        ));
+        assert_eq!(cached(|| read(Ok("a".into()))).unwrap(), "a");
+        assert_eq!(cached(|| read(Ok("b".into()))).unwrap(), "a");
+        assert_eq!(reads.get(), 2);
+
+        remember(Some("c".into()));
+        assert_eq!(cached(|| read(Ok("d".into()))).unwrap(), "c");
+        remember(None);
+        assert_eq!(cached(|| read(Ok("e".into()))).unwrap(), "e");
+        assert_eq!(reads.get(), 3);
+        remember(None);
     }
 
     #[test]
