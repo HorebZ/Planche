@@ -1,7 +1,7 @@
 <h1 align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="design/handoff/assets/logotype/planche-lockup-paper.svg">
-    <img src="design/handoff/assets/logotype/planche-lockup-ink.svg" width="360" alt="Planche">
+    <source media="(prefers-color-scheme: dark)" srcset="design/brand/logotype/planche-lockup-paper.svg">
+    <img src="design/brand/logotype/planche-lockup-ink.svg" width="360" alt="Planche">
   </picture>
 </h1>
 
