@@ -121,7 +121,7 @@ impl Cache {
         let unacked: Vec<ItemId> = {
             let mut statement = self.conn.prepare_cached(
                 "SELECT DISTINCT item_id FROM pending_mutation
-                 WHERE project_id = ?1 AND status IN ('pending', 'in_flight') AND item_id IS NOT NULL",
+                 WHERE project_id = ?1 AND status IN ('pending', 'in_flight', 'unknown')",
             )?;
             statement
                 .query_map([project.as_str()], |r| r.get(0).map(ItemId))?
@@ -209,7 +209,7 @@ impl Cache {
     pub fn pending_count(&self, project: &ProjectId) -> Result<u32> {
         Ok(self.conn.query_row(
             "SELECT count(*) FROM pending_mutation
-             WHERE project_id = ?1 AND status IN ('pending', 'in_flight')",
+             WHERE project_id = ?1 AND status IN ('pending', 'in_flight', 'unknown')",
             [project.as_str()],
             |r| r.get(0),
         )?)
@@ -218,41 +218,33 @@ impl Cache {
     /// Queues a user action. A `MoveCard` replaces a `MoveCard` still pending on the same
     /// card, so only the last one is sent. A `Keep` placement inherits the replaced one's.
     pub fn enqueue(&mut self, intent: &Intent) -> Result<i64> {
-        let Intent::MoveCard {
-            project_id,
-            item_id,
-            ..
-        } = intent;
+        let (project_id, item_id) = (intent.project_id(), intent.item_id());
         let tx = self.write()?;
-        let replaced: Option<String> = tx
-            .query_row(
-                "SELECT intent FROM pending_mutation
-                 WHERE project_id = ?1 AND item_id = ?2 AND status = 'pending'
-                 ORDER BY seq DESC LIMIT 1",
-                [project_id.as_str(), item_id.as_str()],
-                |r| r.get(0),
-            )
-            .optional()?;
         let mut intent = intent.clone();
-        if let (
-            Some(replaced),
-            Intent::MoveCard {
-                placement: placement @ Placement::Keep,
-                ..
-            },
-        ) = (replaced, &mut intent)
-        {
-            let Intent::MoveCard {
-                placement: previous,
-                ..
-            } = decode_intent(&replaced)?;
-            *placement = previous;
+        if let Intent::MoveCard { placement, .. } = &mut intent {
+            const PENDING_MOVES: &str = "FROM pending_mutation
+                WHERE project_id = ?1 AND item_id = ?2 AND status = 'pending'
+                AND json_extract(intent, '$.type') = 'move_card'";
+            let replaced: Option<String> = tx
+                .query_row(
+                    &format!("SELECT intent {PENDING_MOVES} ORDER BY seq DESC LIMIT 1"),
+                    [project_id.as_str(), item_id.as_str()],
+                    |r| r.get(0),
+                )
+                .optional()?;
+            if let (Some(replaced), Placement::Keep) = (replaced, &placement)
+                && let Intent::MoveCard {
+                    placement: previous,
+                    ..
+                } = decode_intent(&replaced)?
+            {
+                *placement = previous;
+            }
+            tx.execute(
+                &format!("DELETE {PENDING_MOVES}"),
+                [project_id.as_str(), item_id.as_str()],
+            )?;
         }
-        tx.execute(
-            "DELETE FROM pending_mutation
-             WHERE project_id = ?1 AND item_id = ?2 AND status = 'pending'",
-            [project_id.as_str(), item_id.as_str()],
-        )?;
         tx.execute(
             &format!(
                 "INSERT INTO pending_mutation (project_id, item_id, intent, created_at)
@@ -269,11 +261,15 @@ impl Cache {
         Ok(seq)
     }
 
-    /// Puts rows a dead process left in flight back in the queue. `MoveCard` is idempotent,
-    /// so sending one twice converges.
+    /// Puts rows a dead process left in flight back in the queue. Sending a move or an
+    /// assignment twice converges. A `CreateDraft` is not idempotent: it waits as `unknown`
+    /// for the next snapshot, which shows whether GitHub created the draft.
     pub fn reset_in_flight(&self) -> Result<usize> {
         Ok(self.conn.execute(
-            "UPDATE pending_mutation SET status = 'pending' WHERE status = 'in_flight'",
+            "UPDATE pending_mutation
+             SET status = CASE json_extract(intent, '$.type')
+                 WHEN 'create_draft' THEN 'unknown' ELSE 'pending' END
+             WHERE status = 'in_flight'",
             [],
         )?)
     }
@@ -853,6 +849,27 @@ fn settle_acked(tx: &Transaction, project: &ProjectId, server: Option<Board>) ->
                 [*seq, syncs + 1],
             )?;
         }
+    }
+    // A draft a dead process left in flight: done when the snapshot shows it, else sent again.
+    let unknown: Vec<(i64, String)> = tx
+        .prepare_cached(
+            "SELECT seq, intent FROM pending_mutation WHERE project_id = ?1 AND status = 'unknown'",
+        )?
+        .query_map([project.as_str()], |r| Ok((r.get(0)?, r.get(1)?)))?
+        .collect::<rusqlite::Result<_>>()?;
+    for (seq, json) in unknown {
+        let intent = decode_intent(&json)?;
+        let created = server
+            .as_ref()
+            .is_some_and(|board| intent::apply(board.clone(), &intent) == *board);
+        tx.execute(
+            if created {
+                "DELETE FROM pending_mutation WHERE seq = ?1"
+            } else {
+                "UPDATE pending_mutation SET status = 'pending' WHERE seq = ?1"
+            },
+            [seq],
+        )?;
     }
     Ok(())
 }

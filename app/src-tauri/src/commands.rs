@@ -6,7 +6,7 @@ use std::time::Instant;
 
 use planche_core::auth::{self, AuthStatus};
 use planche_core::cache::Cache;
-use planche_core::domain::{Board, ProjectId, ProjectList, ProjectMeta, ViewId};
+use planche_core::domain::{Board, ProjectId, ProjectList, ProjectMeta, User, UserId, ViewId};
 use planche_core::error::Error;
 use planche_core::github::{GithubClient, ops};
 use planche_core::intent::Intent;
@@ -195,11 +195,17 @@ pub async fn auth_status(core: State<'_, Core>) -> Result<AuthStatus> {
     }
     let cached = {
         let cache = core.cache();
-        cache.get("account_login")?.map(|login| AuthStatus {
-            login: Some(login),
-            avatar_url: cache.get("account_avatar").ok().flatten(),
-            missing_scopes: Vec::new(),
-        })
+        // Before phase 6 the cache kept no ID: those go to GitHub once.
+        let id = cache.get("account_id")?.map(UserId);
+        cache
+            .get("account_login")?
+            .filter(|_| id.is_some())
+            .map(|login| AuthStatus {
+                id,
+                login: Some(login),
+                avatar_url: cache.get("account_avatar").ok().flatten(),
+                missing_scopes: Vec::new(),
+            })
     };
     if let Some(status) = cached {
         return Ok(status);
@@ -211,6 +217,9 @@ pub async fn auth_status(core: State<'_, Core>) -> Result<AuthStatus> {
 
 fn remember_account(core: &Core, status: &AuthStatus) -> Result<()> {
     let cache = core.cache();
+    if let Some(id) = &status.id {
+        cache.set("account_id", id.as_str())?;
+    }
     if let Some(login) = &status.login {
         cache.set("account_login", login)?;
     }
@@ -306,7 +315,7 @@ pub async fn dispatch_intent(
     intent: Intent,
     view_id: Option<ViewId>,
 ) -> Result<Board> {
-    let Intent::MoveCard { project_id, .. } = &intent;
+    let project_id = intent.project_id();
     core.cache().enqueue(&intent)?;
     // Read the board before the engine sends: a fast failure would already have dropped the
     // row, and the card would jump back before the front hears of the failure.
@@ -320,6 +329,18 @@ pub async fn dispatch_intent(
         engine.send(SyncCommand::Flush).await;
     }
     Ok(board)
+}
+
+/// Who can be assigned in `repo`, an `owner/name`.
+#[tauri::command]
+#[specta::specta]
+pub async fn list_assignable_users(repo: String) -> Result<Vec<User>> {
+    let (owner, name) = repo.split_once('/').ok_or_else(|| AppError {
+        kind: ErrorKind::Invalid,
+        message: format!("expected owner/name, got `{repo}`"),
+    })?;
+    let client = GithubClient::new(auth::load_token()?)?;
+    Ok(ops::assignable_users(&client, owner, name).await?)
 }
 
 /// Syncs now and waits for the result.

@@ -5,7 +5,6 @@ import {
 	ChevronRight,
 	CircleMinus,
 	ExternalLink,
-	FolderInput,
 	GitMerge,
 	Link,
 	Maximize2,
@@ -19,9 +18,13 @@ import { type ComponentType, type ReactNode, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Command,
+	CommandContext,
 	CommandDialog,
 	CommandEmpty,
+	CommandFooter,
 	CommandGroup,
+	CommandHighlight,
+	CommandHint,
 	CommandInput,
 	CommandItem,
 	CommandList,
@@ -58,6 +61,7 @@ import {
 	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { DraftField } from "@/components/ui/issue-card";
 import { Kbd } from "@/components/ui/kbd";
 import {
 	menuContentClassName,
@@ -65,6 +69,7 @@ import {
 	menuSeparatorClassName,
 	menuShortcutClassName,
 } from "@/components/ui/menu-styles";
+import { StatusList, type StatusOption, UserList, type UserOption } from "@/components/ui/picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ToastCard, Toaster, toast } from "@/components/ui/toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -203,46 +208,23 @@ function ConfirmBody() {
 	);
 }
 
-function Hit({ children }: { children: ReactNode }) {
-	return <span className="rounded-[2px] bg-accent-soft font-semibold">{children}</span>;
-}
-
-function PaletteFooter() {
-	return (
-		<div className="flex h-9 items-center gap-4 border-line border-t bg-bg-sunken px-3.5 text-[11.5px] text-fg-3">
-			<span className="flex items-center gap-[5px]">
-				<Kbd>↑↓</Kbd>Navigate
-			</span>
-			<span className="flex items-center gap-[5px]">
-				<Kbd>↵</Kbd>Run
-			</span>
-			<span className="flex items-center gap-[5px]">
-				<Kbd>⌫</Kbd>Clear #226
-			</span>
-			<span className="flex-1" />
-			<span className="flex items-center gap-[5px]">
-				<Kbd>?</Kbd>All shortcuts
-			</span>
-		</div>
-	);
-}
-
 function PaletteBody({ preview = false }: { preview?: boolean }) {
+	const query = preview ? "move" : "";
 	return (
 		<>
 			<CommandInput
-				placeholder="Search or run…"
-				className="pr-12"
-				{...(preview ? { value: "move", onValueChange: () => undefined } : {})}
+				placeholder="Run an action or search…"
+				leading={<CommandContext>#226</CommandContext>}
+				trailing={<Kbd className="px-[5px] text-fg-3">esc</Kbd>}
+				{...(preview ? { value: query, onValueChange: () => undefined } : {})}
 			/>
-			<Kbd className="pointer-events-none absolute top-4 right-3.5 z-10">esc</Kbd>
 			<CommandList>
 				<CommandEmpty>No matches</CommandEmpty>
 				<CommandGroup heading="Actions on #226">
 					<CommandItem value="move-progress" data-preview={preview ? "hover" : undefined}>
 						<ArrowRight className="size-[18px] text-fg-2" />
 						<span className="min-w-0 flex-1">
-							<Hit>Move</Hit> to In progress
+							<CommandHighlight text="Move to In progress" query={query} />
 						</span>
 						<CommandShortcut>
 							<Kbd>⇧</Kbd>
@@ -252,22 +234,16 @@ function PaletteBody({ preview = false }: { preview?: boolean }) {
 					<CommandItem value="move-backlog">
 						<ArrowLeft className="size-[18px] text-fg-2" />
 						<span className="min-w-0 flex-1">
-							<Hit>Move</Hit> to Backlog
+							<CommandHighlight text="Move to Backlog" query={query} />
 						</span>
 						<CommandShortcut>
 							<Kbd>⇧</Kbd>
 							<Kbd>←</Kbd>
 						</CommandShortcut>
 					</CommandItem>
-					<CommandItem value="move-project">
-						<FolderInput className="size-[18px] text-fg-2" />
-						<span className="min-w-0 flex-1">
-							<Hit>Move</Hit> to another project…
-						</span>
-						<CommandShortcut>
-							<Kbd>⇧</Kbd>
-							<Kbd>M</Kbd>
-						</CommandShortcut>
+					<CommandItem value="assign">
+						<UserPlus className="size-[18px] text-fg-2" />
+						<span className="min-w-0 flex-1">Assign…</span>
 					</CommandItem>
 				</CommandGroup>
 				<CommandGroup heading="Issues & pull requests" className="mt-1">
@@ -276,7 +252,7 @@ function PaletteBody({ preview = false }: { preview?: boolean }) {
 							<span className="size-[11px] rounded-xs shadow-[inset_0_0_0_1.5px_var(--pl-fg-3)]" />
 						</span>
 						<span className="min-w-0 flex-1">
-							Shortcut to <Hit>move</Hit> a card to the next column
+							<CommandHighlight text="Shortcut to move a card to the next column" query={query} />
 						</span>
 						<span className="font-mono text-fg-3 text-xs">app #214</span>
 						<span className="inline-flex h-4 items-center gap-1 rounded-xs bg-kbd px-[5px] text-2xs text-fg-2">
@@ -289,7 +265,7 @@ function PaletteBody({ preview = false }: { preview?: boolean }) {
 							<GitMerge className="size-4 text-fg-3" />
 						</span>
 						<span className="min-w-0 flex-1">
-							<Hit>Move</Hit> filters into the toolbar
+							<CommandHighlight text="Move filters into the toolbar" query={query} />
 						</span>
 						<span className="font-mono text-fg-3 text-xs">app #198</span>
 						<span className="inline-flex h-4 items-center gap-1 rounded-xs bg-kbd px-[5px] text-2xs text-fg-2">
@@ -299,10 +275,30 @@ function PaletteBody({ preview = false }: { preview?: boolean }) {
 					</CommandItem>
 				</CommandGroup>
 			</CommandList>
-			<PaletteFooter />
+			<CommandFooter>
+				<CommandHint keys="↑↓">Navigate</CommandHint>
+				<CommandHint keys="↵">Run</CommandHint>
+				<CommandHint keys="⌫">Clear #226</CommandHint>
+				<span className="flex-1" />
+				<CommandHint keys="?">All shortcuts</CommandHint>
+			</CommandFooter>
 		</>
 	);
 }
+
+const statusOptions: StatusOption[] = [
+	{ id: "backlog", name: "Backlog", status: "backlog", current: false, keys: "1" },
+	{ id: "todo", name: "Todo", status: "todo", current: true, keys: "2" },
+	{ id: "doing", name: "In progress", status: "doing", current: false, keys: "3" },
+	{ id: "review", name: "In review", status: "review", current: false, keys: "4" },
+	{ id: "done", name: "Done", status: "done", current: false, keys: "5" },
+];
+
+const userOptions: UserOption[] = [
+	{ id: "U_CR", login: "camille-r", assigned: true },
+	{ id: "U_TM", login: "theo-m", assigned: false },
+	{ id: "U_LB", login: "lea-b", assigned: false },
+];
 
 function movedMessage() {
 	return (
@@ -522,6 +518,27 @@ function OverlaysDemo() {
 						</CommandDialog>
 					</State>
 				</div>
+
+				<Row label="status menu · assignee picker">
+					<State label="status, Todo current">
+						<StatusList options={statusOptions} value="In progress" onPick={() => undefined} />
+					</State>
+					<State label="assignees">
+						<UserList users={userOptions} onPick={() => undefined} />
+					</State>
+					<State label="assignees, loading">
+						<UserList users={undefined} onPick={() => undefined} />
+					</State>
+				</Row>
+
+				<Row label="draft field">
+					<State label="empty" className="w-column">
+						<DraftField className="w-full" />
+					</State>
+					<State label="typed" className="w-column">
+						<DraftField className="w-full" value="Planche test draft" onChange={() => undefined} />
+					</State>
+				</Row>
 
 				<Row label="toast">
 					<ToastCard tone="info" message="Synced 142 items" />

@@ -14,7 +14,7 @@ import {
 	useSensor,
 	useSensors,
 } from "@dnd-kit/core";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { DragBubble, DragHelpBar } from "@/components/ui/drag";
 import { IssueCard } from "@/components/ui/issue-card";
 import { type Card as BoardCard, type Board as BoardData, commands, type Intent, type ItemId } from "@/ipc/bindings";
@@ -47,10 +47,12 @@ const collision: CollisionDetection = (args) => {
 type BoardProps = {
 	board: BoardData;
 	onMove: (intent: Intent) => Promise<unknown>;
+	/** A title typed in a column's new-draft field, and that column. */
+	onCreateDraft: (column: BoardData["columns"][number], title: string) => void;
 };
 
 /** The board: one column per option, each scrolling on its own. Cards move by drag or keyboard. */
-export function Board({ board, onMove }: BoardProps) {
+export const Board = memo(function Board({ board, onMove, onCreateDraft }: BoardProps) {
 	usePaintedMark();
 	const setDragging = useUi((s) => s.setDragging);
 	const [drag, setDragState] = useState<Drag | null>(null);
@@ -224,6 +226,7 @@ export function Board({ board, onMove }: BoardProps) {
 							index={index}
 							activeId={drag?.id ?? null}
 							landing={landingFor(index)}
+							onCreateDraft={(title) => onCreateDraft(column, title)}
 						/>
 					))}
 				</div>
@@ -241,7 +244,7 @@ export function Board({ board, onMove }: BoardProps) {
 			</DragOverlay>
 		</DndContext>
 	);
-}
+});
 
 /** The move a drop asks for, or `null` when the card lands where it was. */
 function intentFor(board: BoardData, drag: Drag, manualOrder: boolean): Intent | null {

@@ -26,6 +26,7 @@ fn builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::get_board,
             commands::refresh_project,
             commands::dispatch_intent,
+            commands::list_assignable_users,
             commands::sync_status,
             commands::get_sync_prefs,
             commands::set_sync_prefs,
