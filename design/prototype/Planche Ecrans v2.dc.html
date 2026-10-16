@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<style>
+body { margin: 0; background: #E4E1DB; }
+a { color: #1C1A17; text-decoration: underline; text-decoration-color: rgba(28,25,20,.3); text-underline-offset: 3px; }
+a:hover { text-decoration-color: #1C1A17; }
+</style>
+</helmet>
+<div style="padding:72px 80px 120px;display:flex;flex-direction:column;gap:40px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Helvetica,Arial,sans-serif;color:#1C1A17;width:max-content">
+  <header style="display:flex;align-items:flex-end;gap:40px">
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:14px;color:#716C63">Planche · Écrans v2</div>
+      <div style="font-size:56px;line-height:60px;font-weight:700;letter-spacing:-0.025em">Plus sobre, plus dense</div>
+      <div style="font-size:18px;line-height:26px;color:#57534C;max-width:980px;text-wrap:pretty">Le vermillon ne sert plus qu'au logo, à la couleur du projet et à la priorité Urgent. Focus et sélection passent en neutre, le bouton principal en encre. Statuts en cercles, sidebar à plat, contenu dans un panneau en retrait.</div>
+    </div>
+    <div style="flex:1"></div>
+    <nav style="display:flex;gap:20px;font-size:16px;font-weight:500">
+      <a href="Planche Identite.dc.html">Identité</a>
+      <a href="Planche Tokens.dc.html">Tokens</a>
+    </nav>
+  </header>
+
+  <div style="display:grid;grid-template-columns:auto auto;gap:40px;align-items:start">
+    <div style="display:flex;flex-direction:column;gap:56px;--pl-bg:#FCFBF9;--pl-bg-sunken:#F1EFEB;--pl-surface:#FFFFFF;--pl-elevated:#FFFFFF;--pl-card:#FFFFFF;--pl-overlay:rgba(28,25,20,0.18);--pl-hover:rgba(28,25,20,0.04);--pl-active:rgba(28,25,20,0.07);--pl-border:rgba(28,25,20,0.08);--pl-border-strong:rgba(28,25,20,0.15);--pl-fg:#1C1A17;--pl-fg-2:#57534C;--pl-fg-3:#716C63;--pl-skeleton:rgba(28,25,20,0.06);--pl-danger-soft:oklch(0.52 0.19 20 / 0.08);--pl-shadow-drag:0 0 0 1px rgba(28,25,20,.08), 0 18px 40px -10px rgba(28,25,20,.28), 0 6px 14px -4px rgba(28,25,20,.12);--pl-accent:oklch(0.56 0.18 38);--pl-primary:#1C1A17;--pl-primary-fg:#FCFBF9;--pl-ring:rgba(28,25,20,0.28);--pl-danger:oklch(0.52 0.19 20);--pl-success:oklch(0.55 0.13 150);--pl-warning:oklch(0.66 0.14 75);--pl-s-doing:oklch(0.72 0.15 75);--pl-s-review:oklch(0.58 0.15 300);--pl-s-done:oklch(0.58 0.13 150);--pl-shadow-card:0 0 0 1px rgba(28,25,20,.06), 0 1px 2px rgba(28,25,20,.05);--pl-shadow-pop:0 0 0 1px rgba(28,25,20,.08), 0 12px 32px -8px rgba(28,25,20,.20), 0 2px 6px rgba(28,25,20,.05);--pl-shadow-window:0 0 0 .5px rgba(0,0,0,.2), 0 30px 80px -20px rgba(30,25,15,.32), 0 10px 30px -10px rgba(30,25,15,.16)">
+      <div style="font-size:28px;font-weight:700;letter-spacing:-0.015em">Clair</div>
+      <div data-screen-label="0 Statuts" style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:baseline;gap:14px"><span style="font-size:18px;color:#716C63">0</span><span style="font-size:24px;font-weight:650;letter-spacing:-0.01em">Statuts, priorités, progression</span><span style="font-size:16px;color:#57534C">Composant PlancheGlyph · 14 px dans l'app</span></div>
+        <div style="width:1560px;box-sizing:border-box;padding:40px;border-radius:18px;background:var(--pl-bg);box-shadow:0 0 0 1px var(--pl-border);display:flex;flex-direction:column;gap:36px;color:var(--pl-fg)">
+          <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px">
+            <sc-for list="{{ statuses }}" as="t" hint-placeholder-count="7">
+              <div style="padding:20px 18px;border-radius:12px;box-shadow:inset 0 0 0 1px var(--pl-border);display:flex;flex-direction:column;gap:14px">
+                <div style="display:flex;align-items:center;gap:12px"><dc-import name="PlancheGlyph" status="{{ t.st }}" size="28" hint-size="28px,28px"></dc-import><dc-import name="PlancheGlyph" status="{{ t.st }}" hint-size="14px,14px"></dc-import><span style="flex:1"></span><span style="font-size:13px;color:var(--pl-fg-3)">{{ t.key }}</span></div>
+                <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:16px;font-weight:600">{{ t.name }}</span><span style="font-size:13px;line-height:18px;color:var(--pl-fg-2);text-wrap:pretty">{{ t.gh }}</span></div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:64px">
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <span style="font-size:13px;font-weight:600;color:var(--pl-fg-3)">Priorité</span>
+              <div style="display:flex;gap:28px">
+                <sc-for list="{{ prios }}" as="p" hint-placeholder-count="5">
+                  <span style="display:flex;align-items:center;gap:8px;font-size:15px"><dc-import name="PlancheGlyph" priority="{{ p.k }}" size="20" hint-size="20px,20px"></dc-import>{{ p.name }}</span>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <span style="font-size:13px;font-weight:600;color:var(--pl-fg-3)">Progression des sous-issues</span>
+              <div style="display:flex;gap:28px">
+                <sc-for list="{{ progs }}" as="p" hint-placeholder-count="4">
+                  <span style="display:flex;align-items:center;gap:8px;font-size:15px;font-variant-numeric:tabular-nums"><dc-import name="PlancheGlyph" progress="{{ p.v }}" size="20" hint-size="20px,20px"></dc-import>{{ p.label }}</span>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <sc-for list="{{ screens }}" as="sc" hint-placeholder-count="16">
+        <div data-screen-label="{{ sc.label }}" style="display:flex;flex-direction:column;gap:16px">
+          <div style="display:flex;align-items:baseline;gap:14px"><span style="font-size:18px;color:#716C63">{{ sc.n }}</span><span style="font-size:24px;font-weight:650;letter-spacing:-0.01em">{{ sc.title }}</span><span style="font-size:16px;color:#57534C">{{ sc.note }}</span></div>
+          <div style="width:1560px;height:1000px;border-radius:18px;display:grid;place-items:center;background:linear-gradient(180deg,#E9E6E0,#DCD8D1)">
+            <dc-import name="PlancheWindow v2" screen="{{ sc.id }}" style="width:{{ sc.w }};height:{{ sc.h }}" hint-size="1440px,900px"></dc-import>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:56px;--pl-bg:#191817;--pl-bg-sunken:#121211;--pl-surface:#22211F;--pl-elevated:#242321;--pl-card:#21201E;--pl-overlay:rgba(0,0,0,0.45);--pl-hover:rgba(255,248,235,0.04);--pl-active:rgba(255,248,235,0.075);--pl-border:rgba(255,248,235,0.075);--pl-border-strong:rgba(255,248,235,0.14);--pl-fg:#EEEBE5;--pl-fg-2:#ABA69D;--pl-fg-3:#86817A;--pl-skeleton:rgba(255,248,235,0.06);--pl-danger-soft:oklch(0.69 0.17 22 / 0.12);--pl-shadow-drag:0 0 0 1px rgba(255,248,235,.12), 0 20px 44px -10px rgba(0,0,0,.65), 0 6px 14px -4px rgba(0,0,0,.4);--pl-accent:oklch(0.70 0.16 42);--pl-primary:#EEEBE5;--pl-primary-fg:#191817;--pl-ring:rgba(255,248,235,0.32);--pl-danger:oklch(0.69 0.17 22);--pl-success:oklch(0.72 0.13 150);--pl-warning:oklch(0.80 0.13 80);--pl-s-doing:oklch(0.80 0.14 78);--pl-s-review:oklch(0.70 0.14 300);--pl-s-done:oklch(0.72 0.13 150);--pl-shadow-card:0 0 0 1px rgba(255,248,235,.06), 0 1px 2px rgba(0,0,0,.3);--pl-shadow-pop:0 0 0 1px rgba(255,248,235,.09), 0 16px 40px -8px rgba(0,0,0,.6), 0 2px 6px rgba(0,0,0,.3);--pl-shadow-window:0 0 0 .5px rgba(0,0,0,.7), inset 0 0 0 .5px rgba(255,255,255,.08), 0 30px 80px -20px rgba(0,0,0,.7)">
+      <div style="font-size:28px;font-weight:700;letter-spacing:-0.015em">Sombre</div>
+      <div data-screen-label="0 Statuts (sombre)" style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:baseline;gap:14px"><span style="font-size:18px;color:#716C63">0</span><span style="font-size:24px;font-weight:650;letter-spacing:-0.01em">Statuts, priorités, progression</span></div>
+        <div style="width:1560px;box-sizing:border-box;padding:40px;border-radius:18px;background:var(--pl-bg);box-shadow:0 0 0 1px var(--pl-border);display:flex;flex-direction:column;gap:36px;color:var(--pl-fg)">
+          <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px">
+            <sc-for list="{{ statuses }}" as="t" hint-placeholder-count="7">
+              <div style="padding:20px 18px;border-radius:12px;box-shadow:inset 0 0 0 1px var(--pl-border);display:flex;flex-direction:column;gap:14px">
+                <div style="display:flex;align-items:center;gap:12px"><dc-import name="PlancheGlyph" status="{{ t.st }}" size="28" hint-size="28px,28px"></dc-import><dc-import name="PlancheGlyph" status="{{ t.st }}" hint-size="14px,14px"></dc-import><span style="flex:1"></span><span style="font-size:13px;color:var(--pl-fg-3)">{{ t.key }}</span></div>
+                <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:16px;font-weight:600">{{ t.name }}</span><span style="font-size:13px;line-height:18px;color:var(--pl-fg-2);text-wrap:pretty">{{ t.gh }}</span></div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:64px">
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <span style="font-size:13px;font-weight:600;color:var(--pl-fg-3)">Priorité</span>
+              <div style="display:flex;gap:28px">
+                <sc-for list="{{ prios }}" as="p" hint-placeholder-count="5">
+                  <span style="display:flex;align-items:center;gap:8px;font-size:15px"><dc-import name="PlancheGlyph" priority="{{ p.k }}" size="20" hint-size="20px,20px"></dc-import>{{ p.name }}</span>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <span style="font-size:13px;font-weight:600;color:var(--pl-fg-3)">Progression des sous-issues</span>
+              <div style="display:flex;gap:28px">
+                <sc-for list="{{ progs }}" as="p" hint-placeholder-count="4">
+                  <span style="display:flex;align-items:center;gap:8px;font-size:15px;font-variant-numeric:tabular-nums"><dc-import name="PlancheGlyph" progress="{{ p.v }}" size="20" hint-size="20px,20px"></dc-import>{{ p.label }}</span>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <sc-for list="{{ screens }}" as="sc" hint-placeholder-count="16">
+        <div data-screen-label="{{ sc.label }} (sombre)" style="display:flex;flex-direction:column;gap:16px">
+          <div style="display:flex;align-items:baseline;gap:14px"><span style="font-size:18px;color:#716C63">{{ sc.n }}</span><span style="font-size:24px;font-weight:650;letter-spacing:-0.01em">{{ sc.title }}</span></div>
+          <div style="width:1560px;height:1000px;border-radius:18px;display:grid;place-items:center;background:linear-gradient(180deg,#26241F,#151412)">
+            <dc-import name="PlancheWindow v2" screen="{{ sc.id }}" style="width:{{ sc.w }};height:{{ sc.h }}" hint-size="1440px,900px"></dc-import>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const screens = [
+      ['board', '1', 'Board', 'Onglets de vues en pilules, colonnes masquées à droite, focus neutre sur app#226'],
+      ['list', '2', 'Liste', 'Groupée par statut · sous-issues dépliées sous leur parent'],
+      ['repo', '2b', 'Issues d\u2019un repository', 'Liste seule, sans board · Open / Closed / All · projet de chaque issue'],
+      ['sidebar', '2c', 'Masquer dans la sidebar', 'Menu sur un projet · repos masqués affichés en grisé'],
+      ['detail', '3', 'Issue', 'Sous-issues et progression, PR liée, activité, propriétés'],
+      ['status', '4', 'Issue · menu Statut', 'S ou clic · chiffres 1–6 · suppression isolée'],
+      ['subissue', '5', 'Sous-issue', 'Parent en tête, navigation entre sœurs'],
+      ['palette', '6', 'Palette ⌘K', 'Changer de statut depuis n\u2019importe où'],
+      ['drag', '7', 'Drag-and-drop', 'Carte soulevée, emplacement en pointillé, aide clavier'],
+      ['loading', '8a', 'Chargement initial', 'Squelettes + barre indéterminée neutre'],
+      ['syncing', '8b', 'Synchro en arrière-plan', 'Indicateur discret, point sur les cartes modifiées'],
+      ['error', '8c', 'Hors ligne', 'Bandeau, modification en attente'],
+      ['empty', '8d', 'Board vide', 'Zones de dépôt + appel à l\u2019action'],
+      ['onboarding', '9a', 'Onboarding · vérification', 'Token en cours de validation'],
+      ['onboarding-ok', '9b', 'Onboarding · validé', 'Compte reconnu, scopes OK'],
+      ['settings', '10', 'Réglages', 'Compte, synchro, apparence']
+    ].map(([id, n, title, note]) => { const sm = id.startsWith('onboarding'); return { id, n, title, note, label: n + ' ' + title, w: sm ? '780px' : '1440px', h: sm ? '540px' : '900px' }; });
+    return {
+      screens,
+      statuses: [
+        ['draft', 'Draft', '1', 'Draft item du projet, pas encore une issue GitHub'],
+        ['todo', 'Todo', '2', 'Issue ouverte · Status = Todo'],
+        ['progress', 'In progress', '3', 'Issue ouverte · Status = In progress'],
+        ['review', 'In review', '4', 'Status = In review · PR liée ouverte'],
+        ['done', 'Done', '5', 'Issue fermée · completed'],
+        ['cancelled', 'Cancelled', '6', 'Issue fermée · not planned ou duplicate'],
+        ['deleted', 'Deleted', '⌘⌫', 'Retirée du projet ou supprimée sur GitHub']
+      ].map(([st, name, key, gh]) => ({ st, name, key, gh })),
+      prios: [['none', 'No priority'], ['urgent', 'Urgent'], ['high', 'High'], ['medium', 'Medium'], ['low', 'Low']].map(([k, name]) => ({ k, name })),
+      progs: [[0, '0/4'], [0.25, '1/4'], [0.5, '2/4'], [0.75, '3/4'], [1, '4/4']].map(([v, label]) => ({ v, label }))
+    };
+  }
+}
+</script>
+</body>
+</html>
