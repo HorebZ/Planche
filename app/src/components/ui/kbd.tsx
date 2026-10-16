@@ -2,11 +2,11 @@ import { cva, type VariantProps } from "class-variance-authority";
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/cn";
 
-const kbdVariants = cva("inline-grid shrink-0 place-items-center rounded-xs font-mono text-2xs leading-none", {
+const kbdVariants = cva("inline-grid shrink-0 place-items-center rounded-xs font-sans text-xs leading-none", {
 	variants: {
 		variant: {
-			default: "bg-kbd text-fg-2",
-			onAccent: "bg-white/22 text-current",
+			default: "text-fg-3 shadow-[inset_0_0_0_1px_var(--pl-border-strong)]",
+			onAccent: "bg-current/20 text-current",
 			onTooltip: "bg-current/30 text-current",
 			plain: "bg-transparent text-fg-3",
 		},

@@ -25,11 +25,11 @@ export function SkeletonColumn({
 		<section
 			data-slot="skeleton-column"
 			aria-hidden
-			className={cn("flex w-column shrink-0 flex-col gap-[5px] rounded-xl bg-bg-sunken p-[5px]", className)}
+			className={cn("flex w-column shrink-0 flex-col gap-[5px] rounded-xl bg-hover p-[5px]", className)}
 			{...props}
 		>
-			<div className="flex h-7 items-center gap-[7px] px-1.5">
-				<Skeleton className="size-2 rounded-[2px]" />
+			<div className="flex h-[34px] items-center gap-[7px] px-1.5">
+				<Skeleton className="size-3.5 rounded-full" />
 				<Skeleton className="h-[9px] rounded-[3px]" style={{ width: titleWidth }} />
 			</div>
 			{Array.from({ length: cards }, (_, i) => {
@@ -38,7 +38,7 @@ export function SkeletonColumn({
 					<div
 						// biome-ignore lint/suspicious/noArrayIndexKey: placeholders have no identity
 						key={i}
-						className="flex flex-col gap-[7px] rounded-lg bg-surface px-[9px] py-2.5 shadow-card"
+						className="flex flex-col gap-[7px] rounded-lg bg-card px-[9px] py-2.5 shadow-card"
 						style={{ opacity: 1 - i * 0.18 }}
 					>
 						<div className="flex gap-[7px]">
@@ -77,7 +77,7 @@ export function EmptyBoardCard({ onNewIssue, onAddFromRepo, className, ...props 
 			<div aria-hidden className="mb-2.5 flex items-start gap-[3px]">
 				<span className="h-[22px] w-[9px] rounded-[2px] bg-line-strong" />
 				<span className="h-3.5 w-[9px] rounded-[2px] bg-line-strong" />
-				<span className="h-[18px] w-[9px] rounded-[2px] shadow-[inset_0_0_0_1.5px_var(--pl-accent)]" />
+				<span className="h-[18px] w-[9px] rounded-[2px] shadow-[inset_0_0_0_1.5px_var(--pl-border-strong)]" />
 			</div>
 			<div className="font-[650] text-[15px] leading-5">This board is empty</div>
 			<p className="max-w-[290px] text-pretty text-[12.5px] text-fg-2 leading-[18px]">
