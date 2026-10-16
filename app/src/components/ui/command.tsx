@@ -24,7 +24,7 @@ function CommandInput({ className, ...props }: ComponentProps<typeof CommandPrim
 			<CommandPrimitive.Input
 				data-slot="command-input"
 				className={cn(
-					"h-full min-w-0 flex-1 bg-transparent text-[16px] leading-5 outline-none placeholder:text-fg-3",
+					"h-full min-w-0 flex-1 bg-transparent text-[16px] leading-5 outline-none placeholder:text-fg-3 focus-visible:shadow-none",
 					className,
 				)}
 				{...props}
@@ -74,7 +74,7 @@ function CommandItem({ className, ...props }: ComponentProps<typeof CommandPrimi
 			className={cn(
 				"flex h-[34px] cursor-default select-none items-center gap-2.5 rounded-md px-2.5 text-base outline-none",
 				"data-[disabled=true]:pointer-events-none data-[disabled=true]:text-fg-3",
-				"data-[preview~=hover]:bg-hover data-[selected=true]:bg-hover",
+				"data-[preview~=hover]:bg-active data-[selected=true]:bg-active",
 				"[&_svg]:shrink-0",
 				className,
 			)}
@@ -104,7 +104,7 @@ function CommandDialog({ children, ...props }: ComponentProps<typeof Dialog>) {
 		<Dialog {...props}>
 			<DialogContent
 				showClose={false}
-				className="top-[110px] w-[640px] max-w-[calc(100%-2rem)] translate-y-0 gap-0 overflow-hidden rounded-window bg-elevated p-0 shadow-pop"
+				className="top-[120px] w-[640px] max-w-[calc(100%-2rem)] translate-y-0 gap-0 overflow-hidden rounded-window bg-elevated p-0 shadow-pop"
 			>
 				<DialogTitle className="sr-only">Command palette</DialogTitle>
 				<DialogDescription className="sr-only">Search actions, issues, and pull requests.</DialogDescription>

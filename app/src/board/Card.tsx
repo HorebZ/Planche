@@ -1,6 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { memo } from "react";
 import { IssueCard, type IssueCardData } from "@/components/ui/issue-card";
+import type { StatusKey } from "@/components/ui/status";
 import type { Card as BoardCard } from "@/ipc/bindings";
 
 /** The repository name without its owner, as the card shows it. */
@@ -45,16 +46,18 @@ export function cardData(card: BoardCard): IssueCardData {
 
 type CardProps = {
 	card: BoardCard;
+	status?: StatusKey;
 	/** The card is lifted, and this is the spot it left. */
 	ghost?: boolean;
 };
 
 /** A card that drags and takes drops. The lifted copy lives in the board's DragOverlay. */
-export const Card = memo(function Card({ card, ghost = false }: CardProps) {
+export const Card = memo(function Card({ card, status, ghost = false }: CardProps) {
 	const { setNodeRef, attributes, listeners } = useSortable({ id: card.item_id });
 	return (
 		<IssueCard
 			{...cardData(card)}
+			status={card.kind === "draft" ? "draft" : status}
 			ref={setNodeRef}
 			{...attributes}
 			{...listeners}

@@ -2,7 +2,9 @@ import { Avatar, AvatarStack } from "@/components/ui/avatar";
 import { BoardColumn } from "@/components/ui/board-column";
 import { DragBubble, DragHelpBar } from "@/components/ui/drag";
 import { CardPlaceholder, IssueCard, type IssueCardData } from "@/components/ui/issue-card";
+import { IssueListGroup } from "@/components/ui/issue-list";
 import { LabelChip } from "@/components/ui/label-chip";
+import { PriorityGlyph, ProgressRing } from "@/components/ui/planche-glyph";
 import { StatusChip, type StatusKey, StatusSquare, statusLabels } from "@/components/ui/status";
 import { Row, Section, State } from "../kit";
 
@@ -12,7 +14,15 @@ const portrait =
 		`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18"><rect width="18" height="18" fill="black"/><circle cx="9" cy="7" r="3" fill="white"/><ellipse cx="9" cy="15" rx="5" ry="4" fill="white"/></svg>`,
 	);
 
-const statuses = ["backlog", "todo", "doing", "review", "done"] as const satisfies readonly StatusKey[];
+const statuses = [
+	"draft",
+	"todo",
+	"progress",
+	"review",
+	"done",
+	"cancelled",
+	"deleted",
+] as const satisfies readonly StatusKey[];
 
 const labels = {
 	bug: { name: "bug", color: "d73a4a" },
@@ -90,9 +100,30 @@ export function BoardSection() {
 							</State>
 						))}
 					</Row>
+					<Row label="priority and progress">
+						{(["none", "low", "medium", "high", "urgent"] as const).map((priority) => (
+							<State key={priority} label={priority}>
+								<PriorityGlyph priority={priority} />
+							</State>
+						))}
+						<ProgressRing value={0} />
+						<ProgressRing value={0.4} />
+						<ProgressRing value={1} />
+					</Row>
+					<Row label="list">
+						<div className="w-full">
+							<IssueListGroup name="Todo" status="todo" items={[{ ...openIssue, id: "preview" }]} onOpen={() => {}} />
+						</div>
+					</Row>
 					<Row label="card">
 						<State label="default">
-							<IssueCard {...openIssue} className={cardClass} />
+							<IssueCard
+								{...openIssue}
+								className={cardClass}
+								priority="high"
+								createdAt="2026-10-13"
+								subIssues={{ completed: 2, total: 5 }}
+							/>
 						</State>
 						<State label="hover">
 							<IssueCard {...openIssue} className={cardClass} data-preview="hover" />

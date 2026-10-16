@@ -76,7 +76,7 @@ function DropdownMenuItem({
 const indicatorClassName = cva("flex size-3.5 shrink-0 items-center justify-center rounded-xs", {
 	variants: {
 		checked: {
-			true: "bg-accent text-accent-fg",
+			true: "bg-primary text-primary-fg",
 			false: "shadow-[inset_0_0_0_1.5px_var(--pl-border-strong)]",
 		},
 	},
@@ -101,7 +101,7 @@ function DropdownMenuCheckboxItem({
 		>
 			<span data-slot="menu-indicator" className={indicatorClassName({ checked: isChecked(checked) })}>
 				<DropdownMenuPrimitive.ItemIndicator>
-					<Check className="size-3! text-accent-fg!" strokeWidth={3} />
+					<Check className="size-3! text-primary-fg!" strokeWidth={3} />
 				</DropdownMenuPrimitive.ItemIndicator>
 			</span>
 			{children}
@@ -128,11 +128,11 @@ function DropdownMenuRadioItem({
 				data-slot="menu-indicator"
 				className={cn(
 					indicatorClassName({ checked: false }),
-					"group-data-[state=checked]:bg-accent group-data-[state=checked]:text-accent-fg group-data-[state=checked]:shadow-none",
+					"group-data-[state=checked]:bg-primary group-data-[state=checked]:text-primary-fg group-data-[state=checked]:shadow-none",
 				)}
 			>
 				<DropdownMenuPrimitive.ItemIndicator>
-					<Check className="size-3! text-accent-fg!" strokeWidth={3} />
+					<Check className="size-3! text-primary-fg!" strokeWidth={3} />
 				</DropdownMenuPrimitive.ItemIndicator>
 			</span>
 			{children}

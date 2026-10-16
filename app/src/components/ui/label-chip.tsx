@@ -19,7 +19,7 @@ export function LabelChip({ name, color, className, ...props }: LabelChipProps) 
 		<span
 			data-slot="label-chip"
 			className={cn(
-				"inline-flex h-4 items-center gap-1 rounded-xs px-[5px] font-medium text-2xs text-fg-2 shadow-[inset_0_0_0_1px_var(--pl-border-strong)]",
+				"inline-flex h-5 items-center gap-1 rounded-sm px-[5px] font-medium text-2xs text-fg-2 shadow-[inset_0_0_0_1px_var(--pl-border)]",
 				className,
 			)}
 			{...props}
