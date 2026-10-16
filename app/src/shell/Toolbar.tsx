@@ -1,5 +1,6 @@
-import { ChevronDown } from "lucide-react";
-import { AvatarStack } from "@/components/ui/avatar";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { Columns3, Link, List, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -13,62 +14,95 @@ import { SyncIndicator } from "@/components/ui/sync-indicator";
 import type { Board, ProjectMeta, SyncStatus, ViewId } from "@/ipc/bindings";
 import { busyLabel } from "./syncText";
 
+export type ProjectLayout = "board" | "list";
 type ToolbarProps = {
 	board: Board | null | undefined;
 	project: ProjectMeta | null | undefined;
 	status: SyncStatus | undefined;
 	onSelectView: (viewId: ViewId) => void;
+	layout: ProjectLayout;
+	onLayoutChange: (layout: ProjectLayout) => void;
+	onSearch: () => void;
 };
 
-/** The window's drag region: project and view, sync state, and who is on the board. */
-export function Toolbar({ board, project, status, onSelectView }: ToolbarProps) {
-	const loading = !board;
-	const busy = busyLabel(status, loading);
-	const offline = status?.state.type === "offline";
+export function Toolbar({ board, project, status, onSelectView, layout, onLayoutChange, onSearch }: ToolbarProps) {
+	const busy = busyLabel(status, !board);
 	const boardViews = project?.views.filter((v) => v.layout === "Board") ?? [];
 	const currentView = project?.views.find((v) => v.number === board?.view?.number);
+	const count = board?.columns.reduce((n, c) => n + c.cards.length, 0) ?? 0;
 	return (
-		<header
-			data-tauri-drag-region
-			className="flex h-toolbar shrink-0 items-center gap-2 border-line border-b pr-3 pl-3.5"
-		>
-			{board ? (
-				<DropdownMenu>
-					<DropdownMenuTrigger className="flex h-7 items-center gap-1.5 rounded-md px-1.5 outline-none hover:bg-hover focus-visible:shadow-ring">
-						<span className="font-[650] text-md tracking-[-0.01em]">{board.project.title}</span>
-						{board.view ? <span className="text-fg-3 text-sm">{board.view.name}</span> : null}
-						<ChevronDown className="size-4 text-fg-3" aria-hidden />
-					</DropdownMenuTrigger>
-					<DropdownMenuContent className="w-[240px]">
-						<DropdownMenuLabel>Board view</DropdownMenuLabel>
-						<DropdownMenuRadioGroup value={currentView?.id} onValueChange={(id) => onSelectView(id)}>
-							{boardViews.map((view) => (
-								<DropdownMenuRadioItem key={view.id} value={view.id}>
-									{view.name}
-								</DropdownMenuRadioItem>
-							))}
-						</DropdownMenuRadioGroup>
-					</DropdownMenuContent>
-				</DropdownMenu>
-			) : (
-				<Skeleton className="h-3 w-[140px] rounded-[4px]" />
-			)}
-			<span className="flex-1" />
-			<SyncIndicator state={busy ? "busy" : offline ? "offline" : "idle"} label={busy ?? undefined} />
-			{board ? <AvatarStack users={boardAssignees(board)} size={20} on="bg" className="pr-1" /> : null}
+		<header className="shrink-0">
+			<div data-tauri-drag-region className="flex h-12 items-center gap-2 pr-3 pl-[18px]">
+				{board ? (
+					<>
+						<span aria-hidden className="size-2.5 rounded-[3px] bg-accent" />
+						<DropdownMenu>
+							<DropdownMenuTrigger className="flex h-7 items-center gap-2 rounded-md px-0.5 font-medium outline-none hover:bg-hover focus-visible:shadow-ring">
+								{board.project.title}
+							</DropdownMenuTrigger>
+							<DropdownMenuContent className="w-[240px]">
+								<DropdownMenuLabel>Project views</DropdownMenuLabel>
+								<DropdownMenuRadioGroup value={currentView?.id} onValueChange={onSelectView}>
+									{boardViews.map((view) => (
+										<DropdownMenuRadioItem key={view.id} value={view.id}>
+											{view.name}
+										</DropdownMenuRadioItem>
+									))}
+								</DropdownMenuRadioGroup>
+							</DropdownMenuContent>
+						</DropdownMenu>
+					</>
+				) : (
+					<Skeleton className="h-3 w-[140px] rounded-xs" />
+				)}
+				<span className="flex-1" />
+				<SyncIndicator
+					state={busy ? "busy" : status?.state.type === "offline" ? "offline" : "idle"}
+					label={busy ?? undefined}
+				/>
+				<Button
+					variant="ghost"
+					size="icon"
+					aria-label="Open project on GitHub"
+					disabled={!board}
+					onClick={() => board && openUrl(board.project.url)}
+					className="size-7 text-fg-3"
+				>
+					<Link className="size-4" />
+				</Button>
+			</div>
+			<div className="flex h-[42px] items-center gap-1.5 pr-3 pl-4">
+				<fieldset aria-label="Project layout" className="flex gap-1.5">
+					{(
+						[
+							{ id: "board", label: "Board", Icon: Columns3 },
+							{ id: "list", label: "List", Icon: List },
+						] as const
+					).map(({ id, label, Icon }) => (
+						<button
+							key={id}
+							type="button"
+							aria-pressed={layout === id}
+							onClick={() => onLayoutChange(id)}
+							className={`flex h-7 items-center gap-1.5 rounded-full px-3 font-medium focus-visible:shadow-ring ${layout === id ? "bg-active" : "text-fg-2 shadow-[inset_0_0_0_1px_var(--pl-border-strong)] hover:bg-hover"}`}
+						>
+							<Icon className="size-[15px] text-fg-3" />
+							{label}
+						</button>
+					))}
+				</fieldset>
+				<span className="flex-1" />
+				<span className="mr-2 text-[12px] text-fg-3 tabular-nums">{count} issues</span>
+				<Button
+					variant="ghost"
+					size="icon"
+					aria-label="Search issues ⌘K"
+					onClick={onSearch}
+					className="size-[30px] rounded-full shadow-[inset_0_0_0_1px_var(--pl-border-strong)]"
+				>
+					<Search className="size-4" />
+				</Button>
+			</div>
 		</header>
 	);
-}
-
-/** Everyone assigned to a card, most assigned first, at most four. */
-function boardAssignees(board: Board) {
-	const counts = new Map<string, { login: string; avatarUrl: string; cards: number }>();
-	for (const card of board.columns.flatMap((c) => c.cards)) {
-		if (card.kind === "redacted") continue;
-		for (const user of card.assignees) {
-			const seen = counts.get(user.login);
-			counts.set(user.login, { login: user.login, avatarUrl: user.avatar_url, cards: (seen?.cards ?? 0) + 1 });
-		}
-	}
-	return [...counts.values()].sort((a, b) => b.cards - a.cards).slice(0, 4);
 }

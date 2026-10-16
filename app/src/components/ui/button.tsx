@@ -13,10 +13,8 @@ export const buttonVariants = cva(
 	{
 		variants: {
 			variant: {
-				primary:
-					"bg-accent font-semibold text-accent-fg focus-visible:shadow-[0_0_0_2px_var(--pl-bg),0_0_0_4px_var(--pl-focus)]",
-				secondary:
-					"bg-surface text-fg shadow-card focus-visible:shadow-[var(--pl-shadow-card),0_0_0_2px_var(--pl-focus)]",
+				primary: "bg-primary text-primary-fg focus-visible:shadow-[0_0_0_2px_var(--pl-bg),0_0_0_4px_var(--pl-focus)]",
+				secondary: "bg-card text-fg shadow-card focus-visible:shadow-[var(--pl-shadow-card),0_0_0_2px_var(--pl-focus)]",
 				ghost: "bg-transparent text-fg hover:bg-hover focus-visible:shadow-ring",
 				danger: "bg-transparent text-danger hover:bg-danger-soft focus-visible:shadow-ring",
 			},

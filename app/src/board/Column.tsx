@@ -8,7 +8,7 @@ import type { Column as BoardColumnData, ItemId } from "@/ipc/bindings";
 import { Card } from "./Card";
 import { statusTone } from "./statusTone";
 
-const GAP = 5;
+const GAP = 6;
 
 /** Where a lifted card would land in this column. `index` counts the cards without it. */
 export type Landing = { index: number; height: number; fromHere: boolean };
@@ -40,7 +40,7 @@ export function Column({ column, index, activeId, landing }: ColumnProps) {
 	const virtualizer = useVirtualizer({
 		count: rows.length,
 		getScrollElement: () => scrollRef.current,
-		estimateSize: () => 86,
+		estimateSize: () => 112,
 		gap: GAP,
 		overscan: 3,
 		getItemKey: (i) => {
@@ -53,7 +53,7 @@ export function Column({ column, index, activeId, landing }: ColumnProps) {
 		<BoardColumn
 			ref={setNodeRef}
 			data-column-index={index}
-			status={statusTone(column.color)}
+			status={statusTone(column.color, column.name)}
 			name={column.name}
 			count={column.cards.length}
 			dropTarget={incoming}
@@ -74,7 +74,11 @@ export function Column({ column, index, activeId, landing }: ColumnProps) {
 									style={{ transform: `translateY(${item.start}px)` }}
 								>
 									{row.kind === "card" ? (
-										<Card card={row.card} ghost={row.card.item_id === activeId} />
+										<Card
+											status={statusTone(column.color, column.name)}
+											card={row.card}
+											ghost={row.card.item_id === activeId}
+										/>
 									) : (
 										<CardPlaceholder height={row.height} />
 									)}

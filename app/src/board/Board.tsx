@@ -23,13 +23,14 @@ import { cardData } from "./Card";
 import { Column, type Landing } from "./Column";
 import { markDropFrame, startFrames, stopFrames } from "./dragPerf";
 import { flip, type Rect } from "./flip";
+import { statusTone } from "./statusTone";
 
 /** A spot on the board: a column, and an index among its cards without the lifted one. */
 type Spot = { column: number; index: number };
 
 type Drag = { id: ItemId; card: BoardCard; from: Spot; to: Spot; height: number; keyboard: boolean };
 
-const CARD_GAP = 5;
+const CARD_GAP = 6;
 
 /** The cards of a column, without the lifted one. */
 function others(board: BoardData, column: number, id: ItemId) {
@@ -216,7 +217,7 @@ export function Board({ board, onMove }: BoardProps) {
 			onDragCancel={({ active }) => end(false, active.rect.current.translated)}
 		>
 			<div className="relative h-full">
-				<div data-slot="board" className="flex h-full items-start gap-2.5 overflow-x-auto px-3.5 py-3">
+				<div data-slot="board" className="flex h-full items-start gap-2.5 overflow-x-auto px-3 pt-0.5 pb-3">
 					{board.columns.map((column, index) => (
 						<Column
 							key={column.option_id ?? "none"}
@@ -232,7 +233,16 @@ export function Board({ board, onMove }: BoardProps) {
 			<DragOverlay dropAnimation={null}>
 				{drag && target ? (
 					<div className="relative">
-						<IssueCard {...cardData(drag.card)} dragState="lifted" tabIndex={-1} />
+						<IssueCard
+							{...cardData(drag.card)}
+							status={
+								drag.card.kind === "draft"
+									? "draft"
+									: statusTone(board.columns[drag.from.column].color, board.columns[drag.from.column].name)
+							}
+							dragState="lifted"
+							tabIndex={-1}
+						/>
 						<DragBubble className="absolute top-full left-[82px] mt-1.5">
 							Move to {target.name} · position {drag.to.index + 1}
 						</DragBubble>
