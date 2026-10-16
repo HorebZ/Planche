@@ -53,6 +53,8 @@ export const commands = {
 	 *  applied. The front shows that board in place of its own optimistic one.
 	 */
 	dispatchIntent: (intent: Intent, viewId: string | null) => __TAURI_INVOKE<Board>("dispatch_intent", { intent, viewId }),
+	/**  Who can be assigned in `repo`, an `owner/name`. */
+	listAssignableUsers: (repo: string) => __TAURI_INVOKE<User[]>("list_assignable_users", { repo }),
 	syncStatus: () => __TAURI_INVOKE<SyncStatus>("sync_status"),
 	getSyncPrefs: () => __TAURI_INVOKE<SyncPrefs>("get_sync_prefs"),
 	setSyncPrefs: (prefs: SyncPrefs) => __TAURI_INVOKE<SyncPrefs>("set_sync_prefs", { prefs }),
@@ -75,6 +77,8 @@ export type AppError = {
 
 /**  Who the stored token signs in as. `login` is `None` without a token. */
 export type AuthStatus = {
+	/**  The viewer's node ID, for "assign me". */
+	id: UserId | null,
 	login: string | null,
 	avatar_url: string | null,
 	missing_scopes: string[],
@@ -161,7 +165,14 @@ export type FieldId = string;
 /**  Stored as JSON in `pending_mutation.intent`, and replayed by `fixtures/move_cases.json`. */
 export type Intent = { type: "move_card"; project_id: ProjectId; item_id: ItemId; field_id: FieldId; 
 /**  `None` clears the field, which is the "No <field>" column. */
-to: OptionId | null; placement: Placement };
+to: OptionId | null; placement: Placement } | { type: "set_assignees"; project_id: ProjectId; item_id: ItemId; add: User[]; remove: User[] } | { type: "archive"; project_id: ProjectId; item_id: ItemId } | 
+/**  Carries the card and its column, which the board no longer has once archived. */
+{ type: "unarchive"; project_id: ProjectId; item_id: ItemId; column: OptionId | null; card: Card } | 
+/**
+ *  A new draft at the top of `column`. `item_id` is a temporary ID chosen by the client,
+ *  for the card shown until GitHub creates the real item.
+ */
+{ type: "create_draft"; project_id: ProjectId; item_id: ItemId; field_id: FieldId; column: OptionId | null; title: string };
 
 export type IssueState = "open" | "closed";
 

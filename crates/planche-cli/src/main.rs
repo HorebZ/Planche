@@ -412,7 +412,9 @@ fn log_sent(cache: &Cache, project: &ProjectId, sent: Vec<Sent>) {
 
 /// `"<card title>" to <column>`, from the displayed board.
 fn describe(cache: &Cache, project: &ProjectId, intent: &Intent) -> String {
-    let Intent::MoveCard { item_id, to, .. } = intent;
+    let Intent::MoveCard { item_id, to, .. } = intent else {
+        return intent.item_id().to_string();
+    };
     let Ok(Some(board)) = cache.board(project, None) else {
         return item_id.to_string();
     };

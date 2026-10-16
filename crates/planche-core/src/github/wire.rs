@@ -246,3 +246,31 @@ pub(super) struct Label {
     pub name: String,
     pub color: String,
 }
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct AddDraftIssueData {
+    pub add_project_v2_draft_issue: AddedDraft,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct AddedDraft {
+    pub project_item: NodeId,
+}
+
+#[derive(Deserialize)]
+pub(super) struct NodeId {
+    pub id: String,
+}
+
+#[derive(Deserialize)]
+pub(super) struct AssignableUsersData {
+    pub repository: Option<AssignableRepository>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct AssignableRepository {
+    pub assignable_users: Nodes<User>,
+}
