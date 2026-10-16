@@ -22,7 +22,7 @@ design/
 │   ├── icon/                 ← icône d'app SVG + PNG 16 → 2048 (variante flat incluse)
 │   ├── logotype/             ← wordmark + lockup vectorisés (ink, black, white, paper) + PNG
 │   ├── menubar/              ← glyphe template (isTemplate = true) SVG + PNG 1x/2x/3x
-│   └── macos/                ← AppIcon.appiconset (Xcode), AppIcon.iconset, RENAME.sh
+│   └── macos/                ← AppIcon.appiconset (Xcode), AppIcon.iconset, AppIcon.icns
 └── prototype/                ← maquettes HTML interactives (référence, à ne pas porter)
     ├── Planche Ecrans v2.dc.html   ← les 16 écrans, clair + sombre, + planche des statuts
     ├── PlancheWindow v2.dc.html    ← markup + données d'exemple de chaque écran (prop screen)
@@ -38,7 +38,7 @@ design/
 2. `tailwind.config` : `presets: [require('./design/tokens/tailwind.preset.js')]`, et `content` qui couvre `src/**`.
 3. Thème : `document.documentElement.dataset.theme = 'light' | 'dark'` (suivre `prefers-color-scheme` en mode System).
 4. Glyphes : `import { StatusGlyph, PriorityGlyph, ProgressRing } from '../design/glyphs/PlancheGlyph'` (ou copier le fichier dans `src/components`).
-5. Icône d'app (une fois, sur macOS) : `sh design/brand/macos/RENAME.sh` → `AppIcon.icns` ; glisser `AppIcon.appiconset` dans `Assets.xcassets`.
+5. Icône d'app : `design/brand/macos/AppIcon.icns` est déjà généré ; glisser `AppIcon.appiconset` dans `Assets.xcassets`.
 
 ## Voir les maquettes
 `npx serve design` puis ouvrir `/prototype/Planche Ecrans v2.dc.html`. Les fichiers se chargent entre eux : ils ne marchent pas en `file://`.
