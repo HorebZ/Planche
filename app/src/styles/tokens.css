@@ -1,5 +1,5 @@
 /*
- * Planche design tokens, ported from design/handoff/tokens/planche-tokens.css.
+ * Planche design tokens, ported from the v1 design tokens. design/tokens/planche-tokens.css now holds v2.
  *
  * Colors use light-dark(), so they follow the computed color-scheme of the element that
  * reads them. The system preference drives :root. `.dark` and `.light` force a theme on
@@ -30,7 +30,7 @@
 
 	--pl-accent: light-dark(oklch(0.56 0.18 38), oklch(0.7 0.16 42));
 	--pl-accent-fg: light-dark(#ffffff, #1c1209);
-	/* The logotype's brand colors, from design/handoff/assets/logotype (ink and paper). */
+	/* The logotype's brand colors, from design/brand/logotype (ink and paper). */
 	--pl-logo-ink: light-dark(#1b1a17, #f4eee3);
 	--pl-logo-dot: light-dark(#d9542b, #e8673f);
 	--pl-accent-soft: light-dark(oklch(0.56 0.18 38 / 0.1), oklch(0.7 0.16 42 / 0.14));
