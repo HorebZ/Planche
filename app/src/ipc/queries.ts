@@ -2,6 +2,7 @@ import { QueryClient, queryOptions, useMutation, useQuery } from "@tanstack/reac
 import { cardRect } from "@/board/flip";
 import { notify } from "@/components/ui/toast";
 import { useUi } from "@/stores/ui";
+import { verbs } from "@/undo/inverse";
 import { type Board, commands, events, type ProjectId, type SyncPrefs, type SyncStatus, type ViewId } from "./bindings";
 
 /** The cache in Rust is the source of truth, so queries refetch on events, not on a timer. */
@@ -15,6 +16,10 @@ export const queryClient = createQueryClient();
 
 export const boardQuery = (projectId: ProjectId, viewId: ViewId | null) =>
 	queryOptions({ queryKey: ["board", projectId, viewId], queryFn: () => commands.getBoard(projectId, viewId) });
+
+/** Who can be assigned in `repo`. Fetched from GitHub once per session. */
+export const assignableUsersQuery = (repo: string) =>
+	queryOptions({ queryKey: ["assignable-users", repo], queryFn: () => commands.listAssignableUsers(repo) });
 
 export const projectQuery = (projectId: ProjectId) =>
 	queryOptions({ queryKey: ["project", projectId], queryFn: () => commands.getProject(projectId) });
@@ -125,7 +130,8 @@ export async function listenToCore(client: QueryClient) {
 			const id = payload.intent.item_id;
 			const from = cardRect(id);
 			if (from) useUi.getState().setReverting({ id, from });
-			notify(`Couldn't move "${cardTitle(client, payload.intent.item_id)}". Reverted.`, "error");
+			const verb = verbs[payload.intent.type];
+			notify(`Couldn't ${verb} "${cardTitle(client, payload.intent.item_id)}". Reverted.`, "error");
 		}),
 	]);
 	return () => {

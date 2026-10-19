@@ -3,7 +3,7 @@ use std::sync::{Mutex, PoisonError};
 use serde::Serialize;
 use specta::Type;
 
-use crate::domain::Viewer;
+use crate::domain::{UserId, Viewer};
 use crate::error::{Error, Result};
 use crate::github::{GithubClient, ops};
 
@@ -70,6 +70,8 @@ pub async fn login(token: &str) -> Result<Viewer> {
 /// Who the stored token signs in as. `login` is `None` without a token.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Type)]
 pub struct AuthStatus {
+    /// The viewer's node ID, for "assign me".
+    pub id: Option<UserId>,
     pub login: Option<String>,
     pub avatar_url: Option<String>,
     pub missing_scopes: Vec<String>,
@@ -78,6 +80,7 @@ pub struct AuthStatus {
 impl AuthStatus {
     fn signed_in(viewer: Viewer, missing_scopes: Vec<String>) -> Self {
         Self {
+            id: Some(viewer.id),
             login: Some(viewer.login),
             avatar_url: Some(viewer.avatar_url),
             missing_scopes,

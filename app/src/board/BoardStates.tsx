@@ -19,7 +19,7 @@ export function LoadingBoard() {
 }
 
 /** 5d: the board has columns but no card. */
-export function EmptyBoard({ board }: { board: Board }) {
+export function EmptyBoard({ board, onNewIssue }: { board: Board; onNewIssue: () => void }) {
 	return (
 		<div data-state="empty" className="relative h-full">
 			<div className={boardClass}>
@@ -34,8 +34,8 @@ export function EmptyBoard({ board }: { board: Board }) {
 				))}
 			</div>
 			<div className="pointer-events-none absolute inset-0 grid place-items-center">
-				{/* New issue arrives with #9, Add from repo with #11. */}
-				<EmptyBoardCard className="pointer-events-auto" />
+				{/* Add from repo arrives with #11. */}
+				<EmptyBoardCard onNewIssue={onNewIssue} className="pointer-events-auto" />
 			</div>
 		</div>
 	);

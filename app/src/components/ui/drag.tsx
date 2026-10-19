@@ -1,5 +1,6 @@
 import type { ComponentProps } from "react";
 import { Kbd } from "@/components/ui/kbd";
+import { keysFor } from "@/keyboard/shortcuts";
 import { cn } from "@/lib/cn";
 
 /** The bubble by the lifted card: where it will land. */
@@ -17,10 +18,10 @@ export function DragBubble({ className, ...props }: ComponentProps<"div">) {
 }
 
 const keys = [
-	{ keys: ["←", "→"], label: "Column" },
-	{ keys: ["↑", "↓"], label: "Position" },
-	{ keys: ["↵"], label: "Drop" },
-	{ keys: ["esc"], label: "Cancel" },
+	{ keys: [...keysFor("drag.left"), ...keysFor("drag.right")], label: "Column" },
+	{ keys: [...keysFor("drag.up"), ...keysFor("drag.down")], label: "Position" },
+	{ keys: keysFor("drag.drop"), label: "Drop" },
+	{ keys: keysFor("drag.cancel"), label: "Cancel" },
 ];
 
 /** The keys of a drag, at the bottom of the board while a card is lifted. */

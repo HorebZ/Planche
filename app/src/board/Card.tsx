@@ -1,8 +1,9 @@
 import { useSortable } from "@dnd-kit/sortable";
-import { memo } from "react";
+import { memo, useLayoutEffect, useRef } from "react";
 import { IssueCard, type IssueCardData } from "@/components/ui/issue-card";
 import type { StatusKey } from "@/components/ui/status";
 import type { Card as BoardCard } from "@/ipc/bindings";
+import { useUi } from "@/stores/ui";
 
 /** The repository name without its owner, as the card shows it. */
 function shortRepo(repo: string) {
@@ -49,18 +50,31 @@ type CardProps = {
 	status?: StatusKey;
 	/** The card is lifted, and this is the spot it left. */
 	ghost?: boolean;
+	/** The keyboard acts on this card, which then holds the focus. */
+	selected?: boolean;
 };
 
 /** A card that drags and takes drops. The lifted copy lives in the board's DragOverlay. */
-export const Card = memo(function Card({ card, status, ghost = false }: CardProps) {
+export const Card = memo(function Card({ card, status, ghost = false, selected = false }: CardProps) {
 	const { setNodeRef, attributes, listeners } = useSortable({ id: card.item_id });
+	const ref = useRef<HTMLDivElement | null>(null);
+	// A selection made with the keyboard moves the focus here. An open overlay keeps it.
+	useLayoutEffect(() => {
+		if (selected && !useUi.getState().overlay && document.activeElement !== ref.current) ref.current?.focus();
+	}, [selected]);
 	return (
 		<IssueCard
 			{...cardData(card)}
 			status={card.kind === "draft" ? "draft" : status}
-			ref={setNodeRef}
+			ref={(node) => {
+				ref.current = node;
+				setNodeRef(node);
+			}}
 			{...attributes}
 			{...listeners}
+			onFocus={() => {
+				if (!selected) useUi.getState().select(card.item_id);
+			}}
 			data-item-id={card.item_id}
 			aria-roledescription="card"
 			dragState={ghost ? "ghost" : undefined}
@@ -69,3 +83,12 @@ export const Card = memo(function Card({ card, status, ghost = false }: CardProp
 		/>
 	);
 });
+
+export function cardElement(id: string) {
+	return document.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(id)}"]`);
+}
+
+/** Gives the focus back to a card after an overlay closes. */
+export function focusCard(id: string) {
+	cardElement(id)?.focus();
+}

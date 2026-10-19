@@ -1,7 +1,8 @@
 import { Command as CommandPrimitive } from "cmdk";
 import { Search } from "lucide-react";
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Kbd } from "@/components/ui/kbd";
 import { cn } from "@/lib/cn";
 
 function Command({ className, ...props }: ComponentProps<typeof CommandPrimitive>) {
@@ -17,10 +18,15 @@ function Command({ className, ...props }: ComponentProps<typeof CommandPrimitive
 	);
 }
 
-function CommandInput({ className, ...props }: ComponentProps<typeof CommandPrimitive.Input>) {
+function CommandInput({
+	className,
+	leading,
+	trailing,
+	...props
+}: ComponentProps<typeof CommandPrimitive.Input> & { leading?: ReactNode; trailing?: ReactNode }) {
 	return (
 		<div className="flex h-[50px] items-center gap-2.5 border-line border-b px-3.5">
-			<Search className="size-4 shrink-0 text-fg-3" />
+			{leading ?? <Search className="size-4 shrink-0 text-fg-3" />}
 			<CommandPrimitive.Input
 				data-slot="command-input"
 				className={cn(
@@ -29,7 +35,83 @@ function CommandInput({ className, ...props }: ComponentProps<typeof CommandPrim
 				)}
 				{...props}
 			/>
+			{trailing}
 		</div>
+	);
+}
+
+/** The card the palette acts on, before the query, as its number. */
+function CommandContext({ className, children, ...props }: ComponentProps<"span">) {
+	return (
+		<span
+			data-slot="command-context"
+			className={cn(
+				"flex h-[22px] min-w-0 max-w-[320px] shrink items-center gap-[5px] rounded-sm bg-hover px-[7px] font-semibold text-fg-2 text-sm",
+				className,
+			)}
+			{...props}
+		>
+			<span className="flex min-w-0 items-center gap-1.5 truncate text-[11.5px]">{children}</span>
+		</span>
+	);
+}
+
+/** Marks in `text` the letters of each word of `query`, in order, as cmdk matches them. */
+function CommandHighlight({ text, query }: { text: string; query: string }) {
+	const hit = new Array<boolean>(text.length).fill(false);
+	const lower = text.toLowerCase();
+	let from = 0;
+	for (const word of query.toLowerCase().split(/\s+/).filter(Boolean)) {
+		const whole = lower.indexOf(word, from);
+		const at = whole >= 0 ? [...word].map((_, i) => whole + i) : subsequence(lower, word, from);
+		if (!at) continue;
+		for (const i of at) hit[i] = true;
+		from = (at.at(-1) ?? from) + 1;
+	}
+	const parts: ReactNode[] = [];
+	for (let i = 0; i < text.length; ) {
+		let j = i;
+		while (j < text.length && hit[j] === hit[i]) j++;
+		const part = text.slice(i, j);
+		parts.push(
+			hit[i] ? (
+				<span key={i} className="rounded-[2px] bg-active font-semibold">
+					{part}
+				</span>
+			) : (
+				part
+			),
+		);
+		i = j;
+	}
+	return parts;
+}
+
+function subsequence(text: string, word: string, from: number) {
+	const at: number[] = [];
+	for (let i = from; i < text.length && at.length < word.length; i++) if (text[i] === word[at.length]) at.push(i);
+	return at.length === word.length ? at : null;
+}
+
+function CommandFooter({ className, ...props }: ComponentProps<"div">) {
+	return (
+		<div
+			data-slot="command-footer"
+			className={cn(
+				"flex h-[38px] items-center gap-4 border-line border-t bg-bg-sunken px-3.5 text-[11.5px] text-fg-3",
+				className,
+			)}
+			{...props}
+		/>
+	);
+}
+
+function CommandHint({ keys, children }: { keys: string; children: ReactNode }) {
+	return (
+		<span className="flex items-center gap-[5px]">
+			<Kbd>{keys}</Kbd>
+			{children}
+		</span>
 	);
 }
 
@@ -99,16 +181,27 @@ function CommandSeparator({ className, ...props }: ComponentProps<typeof Command
 	);
 }
 
-function CommandDialog({ children, ...props }: ComponentProps<typeof Dialog>) {
+function CommandDialog({
+	children,
+	commandProps,
+	contentProps,
+	...props
+}: ComponentProps<typeof Dialog> & {
+	commandProps?: ComponentProps<typeof CommandPrimitive>;
+	contentProps?: ComponentProps<typeof DialogContent>;
+}) {
 	return (
 		<Dialog {...props}>
 			<DialogContent
+				{...contentProps}
 				showClose={false}
 				className="top-[120px] w-[640px] max-w-[calc(100%-2rem)] translate-y-0 gap-0 overflow-hidden rounded-window bg-elevated p-0 shadow-pop"
 			>
 				<DialogTitle className="sr-only">Command palette</DialogTitle>
 				<DialogDescription className="sr-only">Search actions, issues, and pull requests.</DialogDescription>
-				<Command className="rounded-none bg-transparent shadow-none">{children}</Command>
+				<Command className="rounded-none bg-transparent shadow-none" {...commandProps}>
+					{children}
+				</Command>
 			</DialogContent>
 		</Dialog>
 	);
@@ -116,9 +209,13 @@ function CommandDialog({ children, ...props }: ComponentProps<typeof Dialog>) {
 
 export {
 	Command,
+	CommandContext,
 	CommandDialog,
 	CommandEmpty,
+	CommandFooter,
 	CommandGroup,
+	CommandHighlight,
+	CommandHint,
 	CommandInput,
 	CommandItem,
 	CommandList,

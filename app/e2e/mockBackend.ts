@@ -4,7 +4,7 @@
  */
 import { emit } from "@tauri-apps/api/event";
 import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
-import { moveCard } from "../src/board/moveCard";
+import { applyIntent } from "../src/board/moveCard";
 import type {
 	AppError,
 	AuthStatus,
@@ -20,6 +20,7 @@ import type {
 
 export type Scenario =
 	| "board"
+	| "six-statuses"
 	| "loading"
 	| "syncing"
 	| "empty"
@@ -139,6 +140,11 @@ function bigBoard(): Board {
 
 function boardFor(scenario: Scenario): Board | null {
 	switch (scenario) {
+		case "six-statuses": {
+			const board = mockupBoard();
+			board.columns.push(column("cancelled", "Cancelled", "GRAY", []));
+			return board;
+		}
 		case "loading":
 			return null;
 		case "big":
@@ -205,8 +211,8 @@ function statusFor(scenario: Scenario): SyncStatus {
 	}
 }
 
-const signedIn: AuthStatus = { login: "camille-r", avatar_url: null, missing_scopes: [] };
-const signedOut: AuthStatus = { login: null, avatar_url: null, missing_scopes: [] };
+const signedIn: AuthStatus = { id: "U_CR", login: "camille-r", avatar_url: null, missing_scopes: [] };
+const signedOut: AuthStatus = { id: null, login: null, avatar_url: null, missing_scopes: [] };
 const onboarding = (s: Scenario) => s === "onboarding" || s === "checking" || s === "valid" || s === "invalid";
 
 /** Counts calls per command, for tests that check a refetch. */
@@ -263,7 +269,7 @@ export function installMockBackend(scenario: Scenario) {
 					cards: c.cards.map((card) => (card.item_id === intent.item_id ? { ...card, pending: value } : card)),
 				})),
 			});
-			board = pending(moveCard(before, intent), true);
+			board = pending(applyIntent(before, intent), true);
 			if (scenario !== "offline") {
 				setTimeout(
 					async () => {
@@ -281,6 +287,8 @@ export function installMockBackend(scenario: Scenario) {
 			}
 			return board;
 		},
+		list_assignable_users: () =>
+			Object.entries(people).map(([who, login]) => ({ id: `U_${who}`, login, avatar_url: "" })),
 		refresh_project: () => ({ project: PROJECT, items: 17, cost: 4, usage: {}, changes: [] }),
 		sync_status: () => statusFor(scenario),
 		get_sync_prefs: () => prefs,

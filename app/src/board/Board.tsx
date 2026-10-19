@@ -14,10 +14,11 @@ import {
 	useSensor,
 	useSensors,
 } from "@dnd-kit/core";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { DragBubble, DragHelpBar } from "@/components/ui/drag";
 import { IssueCard } from "@/components/ui/issue-card";
 import { type Card as BoardCard, type Board as BoardData, commands, type Intent, type ItemId } from "@/ipc/bindings";
+import { commandFor, dragCodes } from "@/keyboard/shortcuts";
 import { useUi } from "@/stores/ui";
 import { cardData } from "./Card";
 import { Column, type Landing } from "./Column";
@@ -48,10 +49,12 @@ const collision: CollisionDetection = (args) => {
 type BoardProps = {
 	board: BoardData;
 	onMove: (intent: Intent) => Promise<unknown>;
+	/** A title typed in a column's new-draft field, and that column. */
+	onCreateDraft: (column: BoardData["columns"][number], title: string) => void;
 };
 
 /** The board: one column per option, each scrolling on its own. Cards move by drag or keyboard. */
-export function Board({ board, onMove }: BoardProps) {
+export const Board = memo(function Board({ board, onMove, onCreateDraft }: BoardProps) {
 	usePaintedMark();
 	const setDragging = useUi((s) => s.setDragging);
 	const [drag, setDragState] = useState<Drag | null>(null);
@@ -72,19 +75,19 @@ export function Board({ board, onMove }: BoardProps) {
 			const b = boardRef.current;
 			let { column, index } = current.to;
 			const size = (c: number) => others(b, c, current.id).length;
-			switch (event.code) {
-				case "ArrowRight":
+			switch (commandFor(event, "drag")) {
+				case "drag.right":
 					column = Math.min(column + 1, b.columns.length - 1);
 					index = Math.min(index, size(column));
 					break;
-				case "ArrowLeft":
+				case "drag.left":
 					column = Math.max(column - 1, 0);
 					index = Math.min(index, size(column));
 					break;
-				case "ArrowDown":
+				case "drag.down":
 					if (manualOrder) index = Math.min(index + 1, size(column));
 					break;
-				case "ArrowUp":
+				case "drag.up":
 					if (manualOrder) index = Math.max(index - 1, 0);
 					break;
 				default:
@@ -101,7 +104,7 @@ export function Board({ board, onMove }: BoardProps) {
 		useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
 		useSensor(KeyboardSensor, {
 			coordinateGetter,
-			keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space", "Enter"] },
+			keyboardCodes: { start: dragCodes("drag.lift"), cancel: dragCodes("drag.cancel"), end: dragCodes("drag.drop") },
 		}),
 	);
 
@@ -225,6 +228,7 @@ export function Board({ board, onMove }: BoardProps) {
 							index={index}
 							activeId={drag?.id ?? null}
 							landing={landingFor(index)}
+							onCreateDraft={(title) => onCreateDraft(column, title)}
 						/>
 					))}
 				</div>
@@ -251,7 +255,7 @@ export function Board({ board, onMove }: BoardProps) {
 			</DragOverlay>
 		</DndContext>
 	);
-}
+});
 
 /** The move a drop asks for, or `null` when the card lands where it was. */
 function intentFor(board: BoardData, drag: Drag, manualOrder: boolean): Intent | null {
