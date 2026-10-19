@@ -220,7 +220,7 @@ function PaletteBody({ preview = false }: { preview?: boolean }) {
 			/>
 			<CommandList>
 				<CommandEmpty>No matches</CommandEmpty>
-				<CommandGroup heading="Actions on #226">
+				<CommandGroup heading="Change status">
 					<CommandItem value="move-progress" data-preview={preview ? "hover" : undefined}>
 						<ArrowRight className="size-[18px] text-fg-2" />
 						<span className="min-w-0 flex-1">
@@ -246,7 +246,7 @@ function PaletteBody({ preview = false }: { preview?: boolean }) {
 						<span className="min-w-0 flex-1">Assign…</span>
 					</CommandItem>
 				</CommandGroup>
-				<CommandGroup heading="Issues & pull requests" className="mt-1">
+				<CommandGroup heading="Issues" className="mt-1">
 					<CommandItem value="issue-214">
 						<span className="grid w-[18px] place-items-center">
 							<span className="size-[11px] rounded-xs shadow-[inset_0_0_0_1.5px_var(--pl-fg-3)]" />
@@ -255,7 +255,7 @@ function PaletteBody({ preview = false }: { preview?: boolean }) {
 							<CommandHighlight text="Shortcut to move a card to the next column" query={query} />
 						</span>
 						<span className="font-mono text-fg-3 text-xs">app #214</span>
-						<span className="inline-flex h-4 items-center gap-1 rounded-xs bg-kbd px-[5px] text-2xs text-fg-2">
+						<span className="inline-flex h-4 items-center gap-1 rounded-xs bg-hover px-[5px] text-2xs text-fg-2">
 							<span className="size-1.5 rounded-[2px] bg-status-backlog" />
 							Backlog
 						</span>
@@ -268,7 +268,7 @@ function PaletteBody({ preview = false }: { preview?: boolean }) {
 							<CommandHighlight text="Move filters into the toolbar" query={query} />
 						</span>
 						<span className="font-mono text-fg-3 text-xs">app #198</span>
-						<span className="inline-flex h-4 items-center gap-1 rounded-xs bg-kbd px-[5px] text-2xs text-fg-2">
+						<span className="inline-flex h-4 items-center gap-1 rounded-xs bg-hover px-[5px] text-2xs text-fg-2">
 							<span className="size-1.5 rounded-[2px] bg-status-done" />
 							Done
 						</span>
@@ -277,8 +277,8 @@ function PaletteBody({ preview = false }: { preview?: boolean }) {
 			</CommandList>
 			<CommandFooter>
 				<CommandHint keys="↑↓">Navigate</CommandHint>
-				<CommandHint keys="↵">Run</CommandHint>
-				<CommandHint keys="⌫">Clear #226</CommandHint>
+				<CommandHint keys="↵">Apply</CommandHint>
+				<CommandHint keys="⌫">Clear context</CommandHint>
 				<span className="flex-1" />
 				<CommandHint keys="?">All shortcuts</CommandHint>
 			</CommandFooter>
@@ -287,11 +287,12 @@ function PaletteBody({ preview = false }: { preview?: boolean }) {
 }
 
 const statusOptions: StatusOption[] = [
-	{ id: "backlog", name: "Backlog", status: "backlog", current: false, keys: "1" },
+	{ id: "backlog", name: "Draft", status: "draft", current: false, keys: "1" },
 	{ id: "todo", name: "Todo", status: "todo", current: true, keys: "2" },
 	{ id: "doing", name: "In progress", status: "doing", current: false, keys: "3" },
 	{ id: "review", name: "In review", status: "review", current: false, keys: "4" },
 	{ id: "done", name: "Done", status: "done", current: false, keys: "5" },
+	{ id: "cancelled", name: "Cancelled", status: "cancelled", current: false, keys: "6" },
 ];
 
 const userOptions: UserOption[] = [

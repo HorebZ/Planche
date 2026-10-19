@@ -15,7 +15,11 @@ export function useShortcuts(handlers: Handlers) {
 		const onKeyDown = (event: KeyboardEvent) => {
 			const { overlay, dragging } = useUi.getState();
 			if (event.defaultPrevented || overlay || dragging || isTextField(event.target)) return;
-			const command = commandFor(event, "global") ?? commandFor(event, "board");
+			if (document.querySelector('[role="dialog"], [role="menu"], [data-slot="popover-content"]')) return;
+			const global = commandFor(event, "global");
+			const target = event.target instanceof HTMLElement ? event.target : null;
+			if (!global && target?.closest('button, [data-slot="sidebar"]') && !target.closest("[data-item-id]")) return;
+			const command = global ?? commandFor(event, "board");
 			const run = command && latest.current[command];
 			if (!run) return;
 			event.preventDefault();

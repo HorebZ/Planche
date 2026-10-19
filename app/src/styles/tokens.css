@@ -1,132 +1,144 @@
-/*
- * Planche design tokens, ported from design/handoff/tokens/planche-tokens.css.
- *
- * Colors use light-dark(), so they follow the computed color-scheme of the element that
- * reads them. The system preference drives :root. `.dark` and `.light` force a theme on
- * any subtree, which is how the playground renders both themes side by side.
- * Shadows are not colors, so they switch through the -light/-dark pairs below.
- */
+/* Generated from design/tokens/planche-tokens.css. Run bun run sync:design to refresh. */
 :root {
 	color-scheme: light dark;
-
-	--pl-bg: light-dark(#fcfbf9, #1a1917);
-	--pl-bg-sunken: light-dark(#f3f1ed, #151413);
-	--pl-surface: light-dark(#ffffff, #252420);
-	--pl-elevated: light-dark(#ffffff, #2a2925);
-	--pl-sidebar: light-dark(rgba(244, 242, 238, 0.72), rgba(36, 34, 31, 0.62));
-	--pl-overlay: light-dark(rgba(28, 25, 20, 0.28), rgba(0, 0, 0, 0.45));
-
-	--pl-hover: light-dark(rgba(28, 25, 20, 0.05), rgba(255, 248, 235, 0.05));
-	--pl-active: light-dark(rgba(28, 25, 20, 0.085), rgba(255, 248, 235, 0.09));
-	--pl-kbd: light-dark(rgba(28, 25, 20, 0.055), rgba(255, 248, 235, 0.07));
-	--pl-skeleton: light-dark(rgba(28, 25, 20, 0.07), rgba(255, 248, 235, 0.07));
-
-	--pl-border: light-dark(rgba(28, 25, 20, 0.09), rgba(255, 248, 235, 0.08));
-	--pl-border-strong: light-dark(rgba(28, 25, 20, 0.17), rgba(255, 248, 235, 0.15));
-
+	--pl-bg: light-dark(#fcfbf9, #191817);
+	--pl-bg-sunken: light-dark(#f1efeb, #121211);
+	--pl-surface: light-dark(#ffffff, #22211f);
+	--pl-card: light-dark(#ffffff, #21201e);
+	--pl-elevated: light-dark(#ffffff, #242321);
+	--pl-overlay: light-dark(rgba(28, 25, 20, 0.18), rgba(0, 0, 0, 0.45));
+	--pl-hover: light-dark(rgba(28, 25, 20, 0.04), rgba(255, 248, 235, 0.04));
+	--pl-active: light-dark(rgba(28, 25, 20, 0.07), rgba(255, 248, 235, 0.075));
+	--pl-skeleton: light-dark(rgba(28, 25, 20, 0.06), rgba(255, 248, 235, 0.06));
+	--pl-border: light-dark(rgba(28, 25, 20, 0.08), rgba(255, 248, 235, 0.075));
+	--pl-border-strong: light-dark(rgba(28, 25, 20, 0.15), rgba(255, 248, 235, 0.14));
 	--pl-fg: light-dark(#1c1a17, #eeebe5);
 	--pl-fg-2: light-dark(#57534c, #aba69d);
-	--pl-fg-3: light-dark(#716c63, #8e897f);
-
+	--pl-fg-3: light-dark(#716c63, #86817a);
+	--pl-primary: light-dark(#1c1a17, #eeebe5);
+	--pl-primary-fg: light-dark(#fcfbf9, #191817);
+	--pl-ring: light-dark(rgba(28, 25, 20, 0.28), rgba(255, 248, 235, 0.32));
+	--pl-focus: var(--pl-ring);
 	--pl-accent: light-dark(oklch(0.56 0.18 38), oklch(0.7 0.16 42));
 	--pl-accent-fg: light-dark(#ffffff, #1c1209);
-	/* The logotype's brand colors, from design/handoff/assets/logotype (ink and paper). */
-	--pl-logo-ink: light-dark(#1b1a17, #f4eee3);
-	--pl-logo-dot: light-dark(#d9542b, #e8673f);
 	--pl-accent-soft: light-dark(oklch(0.56 0.18 38 / 0.1), oklch(0.7 0.16 42 / 0.14));
-	--pl-focus: light-dark(oklch(0.56 0.18 38), oklch(0.74 0.15 45));
-
 	--pl-danger: light-dark(oklch(0.52 0.19 20), oklch(0.69 0.17 22));
 	--pl-danger-soft: light-dark(oklch(0.52 0.19 20 / 0.08), oklch(0.69 0.17 22 / 0.12));
 	--pl-success: light-dark(oklch(0.55 0.13 150), oklch(0.72 0.13 150));
-	--pl-warning: light-dark(oklch(0.62 0.14 75), oklch(0.8 0.13 80));
-
-	--pl-s-backlog: light-dark(#9a958c, #8e897f);
-	--pl-s-todo: light-dark(oklch(0.6 0.1 250), oklch(0.7 0.1 250));
+	--pl-warning: light-dark(oklch(0.66 0.14 75), oklch(0.8 0.13 80));
+	--pl-s-draft: var(--pl-fg-3);
+	--pl-s-todo: var(--pl-fg-3);
 	--pl-s-doing: light-dark(oklch(0.72 0.15 75), oklch(0.8 0.14 78));
 	--pl-s-review: light-dark(oklch(0.58 0.15 300), oklch(0.7 0.14 300));
-	--pl-s-done: light-dark(oklch(0.6 0.13 150), oklch(0.72 0.13 150));
-
-	--pl-shadow-card-light: 0 0 0 1px rgba(28, 25, 20, 0.07), 0 1px 2px rgba(28, 25, 20, 0.06);
-	--pl-shadow-card-dark: 0 0 0 1px rgba(255, 248, 235, 0.07), 0 1px 2px rgba(0, 0, 0, 0.35);
+	--pl-s-done: light-dark(oklch(0.58 0.13 150), oklch(0.72 0.13 150));
+	--pl-s-cancelled: var(--pl-fg-3);
+	--pl-s-deleted: var(--pl-danger);
+	--pl-shadow-card-light: 0 0 0 1px rgba(28, 25, 20, 0.06), 0 1px 2px rgba(28, 25, 20, 0.05);
+	--pl-shadow-card-dark: 0 0 0 1px rgba(255, 248, 235, 0.06), 0 1px 2px rgba(0, 0, 0, 0.3);
 	--pl-shadow-drag-light:
-		0 0 0 1px rgba(28, 25, 20, 0.08), 0 18px 40px -10px rgba(28, 25, 20, 0.3), 0 6px 14px -4px rgba(28, 25, 20, 0.14);
+		0 0 0 1px rgba(28, 25, 20, 0.08), 0 18px 40px -10px rgba(28, 25, 20, 0.28), 0 6px 14px -4px rgba(28, 25, 20, 0.12);
 	--pl-shadow-drag-dark:
 		0 0 0 1px rgba(255, 248, 235, 0.12), 0 20px 44px -10px rgba(0, 0, 0, 0.65), 0 6px 14px -4px rgba(0, 0, 0, 0.4);
 	--pl-shadow-pop-light:
-		0 0 0 1px rgba(28, 25, 20, 0.08), 0 12px 32px -8px rgba(28, 25, 20, 0.22), 0 2px 6px rgba(28, 25, 20, 0.06);
+		0 0 0 1px rgba(28, 25, 20, 0.08), 0 12px 32px -8px rgba(28, 25, 20, 0.2), 0 2px 6px rgba(28, 25, 20, 0.05);
 	--pl-shadow-pop-dark:
-		0 0 0 1px rgba(255, 248, 235, 0.1), 0 16px 40px -8px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.3);
+		0 0 0 1px rgba(255, 248, 235, 0.09), 0 16px 40px -8px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.3);
+	--pl-shadow-panel-light: 0 0 0 1px rgba(28, 25, 20, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
+	--pl-shadow-panel-dark: 0 0 0 1px rgba(255, 248, 235, 0.075), 0 1px 3px rgba(0, 0, 0, 0.3);
 	--pl-shadow-window-light:
-		0 0 0 0.5px rgba(0, 0, 0, 0.2), 0 30px 80px -20px rgba(30, 25, 15, 0.38), 0 10px 30px -10px rgba(30, 25, 15, 0.2);
+		0 0 0 0.5px rgba(0, 0, 0, 0.2), 0 30px 80px -20px rgba(30, 25, 15, 0.32), 0 10px 30px -10px rgba(30, 25, 15, 0.16);
 	--pl-shadow-window-dark:
-		0 0 0 0.5px rgba(0, 0, 0, 0.7), inset 0 0 0 0.5px rgba(255, 255, 255, 0.09), 0 30px 80px -20px rgba(0, 0, 0, 0.7);
-	--pl-ring: 0 0 0 2px var(--pl-focus);
-	--pl-shadow-thumb: 0 1px 2px rgba(0, 0, 0, 0.25);
-
+		0 0 0 0.5px rgba(0, 0, 0, 0.7), inset 0 0 0 0.5px rgba(255, 255, 255, 0.08), 0 30px 80px -20px rgba(0, 0, 0, 0.7);
+	--pl-shadow-ring: 0 0 0 2px var(--pl-ring);
 	--pl-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
 	--pl-font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
-	--pl-text-2xs: 10.5px;
 	--pl-text-xs: 11px;
-	--pl-text-sm: 12px;
+	--pl-text-sm: 11.5px;
+	--pl-text-md: 12px;
 	--pl-text-base: 13px;
-	--pl-text-md: 14px;
-	--pl-text-lg: 17px;
-	--pl-text-xl: 20px;
+	--pl-text-body: 14px;
+	--pl-text-lg: 16px;
+	--pl-text-xl: 22px;
 	--pl-text-2xl: 24px;
-
-	--pl-row: 26px;
-	--pl-control: 26px;
-	--pl-control-lg: 32px;
-	--pl-toolbar: 48px;
-	--pl-sidebar-w: 232px;
-	--pl-column-w: 228px;
-
-	--pl-radius-xs: 3px;
+	--pl-tracking: -0.005em;
+	--pl-space-0_5: 2px;
+	--pl-space-1: 4px;
+	--pl-space-1_5: 6px;
+	--pl-space-2: 8px;
+	--pl-space-2_5: 10px;
+	--pl-space-3: 12px;
+	--pl-space-4: 16px;
+	--pl-space-5: 20px;
+	--pl-space-6: 24px;
+	--pl-space-8: 32px;
+	--pl-space-12: 48px;
+	--pl-row: 28px;
+	--pl-row-menu: 30px;
+	--pl-row-list: 38px;
+	--pl-row-sub: 36px;
+	--pl-toolbar: 44px;
+	--pl-filterbar: 40px;
+	--pl-sidebar-w: 220px;
+	--pl-column-w: 226px;
+	--pl-props-w: 300px;
+	--pl-panel-inset: 8px;
+	--pl-radius-xs: 4px;
 	--pl-radius-sm: 5px;
 	--pl-radius-md: 6px;
 	--pl-radius-lg: 8px;
 	--pl-radius-xl: 10px;
-	--pl-radius-window: 12px;
-
+	--pl-radius-2xl: 12px;
+	--pl-radius-pill: 11px;
 	--pl-ease: cubic-bezier(0.2, 0, 0, 1);
 	--pl-ease-out: cubic-bezier(0, 0, 0.2, 1);
-	--pl-dur-fast: 150ms;
-	--pl-dur-base: 180ms;
+	--pl-dur-fast: 120ms;
+	--pl-dur-base: 160ms;
 	--pl-dur-slow: 200ms;
+	/* App utility aliases; their values come from the design tokens above. */
+	--pl-text-2xs: var(--pl-text-xs);
+	--pl-control: var(--pl-row);
+	--pl-control-lg: var(--pl-row-sub);
+	--pl-radius-window: var(--pl-radius-2xl);
+	--pl-shadow-thumb: var(--pl-shadow-card);
+	--pl-logo-ink: var(--pl-fg);
+	--pl-logo-dot: var(--pl-accent);
 }
-
 :root,
-.light {
+.light,
+[data-theme="light"] {
 	--pl-shadow-card: var(--pl-shadow-card-light);
 	--pl-shadow-drag: var(--pl-shadow-drag-light);
 	--pl-shadow-pop: var(--pl-shadow-pop-light);
+	--pl-shadow-panel: var(--pl-shadow-panel-light);
 	--pl-shadow-window: var(--pl-shadow-window-light);
 }
-
-.light {
+.light,
+[data-theme="light"] {
 	color-scheme: light;
 }
-
-.dark {
+.dark,
+[data-theme="dark"] {
 	color-scheme: dark;
 	--pl-shadow-card: var(--pl-shadow-card-dark);
 	--pl-shadow-drag: var(--pl-shadow-drag-dark);
 	--pl-shadow-pop: var(--pl-shadow-pop-dark);
+	--pl-shadow-panel: var(--pl-shadow-panel-dark);
 	--pl-shadow-window: var(--pl-shadow-window-dark);
 }
-
 @media (prefers-color-scheme: dark) {
-	:root:not(.light) {
+	:root:not(.light):not([data-theme="light"]) {
 		--pl-shadow-card: var(--pl-shadow-card-dark);
 		--pl-shadow-drag: var(--pl-shadow-drag-dark);
 		--pl-shadow-pop: var(--pl-shadow-pop-dark);
+		--pl-shadow-panel: var(--pl-shadow-panel-dark);
 		--pl-shadow-window: var(--pl-shadow-window-dark);
 	}
 }
-
 @media (prefers-reduced-motion: reduce) {
-	:root {
+	:root,
+	.light,
+	.dark,
+	[data-theme] {
 		--pl-dur-fast: 0ms;
 		--pl-dur-base: 0ms;
 		--pl-dur-slow: 0ms;

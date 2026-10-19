@@ -9,7 +9,7 @@ const fieldVariants = cva(
 		"shadow-[inset_0_0_0_1px_var(--pl-border-strong)]",
 		"transition-[background-color,box-shadow]",
 		"hover:bg-hover",
-		"focus-within:bg-surface focus-within:shadow-[inset_0_0_0_1px_var(--pl-focus),0_0_0_3px_var(--pl-accent-soft)]",
+		"focus-within:bg-surface focus-within:shadow-[inset_0_0_0_1px_var(--pl-fg-3),0_0_0_3px_var(--pl-active)]",
 		"has-[:disabled]:pointer-events-none has-[:disabled]:bg-active has-[:disabled]:shadow-none",
 		"[&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-fg-3",
 	],
@@ -59,7 +59,7 @@ export function Input({
 				disabled={disabled}
 				aria-invalid={invalid || undefined}
 				className={cn(
-					"min-w-0 flex-1 bg-transparent text-base text-fg outline-none placeholder:text-fg-3 disabled:text-fg-3",
+					"min-w-0 flex-1 bg-transparent text-base text-fg outline-none placeholder:text-fg-3 focus-visible:shadow-none disabled:text-fg-3",
 					mono && "font-mono text-sm",
 				)}
 				{...props}

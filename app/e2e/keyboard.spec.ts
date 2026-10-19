@@ -64,10 +64,10 @@ test("S opens the Status menu under the card, and a digit picks the option of it
 	await expect.poll(() => numbers(column(page, "Todo"))).toEqual([226, 223, 219]);
 	await page.keyboard.press("s");
 	const menu = page.locator('[data-slot="popover-content"]');
-	await expect(menu.getByPlaceholder("Move to…")).toBeFocused();
+	await expect(menu.getByPlaceholder("Change status…")).toBeFocused();
 	await expect(menu.locator("[cmdk-item]")).toHaveText(["Backlog1", "Todo2", "In progress3", "In review4", "Done5"]);
 	await expect(menu.getByLabel("Current")).toHaveCount(1);
-	expect(await menu.locator("[cmdk-root]").evaluate((el) => (el as HTMLElement).offsetWidth)).toBe(216);
+	expect(await menu.locator("[cmdk-root]").evaluate((el) => (el as HTMLElement).offsetWidth)).toBe(252);
 	await page.keyboard.press("5");
 	await expect(menu).toHaveCount(0);
 	await expect.poll(() => numbers(column(page, "Done"))).toContain(223);
@@ -82,7 +82,7 @@ test("⌘K, mv done, runs Move to Done first, and Esc gives the focus back to th
 	await selectCard(page, 226);
 	await page.keyboard.press("Meta+k");
 	const palette = page.getByRole("dialog");
-	await expect(palette.locator('[data-slot="command-context"]')).toHaveText("#226");
+	await expect(palette.locator('[data-slot="command-context"]')).toContainText("#226 Show linked PRs in issue detail");
 	await page.keyboard.type("mv done");
 	await expect(palette.locator("[cmdk-item]").first()).toContainText("Move to Done");
 	await expect(palette.locator('[cmdk-item][data-selected="true"]')).toContainText("Move to Done");
@@ -106,7 +106,7 @@ test("⌫ clears the card from the palette, and a search selects another card", 
 	await expect(palette.locator('[data-slot="command-context"]')).toHaveCount(0);
 	await expect(palette.getByText(/^Actions on/)).toHaveCount(0);
 	await page.keyboard.type("websocket");
-	await expect(palette.getByText("Issues & pull requests")).toBeVisible();
+	await expect(palette.getByText("Issues", { exact: true })).toBeVisible();
 	await page.keyboard.press("Enter");
 	await expect.poll(() => focused(page)).toBe("PVTI_227");
 });
@@ -176,4 +176,91 @@ test("? opens every shortcut of the table", async ({ page }) => {
 	await expect(sheet.getByText("Move to the next column")).toBeVisible();
 	await page.keyboard.press("Escape");
 	await expect(sheet).toHaveCount(0);
+});
+
+test("the sixth status option is shown and runs from its digit", async ({ page }) => {
+	await page.goto("/?mock=six-statuses");
+	await selectCard(page, 223);
+	await page.keyboard.press("s");
+	const menu = page.locator('[data-slot="popover-content"]');
+	await expect(menu.getByRole("option").last()).toContainText("Cancelled6");
+	await page.keyboard.press("6");
+	await expect.poll(() => numbers(column(page, "Cancelled"))).toContain(223);
+	await page.keyboard.press("Meta+z");
+	await expect.poll(() => numbers(column(page, "Todo"))).toEqual([226, 223, 219]);
+});
+
+test("list selection, status menu and palette restore focus to visible rows", async ({ page }) => {
+	await open(page);
+	await page.getByRole("button", { name: "List", exact: true }).click();
+	const rows = page.locator('[data-slot="issue-list-row"]');
+	await rows.first().focus();
+	await page.keyboard.press("j");
+	await expect(rows.nth(1)).toBeFocused();
+	await page.keyboard.press("s");
+	await expect(page.getByPlaceholder("Change status…")).toBeFocused();
+	await page.keyboard.press("Escape");
+	await expect(rows.nth(1)).toBeFocused();
+	await page.keyboard.press("Meta+k");
+	await page.keyboard.press("Escape");
+	await expect(rows.nth(1)).toBeFocused();
+	await page.keyboard.press("ArrowLeft");
+	const header = page.getByRole("button", { name: /Backlog.*6/ });
+	await expect(header).toBeFocused();
+	await expect(header).toHaveAttribute("aria-expanded", "false");
+	await page.keyboard.press("ArrowRight");
+	await expect(header).toHaveAttribute("aria-expanded", "true");
+});
+
+test("settings, project menus and text fields keep board shortcuts inactive", async ({ page }) => {
+	await open(page);
+	await selectCard(page, 226);
+	await page.keyboard.press("Meta+,");
+	await page.keyboard.press("j");
+	await expect(page.getByRole("dialog")).toBeVisible();
+	await page.keyboard.press("Escape");
+	const project = page.locator('[data-slot="sidebar"]').getByRole("button", { name: "Design system", exact: true });
+	await project.focus();
+	await page.keyboard.press("Meta+Shift+h");
+	await expect(project).toHaveCount(0);
+	await page.locator('[data-slot="sidebar"]').getByRole("button", { name: "More options for Planche — v1.2" }).click();
+	await page.keyboard.press("j");
+	await expect(page.getByRole("menu")).toBeVisible();
+	await page.keyboard.press("Escape");
+	await selectCard(page, 226);
+	await page.keyboard.press("c");
+	await page.getByLabel("Draft title").fill("jkhl");
+	await expect(page.getByLabel("Draft title")).toHaveValue("jkhl");
+});
+
+test("C creates the first draft on an empty board", async ({ page }) => {
+	await page.goto("/?mock=empty");
+	await expect(page.getByText("This board is empty")).toBeVisible();
+	await page.getByRole("button", { name: "New issue C", exact: true }).last().click();
+	await expect(page.getByLabel("Draft title")).toBeFocused();
+	await page.keyboard.type("First draft");
+	await page.keyboard.press("Enter");
+	await expect(page.locator('[data-slot="issue-card"]').first()).toContainText("First draft");
+});
+
+test.describe("keyboard review captures", () => {
+	test.skip(!process.env.SCREENSHOTS, "set SCREENSHOTS=1 to capture keyboard UI");
+	for (const colorScheme of ["light", "dark"] as const) {
+		test(`palette, status and undo ${colorScheme}`, async ({ page }) => {
+			await page.emulateMedia({ colorScheme });
+			await page.goto("/?mock=six-statuses");
+			await selectCard(page, 226);
+			await page.keyboard.press("Meta+k");
+			await expect(page.getByRole("dialog")).toBeVisible();
+			await page.screenshot({ path: `screenshots/keyboard-palette-${colorScheme}.png`, animations: "disabled" });
+			await page.keyboard.press("Escape");
+			await page.keyboard.press("s");
+			await expect(page.getByPlaceholder("Change status…")).toBeFocused();
+			await page.screenshot({ path: `screenshots/keyboard-status-${colorScheme}.png`, animations: "disabled" });
+			await page.keyboard.press("Escape");
+			await page.keyboard.press("Shift+ArrowRight");
+			await expect(toast(page).getByRole("button", { name: /Undo/ })).toBeVisible();
+			await page.screenshot({ path: `screenshots/keyboard-undo-${colorScheme}.png`, animations: "disabled" });
+		});
+	}
 });

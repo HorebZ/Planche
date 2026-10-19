@@ -1,6 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { memo, useLayoutEffect, useRef } from "react";
 import { IssueCard, type IssueCardData } from "@/components/ui/issue-card";
+import type { StatusKey } from "@/components/ui/status";
 import type { Card as BoardCard } from "@/ipc/bindings";
 import { useUi } from "@/stores/ui";
 
@@ -46,6 +47,7 @@ export function cardData(card: BoardCard): IssueCardData {
 
 type CardProps = {
 	card: BoardCard;
+	status?: StatusKey;
 	/** The card is lifted, and this is the spot it left. */
 	ghost?: boolean;
 	/** The keyboard acts on this card, which then holds the focus. */
@@ -53,7 +55,7 @@ type CardProps = {
 };
 
 /** A card that drags and takes drops. The lifted copy lives in the board's DragOverlay. */
-export const Card = memo(function Card({ card, ghost = false, selected = false }: CardProps) {
+export const Card = memo(function Card({ card, status, ghost = false, selected = false }: CardProps) {
 	const { setNodeRef, attributes, listeners } = useSortable({ id: card.item_id });
 	const ref = useRef<HTMLDivElement | null>(null);
 	// A selection made with the keyboard moves the focus here. An open overlay keeps it.
@@ -63,6 +65,7 @@ export const Card = memo(function Card({ card, ghost = false, selected = false }
 	return (
 		<IssueCard
 			{...cardData(card)}
+			status={card.kind === "draft" ? "draft" : status}
 			ref={(node) => {
 				ref.current = node;
 				setNodeRef(node);
@@ -82,7 +85,7 @@ export const Card = memo(function Card({ card, ghost = false, selected = false }
 });
 
 export function cardElement(id: string) {
-	return document.querySelector<HTMLElement>(`[data-slot="issue-card"][data-item-id="${CSS.escape(id)}"]`);
+	return document.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(id)}"]`);
 }
 
 /** Gives the focus back to a card after an overlay closes. */

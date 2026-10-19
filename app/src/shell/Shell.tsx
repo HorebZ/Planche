@@ -1,14 +1,17 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { AssigneePicker } from "@/board/AssigneePicker";
 import { Board } from "@/board/Board";
 import { EmptyBoard, LoadingBoard, SyncBar } from "@/board/BoardStates";
+import { cardData } from "@/board/Card";
 import { StatusMenu } from "@/board/StatusMenu";
+import { statusTone } from "@/board/statusTone";
 import { useActions } from "@/board/useActions";
 import { CommandPalette } from "@/command/CommandPalette";
 import { archive, columnIndexOf, createDraft, moveTo, paletteCommands, toggleAssignee } from "@/command/commands";
 import { ShortcutSheet } from "@/command/ShortcutSheet";
+import { IssueListGroup } from "@/components/ui/issue-list";
 import { notify } from "@/components/ui/toast";
 import type { Card, Column, ProjectId, User } from "@/ipc/bindings";
 import {
@@ -26,7 +29,7 @@ import { useShortcuts } from "@/keyboard/useShortcuts";
 import { useUi } from "@/stores/ui";
 import { OfflineBanner } from "./OfflineBanner";
 import { AppSidebar, signOut } from "./Sidebar";
-import { Toolbar } from "./Toolbar";
+import { type ProjectLayout, Toolbar } from "./Toolbar";
 
 /** The card's page on github.com. A draft has none, so its project's. */
 function urlOf(card: Card, projectUrl: string) {
@@ -35,9 +38,13 @@ function urlOf(card: Card, projectUrl: string) {
 
 /** The main window: sidebar, toolbar, and the board of the open project. */
 export function Shell({ projectId }: { projectId: ProjectId }) {
+	const [layout, setLayout] = useState<ProjectLayout>("board");
+	const showPalette = () => show({ type: "palette" });
 	const queryClient = useQueryClient();
 	const viewId = useUi((s) => s.viewId);
 	const selectedId = useUi((s) => s.selectedId);
+	const overlay = useUi((s) => s.overlay);
+	const drafting = overlay?.type === "draft";
 	const { selectProject, selectView, select, open: show } = useUi.getState();
 	const board = useBoard(projectId, viewId);
 	const project = useProject(projectId);
@@ -63,10 +70,28 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
 	};
 	const newIssue = () => {
 		if (!data) return;
+		setLayout("board");
 		const column = card ? data.columns[columnIndexOf(data, card)] : data.columns[0];
 		show({ type: "draft", column: column?.option_id ?? null });
 	};
-	const step = (direction: Direction) => data && select(navigate(data, selectedId, direction));
+	const step = (direction: Direction) => {
+		if (!data) return;
+		if (layout === "board") return select(navigate(data, selectedId, direction));
+		const rows = [...document.querySelectorAll<HTMLElement>('[data-slot="issue-list-row"]')];
+		const at = rows.findIndex((row) => row.dataset.itemId === selectedId);
+		if (direction === "left" || direction === "right") {
+			const group = rows[at]?.closest('[data-slot="issue-list-group"]');
+			const header = group?.querySelector<HTMLButtonElement>("button[aria-expanded]");
+			if (header && (header.getAttribute("aria-expanded") === "true") === (direction === "left")) {
+				header.click();
+				header.focus();
+				select(null);
+			}
+			return;
+		}
+		const next = at < 0 ? 0 : Math.max(0, Math.min(rows.length - 1, at + (direction === "next" ? 1 : -1)));
+		rows[next]?.focus();
+	};
 	const moveBy = (offset: number) => {
 		if (!data || !card) return;
 		const target = data.columns[columnIndexOf(data, card) + offset];
@@ -80,7 +105,8 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
 	};
 
 	useShortcuts({
-		"palette.open": () => show({ type: "palette" }),
+		"palette.open": showPalette,
+		"settings.open": () => show({ type: "settings" }),
 		"issue.new": newIssue,
 		"sync.now": syncNow,
 		"help.open": () => show({ type: "help" }),
@@ -117,6 +143,8 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
 		syncNow,
 		openProject: goTo,
 		signOut: () => void signOut(queryClient),
+		showBoard: () => setLayout("board"),
+		showList: () => setLayout("list"),
 	});
 
 	const { run } = actions;
@@ -124,27 +152,60 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
 		(column: Column, title: string) => data && void run(createDraft(data, column.option_id, title)),
 		[data, run],
 	);
+	const openIssue = (id: string) => {
+		const target = data?.columns.flatMap((c) => c.cards).find((c) => c.item_id === id);
+		if (target && data) void openUrl(urlOf(target, data.project.url));
+	};
 	const cards = data?.columns.reduce((sum, c) => sum + c.cards.length, 0);
 	const syncing = status.data?.state.type === "syncing";
 	const offline = status.data?.state.type === "offline";
 	return (
-		<div className="flex h-screen overflow-hidden">
+		<div className="flex h-screen overflow-hidden bg-bg-sunken">
 			<AppSidebar
 				projectId={projectId}
 				cardCount={cards}
 				syncedAt={data?.synced_at ?? null}
 				onSelect={goTo}
-				onSyncNow={syncNow}
+				onSearch={showPalette}
+				onNewIssue={newIssue}
 			/>
-			<main className="relative flex min-w-0 flex-1 flex-col bg-bg">
-				<Toolbar board={data} project={project.data} status={status.data} onSelectView={selectView} />
+			<main className="relative my-2 mr-2 flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-bg shadow-panel">
+				<Toolbar
+					board={data}
+					project={project.data}
+					status={status.data}
+					onSelectView={selectView}
+					layout={layout}
+					onLayoutChange={setLayout}
+					onSearch={showPalette}
+				/>
 				{syncing ? <SyncBar /> : null}
 				{offline ? <OfflineBanner retryAt={status.data?.retry_at ?? null} onRetry={syncNow} /> : null}
 				<div className="min-h-0 flex-1">
 					{data == null ? (
 						<LoadingBoard />
-					) : cards === 0 ? (
-						<EmptyBoard board={data} />
+					) : cards === 0 && !drafting ? (
+						<EmptyBoard board={data} onNewIssue={newIssue} />
+					) : layout === "list" ? (
+						<div data-slot="issue-list" className="h-full overflow-y-auto">
+							{data.columns.map((column) => (
+								<IssueListGroup
+									key={column.option_id ?? "none"}
+									name={column.name}
+									status={statusTone(column.color, column.name)}
+									items={column.cards.map((card) => ({
+										...cardData(card),
+										status: card.kind === "draft" ? "draft" : statusTone(column.color, column.name),
+										id: card.item_id,
+										pending: card.pending,
+									}))}
+									onOpen={openIssue}
+									onSelect={select}
+									selectedId={selectedId}
+									focusSelection={overlay === null}
+								/>
+							))}
+						</div>
 					) : (
 						<Board board={data} onMove={run} onCreateDraft={onCreateDraft} />
 					)}

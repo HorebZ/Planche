@@ -7,7 +7,10 @@ const colors = [
 	"elevated",
 	"hover",
 	"active",
-	"kbd",
+	"card",
+	"primary",
+	"primary-fg",
+	"ring",
 	"skeleton",
 	"border",
 	"border-strong",
@@ -21,7 +24,9 @@ const colors = [
 	"danger-soft",
 	"success",
 	"warning",
-	"s-backlog",
+	"s-draft",
+	"s-cancelled",
+	"s-deleted",
 	"s-todo",
 	"s-doing",
 	"s-review",
@@ -29,7 +34,7 @@ const colors = [
 ];
 const textSizes = ["2xs", "xs", "sm", "base", "md", "lg", "xl", "2xl"];
 const radii = ["xs", "sm", "md", "lg", "xl", "window"];
-const shadows = ["card", "drag", "pop", "window"];
+const shadows = ["card", "drag", "pop", "panel", "window"];
 
 export function TokensSection() {
 	return (

@@ -4,9 +4,16 @@ import { Toaster } from "@/components/ui/toast";
 import { listenToCore, queryClient, useAuth, useCurrentProject, useOpenProject } from "@/ipc/queries";
 import { Onboarding } from "@/onboarding/Onboarding";
 import { Shell } from "@/shell/Shell";
+import { usePreferences } from "@/stores/preferences";
 import { useUi } from "@/stores/ui";
 
 export default function App() {
+	const theme = usePreferences((s) => s.theme);
+	useEffect(() => {
+		document.documentElement.classList.remove("light", "dark");
+		if (theme === "system") delete document.documentElement.dataset.theme;
+		else document.documentElement.dataset.theme = theme;
+	}, [theme]);
 	useEffect(() => {
 		const stop = listenToCore(queryClient);
 		return () => {

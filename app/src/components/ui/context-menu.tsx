@@ -86,11 +86,11 @@ function ContextMenuCheckboxItem({
 				data-slot="menu-indicator"
 				className={cn(
 					"flex size-3.5 shrink-0 items-center justify-center rounded-xs",
-					isChecked(checked) ? "bg-accent text-accent-fg" : "shadow-[inset_0_0_0_1.5px_var(--pl-border-strong)]",
+					isChecked(checked) ? "bg-primary text-primary-fg" : "shadow-[inset_0_0_0_1.5px_var(--pl-border-strong)]",
 				)}
 			>
 				<ContextMenuPrimitive.ItemIndicator>
-					<Check className="size-3! text-accent-fg!" strokeWidth={3} />
+					<Check className="size-3! text-primary-fg!" strokeWidth={3} />
 				</ContextMenuPrimitive.ItemIndicator>
 			</span>
 			{children}
@@ -115,10 +115,10 @@ function ContextMenuRadioItem({
 		>
 			<span
 				data-slot="menu-indicator"
-				className="flex size-3.5 shrink-0 items-center justify-center rounded-xs shadow-[inset_0_0_0_1.5px_var(--pl-border-strong)] group-data-[state=checked]:bg-accent group-data-[state=checked]:text-accent-fg group-data-[state=checked]:shadow-none"
+				className="flex size-3.5 shrink-0 items-center justify-center rounded-xs shadow-[inset_0_0_0_1.5px_var(--pl-border-strong)] group-data-[state=checked]:bg-primary group-data-[state=checked]:text-primary-fg group-data-[state=checked]:shadow-none"
 			>
 				<ContextMenuPrimitive.ItemIndicator>
-					<Check className="size-3! text-accent-fg!" strokeWidth={3} />
+					<Check className="size-3! text-primary-fg!" strokeWidth={3} />
 				</ContextMenuPrimitive.ItemIndicator>
 			</span>
 			{children}

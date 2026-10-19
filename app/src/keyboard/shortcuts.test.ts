@@ -20,6 +20,9 @@ test("events resolve to the command of their scope", () => {
 	expect(commandFor(key({ key: "?", shiftKey: true }), "global")).toBe("help.open");
 	expect(commandFor(key({ key: "k", metaKey: true }), "global")).toBe("palette.open");
 	expect(commandFor(key({ key: "3" }), "menu")).toBe("status.3");
+	expect(commandFor(key({ key: "6" }), "menu")).toBe("status.6");
+	expect(commandFor(key({ key: ",", metaKey: true }), "global")).toBe("settings.open");
+	expect(commandFor(key({ key: "H", metaKey: true, shiftKey: true }), "sidebar")).toBe("sidebar.hide");
 	expect(keysOf("Meta+Shift+c")).toEqual(["⌘", "⇧", "C"]);
 });
 

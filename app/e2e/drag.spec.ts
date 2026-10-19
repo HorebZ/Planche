@@ -24,6 +24,7 @@ async function lift(page: Page, from: Locator, to: Locator, below = true) {
 	await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
 	await page.mouse.down();
 	await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2 + 10, { steps: 3 });
+	await expect(page.locator('[data-slot="drag-help-bar"]')).toBeVisible();
 	await page.mouse.move(b.x + b.width / 2, b.y + b.height * (below ? 0.8 : 0.2), { steps: 12 });
 }
 
@@ -94,9 +95,18 @@ test("a sorted view moves cards between columns but not within one", async ({ pa
 	await lift(page, card(page, 219), card(page, 226), false);
 	await page.mouse.up();
 	await expect.poll(() => numbers(column(page, "Todo"))).toEqual([226, 223, 219]);
-	// The card slides back to its slot for 200 ms; the next press must find it there.
-	await page.waitForTimeout(300);
+	// Wait for the actual return animation before measuring the next pointer target.
+	await expect(page.locator('[data-slot="drag-help-bar"]')).toHaveCount(0);
+	await expect
+		.poll(() =>
+			card(page, 219).evaluate(
+				(element) => element.getAnimations().filter((animation) => animation.playState === "running").length,
+			),
+		)
+		.toBe(0);
 	await lift(page, card(page, 219), card(page, 220));
+	await expect(page.locator('[data-slot="drag-help-bar"]')).toBeVisible();
+	await expect(page.locator('[data-slot="drag-bubble"]')).toContainText("Done");
 	await page.mouse.up();
 	await expect.poll(() => numbers(column(page, "Done"))).toContain(219);
 });

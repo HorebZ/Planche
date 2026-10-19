@@ -81,15 +81,31 @@ export function CommandPalette({ board, card, commands }: CommandPaletteProps) {
 				value={query}
 				onValueChange={setQuery}
 				placeholder={target ? "Run an action or search…" : "Search or run…"}
-				leading={target ? <CommandContext>{ref}</CommandContext> : undefined}
+				leading={
+					target ? (
+						<CommandContext>
+							<StatusSquare
+								status={
+									target.kind === "draft"
+										? "draft"
+										: statusTone(
+												board?.columns.find((c) => c.cards.some((x) => x.item_id === target.item_id))?.color ?? null,
+												board?.columns.find((c) => c.cards.some((x) => x.item_id === target.item_id))?.name,
+											)
+								}
+							/>
+							{ref} {target.kind === "redacted" ? "Redacted item" : target.title}
+						</CommandContext>
+					) : undefined
+				}
 				trailing={<Kbd className="px-[5px] text-fg-3">esc</Kbd>}
 			/>
 			<CommandList>
 				<CommandEmpty>No matches</CommandEmpty>
 				{target ? (
-					<CommandGroup heading={`Actions on ${ref}`}>
+					<CommandGroup heading="Change status">
 						{shown
-							.filter((c) => c.group === "card")
+							.filter((c) => c.group === "status")
 							.map((c) => (
 								<PaletteRow key={c.value} command={c} query={query} onRun={run} />
 							))}
@@ -97,13 +113,13 @@ export function CommandPalette({ board, card, commands }: CommandPaletteProps) {
 				) : null}
 				<CommandGroup heading="Commands" className="mt-1">
 					{shown
-						.filter((c) => c.group === "commands")
+						.filter((c) => c.group === "commands" || c.group === "card")
 						.map((c) => (
 							<PaletteRow key={c.value} command={c} query={query} onRun={run} />
 						))}
 				</CommandGroup>
 				{cards.length > 0 ? (
-					<CommandGroup heading="Issues & pull requests" className="mt-1">
+					<CommandGroup heading="Issues" className="mt-1">
 						{cards.map((c) => (
 							<CardRow
 								key={c.item_id}
@@ -121,10 +137,10 @@ export function CommandPalette({ board, card, commands }: CommandPaletteProps) {
 			</CommandList>
 			<CommandFooter>
 				<CommandHint keys={keys("palette.prev") + keys("palette.next")}>Navigate</CommandHint>
-				<CommandHint keys={keys("palette.run")}>Run</CommandHint>
-				{target ? <CommandHint keys={keys("palette.clearContext")}>Clear {ref}</CommandHint> : null}
+				<CommandHint keys={keys("palette.run")}>Apply</CommandHint>
+				{target ? <CommandHint keys={keys("palette.clearContext")}>Clear context</CommandHint> : null}
 				<span className="flex-1" />
-				<CommandHint keys={keys("help.open")}>All shortcuts</CommandHint>
+				<CommandHint keys={keysFor("dialog.close").join("")}>Close</CommandHint>
 			</CommandFooter>
 		</CommandDialog>
 	);
@@ -142,10 +158,11 @@ function PaletteRow({
 	const Icon = command.icon;
 	return (
 		<CommandItem value={command.value} onSelect={() => onRun(command)}>
-			<Icon className="size-[18px] text-fg-2" />
+			{command.status ? <StatusSquare status={command.status} /> : <Icon className="size-[18px] text-fg-2" />}
 			<span className="min-w-0 flex-1 truncate">
 				<CommandHighlight text={command.label} query={query} />
 			</span>
+			{command.current ? <span className="text-fg-3 text-sm">Current</span> : null}
 			{command.keys?.length ? (
 				<CommandShortcut>
 					{command.keys.map((key) => (
@@ -175,8 +192,8 @@ function CardRow({ card, board, query, onPick }: { card: Card; board: Board; que
 			</span>
 			<span className="font-mono text-fg-3 text-xs">{where}</span>
 			{column ? (
-				<span className="inline-flex h-4 items-center gap-1 rounded-xs bg-kbd px-[5px] text-2xs text-fg-2">
-					<StatusSquare status={statusTone(column.color)} className="size-1.5" />
+				<span className="inline-flex h-4 items-center gap-1 rounded-xs bg-hover px-[5px] text-2xs text-fg-2">
+					<StatusSquare status={statusTone(column.color, column.name)} className="size-1.5" />
 					{column.name}
 				</span>
 			) : null}

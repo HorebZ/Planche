@@ -18,18 +18,20 @@ import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 
 import { DragBubble, DragHelpBar } from "@/components/ui/drag";
 import { IssueCard } from "@/components/ui/issue-card";
 import { type Card as BoardCard, type Board as BoardData, commands, type Intent, type ItemId } from "@/ipc/bindings";
+import { commandFor, dragCodes } from "@/keyboard/shortcuts";
 import { useUi } from "@/stores/ui";
 import { cardData } from "./Card";
 import { Column, type Landing } from "./Column";
 import { markDropFrame, startFrames, stopFrames } from "./dragPerf";
 import { flip, type Rect } from "./flip";
+import { statusTone } from "./statusTone";
 
 /** A spot on the board: a column, and an index among its cards without the lifted one. */
 type Spot = { column: number; index: number };
 
 type Drag = { id: ItemId; card: BoardCard; from: Spot; to: Spot; height: number; keyboard: boolean };
 
-const CARD_GAP = 5;
+const CARD_GAP = 6;
 
 /** The cards of a column, without the lifted one. */
 function others(board: BoardData, column: number, id: ItemId) {
@@ -73,19 +75,19 @@ export const Board = memo(function Board({ board, onMove, onCreateDraft }: Board
 			const b = boardRef.current;
 			let { column, index } = current.to;
 			const size = (c: number) => others(b, c, current.id).length;
-			switch (event.code) {
-				case "ArrowRight":
+			switch (commandFor(event, "drag")) {
+				case "drag.right":
 					column = Math.min(column + 1, b.columns.length - 1);
 					index = Math.min(index, size(column));
 					break;
-				case "ArrowLeft":
+				case "drag.left":
 					column = Math.max(column - 1, 0);
 					index = Math.min(index, size(column));
 					break;
-				case "ArrowDown":
+				case "drag.down":
 					if (manualOrder) index = Math.min(index + 1, size(column));
 					break;
-				case "ArrowUp":
+				case "drag.up":
 					if (manualOrder) index = Math.max(index - 1, 0);
 					break;
 				default:
@@ -102,7 +104,7 @@ export const Board = memo(function Board({ board, onMove, onCreateDraft }: Board
 		useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
 		useSensor(KeyboardSensor, {
 			coordinateGetter,
-			keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space", "Enter"] },
+			keyboardCodes: { start: dragCodes("drag.lift"), cancel: dragCodes("drag.cancel"), end: dragCodes("drag.drop") },
 		}),
 	);
 
@@ -218,7 +220,7 @@ export const Board = memo(function Board({ board, onMove, onCreateDraft }: Board
 			onDragCancel={({ active }) => end(false, active.rect.current.translated)}
 		>
 			<div className="relative h-full">
-				<div data-slot="board" className="flex h-full items-start gap-2.5 overflow-x-auto px-3.5 py-3">
+				<div data-slot="board" className="flex h-full items-start gap-2.5 overflow-x-auto px-3 pt-0.5 pb-3">
 					{board.columns.map((column, index) => (
 						<Column
 							key={column.option_id ?? "none"}
@@ -235,7 +237,16 @@ export const Board = memo(function Board({ board, onMove, onCreateDraft }: Board
 			<DragOverlay dropAnimation={null}>
 				{drag && target ? (
 					<div className="relative">
-						<IssueCard {...cardData(drag.card)} dragState="lifted" tabIndex={-1} />
+						<IssueCard
+							{...cardData(drag.card)}
+							status={
+								drag.card.kind === "draft"
+									? "draft"
+									: statusTone(board.columns[drag.from.column].color, board.columns[drag.from.column].name)
+							}
+							dragState="lifted"
+							tabIndex={-1}
+						/>
 						<DragBubble className="absolute top-full left-[82px] mt-1.5">
 							Move to {target.name} · position {drag.to.index + 1}
 						</DragBubble>

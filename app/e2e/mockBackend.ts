@@ -20,6 +20,7 @@ import type {
 
 export type Scenario =
 	| "board"
+	| "six-statuses"
 	| "loading"
 	| "syncing"
 	| "empty"
@@ -139,6 +140,11 @@ function bigBoard(): Board {
 
 function boardFor(scenario: Scenario): Board | null {
 	switch (scenario) {
+		case "six-statuses": {
+			const board = mockupBoard();
+			board.columns.push(column("cancelled", "Cancelled", "GRAY", []));
+			return board;
+		}
 		case "loading":
 			return null;
 		case "big":
