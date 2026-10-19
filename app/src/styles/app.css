@@ -20,11 +20,12 @@
 	--color-bg-sunken: var(--pl-bg-sunken);
 	--color-surface: var(--pl-surface);
 	--color-elevated: var(--pl-elevated);
-	--color-sidebar: var(--pl-sidebar);
+	--color-card: var(--pl-card);
+	--color-primary: var(--pl-primary);
+	--color-primary-fg: var(--pl-primary-fg);
 	--color-overlay: var(--pl-overlay);
 	--color-hover: var(--pl-hover);
 	--color-active: var(--pl-active);
-	--color-kbd: var(--pl-kbd);
 	--color-skeleton: var(--pl-skeleton);
 	--color-line: var(--pl-border);
 	--color-line-strong: var(--pl-border-strong);
@@ -41,7 +42,9 @@
 	--color-danger-soft: var(--pl-danger-soft);
 	--color-success: var(--pl-success);
 	--color-warning: var(--pl-warning);
-	--color-status-backlog: var(--pl-s-backlog);
+	--color-status-draft: var(--pl-s-draft);
+	--color-status-cancelled: var(--pl-s-cancelled);
+	--color-status-deleted: var(--pl-s-deleted);
 	--color-status-todo: var(--pl-s-todo);
 	--color-status-doing: var(--pl-s-doing);
 	--color-status-review: var(--pl-s-review);
@@ -57,7 +60,7 @@
 	--text-sm: var(--pl-text-sm);
 	--text-sm--line-height: 16px;
 	--text-base: var(--pl-text-base);
-	--text-base--line-height: 17px;
+	--text-base--line-height: 18px;
 	--text-md: var(--pl-text-md);
 	--text-md--line-height: 18px;
 	--text-lg: var(--pl-text-lg);
@@ -86,7 +89,8 @@
 	--shadow-drag: var(--pl-shadow-drag);
 	--shadow-pop: var(--pl-shadow-pop);
 	--shadow-window: var(--pl-shadow-window);
-	--shadow-ring: var(--pl-ring);
+	--shadow-ring: var(--pl-shadow-ring);
+	--shadow-panel: var(--pl-shadow-panel);
 	--shadow-thumb: var(--pl-shadow-thumb);
 
 	--ease-pl: var(--pl-ease);
@@ -175,18 +179,29 @@
 @layer base {
 	html,
 	body {
-		background: var(--pl-bg);
+		background: var(--pl-bg-sunken);
 		color: var(--pl-fg);
 		font-family: var(--pl-font);
 		font-size: var(--pl-text-base);
-		line-height: 17px;
-		letter-spacing: -0.003em;
+		line-height: 18px;
+		letter-spacing: var(--pl-tracking);
 		-webkit-font-smoothing: antialiased;
 	}
 	:focus-visible {
 		outline: none;
+		box-shadow: var(--pl-shadow-ring);
 	}
 	button {
 		cursor: default;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0s;
+		transition-duration: 0s;
+		scroll-behavior: auto;
 	}
 }

@@ -2,12 +2,12 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 export const menuContentClassName = [
 	"z-50 flex min-w-[216px] origin-[var(--radix-popper-transform-origin)] animate-pl-in flex-col gap-px",
-	"rounded-lg bg-elevated p-1 text-fg shadow-pop outline-none",
+	"rounded-xl bg-elevated p-1 text-fg shadow-pop outline-none",
 ].join(" ");
 
 export const menuItemVariants = cva(
 	[
-		"relative flex h-[26px] cursor-default select-none items-center gap-2 rounded-sm pr-1.5 pl-2 text-sm outline-none",
+		"relative flex h-[30px] cursor-default select-none items-center gap-2 rounded-sm pr-1.5 pl-2 text-sm outline-none",
 		"highlighted:bg-hover",
 		"data-[disabled]:pointer-events-none data-[disabled]:text-fg-3 data-[disabled]:[&_svg]:text-fg-3",
 		"[&_svg]:size-4 [&_svg]:shrink-0",

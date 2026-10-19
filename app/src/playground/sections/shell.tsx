@@ -1,8 +1,10 @@
 import { Settings } from "lucide-react";
+import { useState } from "react";
 import { EmptyBoardCard, SkeletonColumn } from "@/components/ui/board-states";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AccountBlock, AppIcon, Logotype, ScopeRow } from "@/components/ui/onboarding";
+import { SettingsDialog } from "@/components/ui/settings";
 import {
 	Sidebar,
 	SidebarAccount,
@@ -12,6 +14,7 @@ import {
 	SidebarItem,
 	SidebarSearch,
 } from "@/components/ui/sidebar";
+import { SidebarProject } from "@/components/ui/sidebar-project";
 import { Spinner } from "@/components/ui/spinner";
 import { SyncIndicator } from "@/components/ui/sync-indicator";
 import { Row, Section, State } from "../kit";
@@ -56,6 +59,31 @@ export function ShellSection() {
 								</SidebarFooter>
 							</State>
 						</div>
+					</Row>
+					<Row label="sidebar project menus">
+						<div className="w-sidebar">
+							<SidebarProject
+								name="Design system"
+								tone="review"
+								active={false}
+								hidden={false}
+								onOpen={() => {}}
+								onOpenGitHub={() => {}}
+								onHide={() => {}}
+							/>
+							<SidebarProject
+								name="Hidden project"
+								tone="todo"
+								active={false}
+								hidden
+								onOpen={() => {}}
+								onOpenGitHub={() => {}}
+								onHide={() => {}}
+							/>
+						</div>
+					</Row>
+					<Row label="settings">
+						<SettingsPreview />
 					</Row>
 					<Row label="toolbar sync indicator">
 						<State label="idle">
@@ -120,5 +148,30 @@ export function ShellSection() {
 				</div>
 			)}
 		</Section>
+	);
+}
+
+function SettingsPreview() {
+	const [open, setOpen] = useState(false);
+	const [theme, setTheme] = useState<"system" | "light" | "dark">("system");
+	const [interval, setInterval] = useState("five_minutes");
+	const [wake, setWake] = useState(true);
+	return (
+		<>
+			<Button onClick={() => setOpen(true)}>Open settings</Button>
+			<SettingsDialog
+				open={open}
+				onOpenChange={setOpen}
+				login="camille-r"
+				interval={interval}
+				onIntervalChange={setInterval}
+				onWake={wake}
+				onWakeChange={setWake}
+				theme={theme}
+				onThemeChange={setTheme}
+				onSignOut={() => {}}
+				shortcuts={[{ label: "Command palette", keys: "⌘K" }]}
+			/>
+		</>
 	);
 }

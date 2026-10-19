@@ -14,7 +14,7 @@ type BoardColumnProps = ComponentProps<"section"> & {
 	empty?: boolean;
 };
 
-const headerButtonClass = "size-[22px] rounded-sm text-fg-3 hover:text-fg [&_svg]:size-4";
+const headerButtonClass = "size-6 rounded-sm text-fg-3 hover:text-fg [&_svg]:size-4";
 
 export function BoardColumn({
 	status,
@@ -31,13 +31,16 @@ export function BoardColumn({
 		<section
 			data-slot="board-column"
 			data-drop-target={dropTarget || undefined}
-			className={cn("relative flex w-column shrink-0 flex-col gap-[5px] rounded-xl bg-bg-sunken p-[5px]", className)}
+			className={cn(
+				"relative flex w-column shrink-0 flex-col gap-1.5 rounded-xl bg-hover px-[5px] pt-0.5 pb-1.5",
+				className,
+			)}
 			{...props}
 		>
-			<header className="flex h-7 items-center gap-[7px] pr-0.5 pl-1.5">
+			<header className="flex h-[34px] items-center gap-[7px] pr-0.5 pl-1.5">
 				<StatusSquare status={status} />
-				<span className="font-semibold text-[12.5px]">{name ?? statusLabels[status]}</span>
-				<span data-slot="board-column-count" className="font-mono text-fg-3 text-xs">
+				<span className="font-medium text-base">{name ?? statusLabels[status]}</span>
+				<span data-slot="board-column-count" className="text-[12px] text-fg-3 tabular-nums">
 					{dropTarget ? count + 1 : count}
 				</span>
 				<span className="flex-1" />
@@ -49,7 +52,7 @@ export function BoardColumn({
 				</Button>
 			</header>
 			{empty ? (
-				<div className="grid h-16 place-items-center rounded-[7px] text-[11.5px] text-fg-3 shadow-[inset_0_0_0_1px_var(--pl-border)]">
+				<div className="grid h-[72px] place-items-center rounded-lg border border-line-strong border-dashed text-[11.5px] text-fg-3">
 					Drop cards here
 				</div>
 			) : (
@@ -66,7 +69,7 @@ export function BoardColumn({
 			{dropTarget ? (
 				<div
 					aria-hidden
-					className="pointer-events-none absolute inset-0 rounded-xl shadow-[inset_0_0_0_1px_var(--pl-accent)]"
+					className="pointer-events-none absolute inset-0 rounded-xl shadow-[inset_0_0_0_1px_var(--pl-ring)]"
 				/>
 			) : null}
 		</section>

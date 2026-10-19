@@ -15,7 +15,7 @@ export function CheckMark({ checked, className }: { checked: boolean; className?
 			data-slot="check-mark"
 			className={cn(
 				boxClass,
-				checked ? "bg-accent text-accent-fg" : "shadow-[inset_0_0_0_1.5px_var(--pl-border-strong)]",
+				checked ? "bg-primary text-primary-fg" : "shadow-[inset_0_0_0_1.5px_var(--pl-border-strong)]",
 				className,
 			)}
 		>
@@ -30,10 +30,10 @@ export function Checkbox({ className, ...props }: ComponentProps<typeof Checkbox
 			data-slot="checkbox"
 			className={cn(
 				boxClass,
-				"border-0 bg-transparent p-0 text-accent-fg shadow-[inset_0_0_0_1.5px_var(--pl-border-strong)]",
+				"border-0 bg-transparent p-0 text-primary-fg shadow-[inset_0_0_0_1.5px_var(--pl-border-strong)]",
 				"transition-[background-color,box-shadow]",
 				"focus-visible:shadow-[inset_0_0_0_1.5px_var(--pl-border-strong),0_0_0_2px_var(--pl-focus)]",
-				"data-[state=checked]:bg-accent data-[state=checked]:shadow-none",
+				"data-[state=checked]:bg-primary data-[state=checked]:shadow-none",
 				"data-[state=checked]:focus-visible:shadow-[0_0_0_2px_var(--pl-bg),0_0_0_4px_var(--pl-focus)]",
 				"disabled:pointer-events-none disabled:opacity-50",
 				className,
