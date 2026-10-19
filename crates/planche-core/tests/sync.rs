@@ -9,7 +9,9 @@ use std::time::{Duration, Instant, SystemTime};
 use planche_core::Error;
 use planche_core::board::project_board;
 use planche_core::cache::Cache;
-use planche_core::domain::{Board, Item, ItemId, ProjectId, ProjectMeta, RateUsage};
+use planche_core::domain::{
+    Board, ContentId, Item, ItemContent, ItemId, ProjectId, ProjectMeta, RateUsage,
+};
 use planche_core::error::{GraphqlError, Result};
 use planche_core::github::ops::{ItemsPage, decode_project_items, decode_project_meta};
 use planche_core::intent::{self, Intent, Operation, Placement, to_operations};
@@ -106,6 +108,22 @@ impl FakeGithub {
                     .map_or(0, |after| index(&state.items, after) + 1);
                 state.items.insert(at, item);
             }
+            Operation::AddDraftIssue { title, .. } => state.items.push(Item {
+                id: ItemId(format!("PVTI_draft_{}", state.items.len())),
+                archived: false,
+                updated_at: "2026-10-16T00:00:00Z".into(),
+                single_selects: Vec::new(),
+                content: ItemContent::Draft {
+                    id: ContentId(format!("DI_{}", state.items.len())),
+                    title: title.clone(),
+                    assignees: Vec::new(),
+                },
+            }),
+            Operation::ArchiveItem { item_id, .. } => {
+                let i = index(&state.items, item_id);
+                state.items[i].archived = true;
+            }
+            _ => {}
         }
     }
 }
@@ -129,7 +147,10 @@ impl Remote for FakeGithub {
         ready(self.page(cursor.parse().unwrap()))
     }
 
-    fn execute(&self, operation: &Operation) -> impl Future<Output = Result<()>> + Send {
+    fn execute(
+        &self,
+        operation: &Operation,
+    ) -> impl Future<Output = Result<Option<ItemId>>> + Send {
         ready(self.edit(|s| {
             if s.fail_mutations {
                 return Err(Error::GitHub(vec![GraphqlError {
@@ -141,7 +162,8 @@ impl Remote for FakeGithub {
             if s.apply_mutations {
                 Self::server_apply(s, operation);
             }
-            Ok(())
+            Ok(matches!(operation, Operation::AddDraftIssue { .. })
+                .then(|| s.items.last().unwrap().id.clone()))
         }))
     }
 
@@ -268,11 +290,12 @@ async fn a_pending_move_on_the_old_snapshot_shows_the_new_column() {
 async fn the_same_move_on_an_up_to_date_snapshot_gives_the_same_board() {
     let github = FakeGithub::new();
     let (_, mut cache, project) = synced("up-to-date", &github).await;
-    let intent = move_todo_card(&server_board(&cache, &project), "Done");
+    let board = server_board(&cache, &project);
+    let intent = move_todo_card(&board, "Done");
     cache.enqueue(&intent).unwrap();
     // Another client made the same move, and the next sync sees it.
     github.edit(|s| {
-        for operation in to_operations(&intent) {
+        for operation in to_operations(&intent, &board).unwrap() {
             FakeGithub::server_apply(s, &operation);
         }
     });
@@ -327,7 +350,9 @@ async fn two_pending_moves_of_one_card_merge_and_only_the_last_is_sent() {
     let (_, mut cache, project) = synced("merge", &github).await;
     let board = server_board(&cache, &project);
     let first = move_todo_card(&board, "Done");
-    let Intent::MoveCard { item_id, .. } = &first;
+    let Intent::MoveCard { item_id, .. } = &first else {
+        unreachable!()
+    };
     cache
         .enqueue(&Intent::move_card(&board, item_id, None, Placement::Top))
         .unwrap();
@@ -337,7 +362,10 @@ async fn two_pending_moves_of_one_card_merge_and_only_the_last_is_sent() {
         to,
         placement: kept,
         ..
-    } = &cache.intents(&project).unwrap()[0];
+    } = &cache.intents(&project).unwrap()[0]
+    else {
+        unreachable!()
+    };
     assert_eq!(cache.intents(&project).unwrap().len(), 1);
     // The last move's `Keep` inherits the replaced move's `Top`.
     assert_eq!(*kept, Placement::Top);
@@ -416,7 +444,8 @@ async fn an_older_acked_move_does_not_outlive_a_newer_one_the_snapshot_shows() {
 async fn a_row_in_flight_at_startup_is_sent_again_once() {
     let github = FakeGithub::new();
     let (path, mut cache, project) = synced("in-flight", &github).await;
-    let intent = move_todo_card(&server_board(&cache, &project), "Done");
+    let board = server_board(&cache, &project);
+    let intent = move_todo_card(&board, "Done");
     cache.enqueue(&intent).unwrap();
     // The process dies between the claim and the ack.
     assert!(cache.claim_next(&project).unwrap().is_some());
@@ -437,7 +466,10 @@ async fn a_row_in_flight_at_startup_is_sent_again_once() {
             .iter()
             .any(|e| matches!(e, SyncEvent::MutationOk(m) if m.intent == intent))
     );
-    assert_eq!(github.edit(|s| s.executed.clone()), to_operations(&intent));
+    assert_eq!(
+        github.edit(|s| s.executed.clone()),
+        to_operations(&intent, &board).unwrap()
+    );
 }
 
 #[tokio::test]
@@ -552,7 +584,8 @@ async fn focus_syncs_when_the_last_sync_is_older_than_30_s_unless_manual() {
 async fn flush_sends_the_queue_without_a_sync() {
     let github = FakeGithub::new();
     let (path, cache, project) = synced("flush", &github).await;
-    let intent = move_todo_card(&server_board(&cache, &project), "Done");
+    let board = server_board(&cache, &project);
+    let intent = move_todo_card(&board, "Done");
     drop(cache);
     let engine = sync::spawn(
         Cache::open(&path).unwrap(),
@@ -574,7 +607,10 @@ async fn flush_sends_the_queue_without_a_sync() {
         }
     }
     assert_eq!(github.edit(|s| s.fetches), 1, "only the first sync fetched");
-    assert_eq!(github.edit(|s| s.executed.clone()), to_operations(&intent));
+    assert_eq!(
+        github.edit(|s| s.executed.clone()),
+        to_operations(&intent, &board).unwrap()
+    );
 }
 
 fn config(interval: SyncInterval, sync_on_wake: bool) -> SyncConfig {
@@ -622,7 +658,10 @@ impl Remote for FakeOffline {
         ready(Err(Error::Network("offline".into())))
     }
 
-    fn execute(&self, _operation: &Operation) -> impl Future<Output = Result<()>> + Send {
+    fn execute(
+        &self,
+        _operation: &Operation,
+    ) -> impl Future<Output = Result<Option<ItemId>>> + Send {
         ready(Err(Error::Network("offline".into())))
     }
 
@@ -680,4 +719,108 @@ async fn the_board_flags_pending_cards_and_cards_the_last_sync_changed() {
         flagged(&cache),
         (vec![local.item_id().clone()], vec![remote], 1)
     );
+}
+
+fn create_draft(board: &Board, column: &str) -> Intent {
+    Intent::CreateDraft {
+        project_id: board.project.id.clone(),
+        item_id: ItemId("draft:test".into()),
+        field_id: board.field.id.clone(),
+        column: intent::find_column(board, column)
+            .unwrap()
+            .and_then(|c| c.option_id.clone()),
+        title: "Planche test draft".into(),
+    }
+}
+
+fn drafts(board: &Board) -> Vec<(String, ItemId)> {
+    board
+        .columns
+        .iter()
+        .flat_map(|c| c.cards.iter().map(move |card| (c, card)))
+        .filter(|(_, card)| matches!(card.content, ItemContent::Draft { .. }))
+        .map(|(c, card)| (c.name.clone(), card.item_id.clone()))
+        .collect()
+}
+
+#[tokio::test]
+async fn a_new_draft_is_created_once_then_moved_to_the_top_of_its_column() {
+    let github = FakeGithub::new();
+    let (_, mut cache, project) = synced("draft", &github).await;
+    let intent = create_draft(&server_board(&cache, &project), "In Progress");
+    cache.enqueue(&intent).unwrap();
+    let shown = cache.board(&project, None).unwrap().unwrap();
+    assert_eq!(
+        drafts(&shown),
+        [("In Progress".into(), ItemId("draft:test".into()))]
+    );
+
+    sync::flush(&mut cache, &github, &project, |_| {})
+        .await
+        .unwrap();
+    let executed = github.edit(|s| s.executed.clone());
+    let new_id = github.edit(|s| {
+        let draft = s
+            .items
+            .iter()
+            .find(|i| matches!(i.content, ItemContent::Draft { .. }));
+        draft.unwrap().id.clone()
+    });
+    assert!(matches!(&executed[0], Operation::AddDraftIssue { .. }));
+    assert!(
+        matches!(&executed[1], Operation::SetSingleSelect { item_id, .. } if *item_id == new_id)
+    );
+    assert!(matches!(
+        &executed[2],
+        Operation::MoveItemPosition { item_id, after_id: None, .. } if *item_id == new_id
+    ));
+    assert_eq!(executed.len(), 3);
+
+    sync_once(&mut cache, &github).await.unwrap();
+    let board = cache.board(&project, None).unwrap().unwrap();
+    assert_eq!(drafts(&board), [("In Progress".into(), new_id.clone())]);
+    assert_eq!(board.columns[1].cards[0].item_id, new_id);
+    assert!(cache.intents(&project).unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn a_draft_left_in_flight_waits_for_the_next_sync_to_decide() {
+    let github = FakeGithub::new();
+    let (_, mut cache, project) = synced("draft-unknown", &github).await;
+    let intent = create_draft(&server_board(&cache, &project), "Todo");
+    cache.enqueue(&intent).unwrap();
+    // The process dies between the claim and the ack, so GitHub may or may not have it.
+    assert!(cache.claim_next(&project).unwrap().is_some());
+    cache.reset_in_flight().unwrap();
+    sync::flush(&mut cache, &github, &project, |_| {})
+        .await
+        .unwrap();
+    assert!(github.edit(|s| s.executed.is_empty()));
+    assert_eq!(
+        cache.board(&project, None).unwrap().unwrap().pending_count,
+        1
+    );
+
+    // GitHub never got it: the sync puts the row back in the queue.
+    sync_once(&mut cache, &github).await.unwrap();
+    sync::flush(&mut cache, &github, &project, |_| {})
+        .await
+        .unwrap();
+    assert_eq!(
+        github.edit(|s| s
+            .executed
+            .iter()
+            .filter(|o| matches!(o, Operation::AddDraftIssue { .. }))
+            .count()),
+        1
+    );
+
+    // GitHub has it: the sync drops the row.
+    cache.enqueue(&intent).unwrap();
+    assert!(cache.claim_next(&project).unwrap().is_some());
+    cache.reset_in_flight().unwrap();
+    sync_once(&mut cache, &github).await.unwrap();
+    assert!(cache.intents(&project).unwrap().is_empty());
+    let board = cache.board(&project, None).unwrap().unwrap();
+    assert_eq!(drafts(&board).len(), 1);
 }

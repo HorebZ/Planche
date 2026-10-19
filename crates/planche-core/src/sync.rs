@@ -17,7 +17,7 @@ use crate::domain::{Board, ItemId, ProjectId, ProjectMeta, RateUsage};
 use crate::error::{Error, GraphqlError, Result};
 use crate::github::GithubClient;
 use crate::github::ops::{self, ItemsPage};
-use crate::intent::{Intent, Operation, to_operations};
+use crate::intent::{Intent, Operation, Placement, to_operations};
 
 /// The GitHub calls the engine makes. Tests swap in a fake.
 pub trait Remote: Send + Sync + 'static {
@@ -32,7 +32,9 @@ pub trait Remote: Send + Sync + 'static {
         project: &ProjectId,
         cursor: &str,
     ) -> impl Future<Output = Result<ItemsPage>> + Send;
-    fn execute(&self, operation: &Operation) -> impl Future<Output = Result<()>> + Send;
+    /// `Some` with the new item's ID for `AddDraftIssue`.
+    fn execute(&self, operation: &Operation)
+    -> impl Future<Output = Result<Option<ItemId>>> + Send;
     fn usage(&self) -> RateUsage;
 }
 
@@ -53,7 +55,10 @@ impl Remote for GithubClient {
         ops::items_page(self, project, cursor)
     }
 
-    fn execute(&self, operation: &Operation) -> impl Future<Output = Result<()>> + Send {
+    fn execute(
+        &self,
+        operation: &Operation,
+    ) -> impl Future<Output = Result<Option<ItemId>>> + Send {
         ops::execute(self, operation)
     }
 
@@ -179,6 +184,7 @@ pub enum Sent {
 
 /// Sends the project's queued intents in order. A transient error puts its row back and
 /// stops, so later rows keep their order. A definitive error drops the row and goes on.
+/// A created draft then gets a `MoveCard` to its column, queued like any other intent.
 pub async fn flush<R: Remote>(
     cache: &mut Cache,
     remote: &R,
@@ -186,12 +192,31 @@ pub async fn flush<R: Remote>(
     mut sent: impl FnMut(Sent),
 ) -> Result<()> {
     while let Some(mutation) = cache.claim_next(project)? {
-        match send(remote, &mutation.intent).await {
-            Ok(()) => {
+        let board = cache.board(project, None)?;
+        match send(remote, &mutation.intent, board.as_ref()).await {
+            Ok(created) => {
                 if fault("hang_before_ack") {
                     std::future::pending::<()>().await;
                 }
                 cache.ack(mutation.seq)?;
+                if let (
+                    Some(item_id),
+                    Intent::CreateDraft {
+                        project_id,
+                        field_id,
+                        column,
+                        ..
+                    },
+                ) = (created, &mutation.intent)
+                {
+                    cache.enqueue(&Intent::MoveCard {
+                        project_id: project_id.clone(),
+                        item_id,
+                        field_id: field_id.clone(),
+                        to: column.clone(),
+                        placement: Placement::Top,
+                    })?;
+                }
                 sent(Sent::Ok(mutation));
             }
             Err(error) if error.is_transient() => {
@@ -207,17 +232,26 @@ pub async fn flush<R: Remote>(
     Ok(())
 }
 
-async fn send<R: Remote>(remote: &R, intent: &Intent) -> Result<()> {
+/// Sends the mutations of one intent, and returns the item a `CreateDraft` made. `board` is
+/// the displayed board, which `to_operations` reads.
+async fn send<R: Remote>(
+    remote: &R,
+    intent: &Intent,
+    board: Option<&Board>,
+) -> Result<Option<ItemId>> {
     if fault("fail_mutations") {
         return Err(Error::GitHub(vec![GraphqlError {
             kind: None,
             message: "PLANCHE_FAULT=fail_mutations".into(),
         }]));
     }
-    for operation in to_operations(intent) {
-        remote.execute(&operation).await?;
+    let board = board
+        .ok_or_else(|| Error::Cache(format!("project {} is not cached", intent.project_id())))?;
+    let mut created = None;
+    for operation in to_operations(intent, board)? {
+        created = created.or(remote.execute(&operation).await?);
     }
-    Ok(())
+    Ok(created)
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]

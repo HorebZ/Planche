@@ -5,9 +5,9 @@ use serde_json::json;
 
 use super::{GithubClient, decode, wire};
 use crate::domain::{
-    ContentId, Field, FieldId, IssueState, Item, ItemContent, Label, OptionId, OwnerProjects,
-    ProjectId, ProjectList, ProjectMeta, ProjectSummary, PullRequestState, SelectOption, User,
-    UserId, View, ViewId, ViewLayout, Viewer,
+    ContentId, Field, FieldId, IssueState, Item, ItemContent, ItemId, Label, OptionId,
+    OwnerProjects, ProjectId, ProjectList, ProjectMeta, ProjectSummary, PullRequestState,
+    SelectOption, User, UserId, View, ViewId, ViewLayout, Viewer,
 };
 use crate::error::{Error, Result};
 use crate::intent::Operation;
@@ -178,8 +178,8 @@ pub async fn items_page(
     Ok(items_page_from_wire(project_node(reply.data.node)?.items))
 }
 
-/// Sends one mutation.
-pub async fn execute(client: &GithubClient, operation: &Operation) -> Result<()> {
+/// Sends one mutation. `AddDraftIssue` answers with the new item's ID.
+pub async fn execute(client: &GithubClient, operation: &Operation) -> Result<Option<ItemId>> {
     let (name, variables) = match operation {
         Operation::SetSingleSelect {
             project_id,
@@ -206,11 +206,74 @@ pub async fn execute(client: &GithubClient, operation: &Operation) -> Result<()>
             "MoveItemPosition",
             json!({ "projectId": project_id, "itemId": item_id, "afterId": after_id }),
         ),
+        Operation::ArchiveItem {
+            project_id,
+            item_id,
+        } => (
+            "ArchiveItem",
+            json!({ "projectId": project_id, "itemId": item_id }),
+        ),
+        Operation::UnarchiveItem {
+            project_id,
+            item_id,
+        } => (
+            "UnarchiveItem",
+            json!({ "projectId": project_id, "itemId": item_id }),
+        ),
+        Operation::AddDraftIssue { project_id, title } => {
+            let reply = client
+                .query::<wire::AddDraftIssueData>(
+                    MUTATIONS,
+                    "AddDraftIssue",
+                    json!({ "projectId": project_id, "title": title }),
+                )
+                .await?;
+            return Ok(Some(ItemId(
+                reply.data.add_project_v2_draft_issue.project_item.id,
+            )));
+        }
+        Operation::AddAssignees {
+            assignable_id,
+            assignee_ids,
+        } => (
+            "AddAssignees",
+            json!({ "assignableId": assignable_id, "assigneeIds": assignee_ids }),
+        ),
+        Operation::RemoveAssignees {
+            assignable_id,
+            assignee_ids,
+        } => (
+            "RemoveAssignees",
+            json!({ "assignableId": assignable_id, "assigneeIds": assignee_ids }),
+        ),
+        Operation::SetDraftAssignees {
+            draft_issue_id,
+            assignee_ids,
+        } => (
+            "SetDraftAssignees",
+            json!({ "draftIssueId": draft_issue_id, "assigneeIds": assignee_ids }),
+        ),
     };
     client
         .query::<IgnoredAny>(MUTATIONS, name, variables)
         .await?;
-    Ok(())
+    Ok(None)
+}
+
+/// The first 100 users who can be assigned in `owner/name`.
+pub async fn assignable_users(client: &GithubClient, owner: &str, name: &str) -> Result<Vec<User>> {
+    let reply = client
+        .query::<wire::AssignableUsersData>(
+            QUERIES,
+            "AssignableUsers",
+            json!({ "owner": owner, "name": name }),
+        )
+        .await?;
+    let repository = reply
+        .data
+        .repository
+        .ok_or_else(|| Error::Decode(format!("repository {owner}/{name} is null")))?;
+    Ok(users(repository.assignable_users))
 }
 
 /// Decodes a captured `ProjectMeta` response body.

@@ -17,7 +17,7 @@ import {
 import { Kbd } from "@/components/ui/kbd";
 import { SidebarItem } from "@/components/ui/sidebar";
 import type { StatusKey } from "@/components/ui/status";
-import { matchesShortcut, shortcuts } from "@/keyboard/shortcuts";
+import { commandFor, keysFor } from "@/keyboard/shortcuts";
 
 export function SidebarProject({
 	name,
@@ -49,7 +49,7 @@ export function SidebarProject({
 						count={count}
 						onClick={onOpen}
 						onKeyDown={(event) => {
-							if (matchesShortcut(event.nativeEvent, shortcuts.hideSidebar)) {
+							if (commandFor(event.nativeEvent, "sidebar") === "sidebar.hide") {
 								event.preventDefault();
 								onHide();
 							}
@@ -89,7 +89,7 @@ export function SidebarProject({
 								<DropdownMenuSeparator />
 								<DropdownMenuItem onSelect={onHide}>
 									<EyeOff />
-									Hide from sidebar<Kbd className="ml-auto">{shortcuts.hideSidebar.label}</Kbd>
+									Hide from sidebar<Kbd className="ml-auto">{keysFor("sidebar.hide").join("")}</Kbd>
 								</DropdownMenuItem>
 							</DropdownMenuContent>
 						</DropdownMenu>
@@ -108,7 +108,7 @@ export function SidebarProject({
 				<ContextMenuItem onSelect={onHide}>
 					{hidden ? <Eye /> : <EyeOff />}
 					{hidden ? "Show in sidebar" : "Hide from sidebar"}
-					<Kbd className="ml-auto">{shortcuts.hideSidebar.label}</Kbd>
+					<Kbd className="ml-auto">{keysFor("sidebar.hide").join("")}</Kbd>
 				</ContextMenuItem>
 			</ContextMenuContent>
 		</ContextMenu>

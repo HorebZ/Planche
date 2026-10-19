@@ -1,7 +1,7 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { EyeOff, Search, Settings } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { EyeOff, Plus, Search, Settings } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -16,8 +16,9 @@ import { SidebarProject } from "@/components/ui/sidebar-project";
 import type { StatusKey } from "@/components/ui/status";
 import { commands, type ProjectId, type SyncInterval } from "@/ipc/bindings";
 import { useAuth, useProjects, useSetSyncPrefs, useSyncPrefs, useSyncStatus } from "@/ipc/queries";
-import { shortcuts, useShortcut } from "@/keyboard/shortcuts";
+import { keysFor, keysOf, shortcuts } from "@/keyboard/shortcuts";
 import { usePreferences } from "@/stores/preferences";
+import { useUi } from "@/stores/ui";
 import { footerText } from "./syncText";
 
 /** GitHub projects have no color, so each takes a status tone from its number. */
@@ -29,9 +30,15 @@ type AppSidebarProps = {
 	syncedAt: string | null;
 	onSelect: (projectId: ProjectId) => void;
 	onSearch: () => void;
+	onNewIssue: () => void;
 };
 
-export function AppSidebar({ projectId, cardCount, syncedAt, onSelect, onSearch }: AppSidebarProps) {
+export async function signOut(queryClient: QueryClient) {
+	await commands.authSignOut();
+	await queryClient.invalidateQueries({ queryKey: ["auth"] });
+}
+
+export function AppSidebar({ projectId, cardCount, syncedAt, onSelect, onSearch, onNewIssue }: AppSidebarProps) {
 	const queryClient = useQueryClient();
 	const auth = useAuth();
 	const projects = useProjects();
@@ -84,6 +91,15 @@ export function AppSidebar({ projectId, cardCount, syncedAt, onSelect, onSearch 
 				>
 					<Search className="size-4" />
 				</Button>
+				<Button
+					variant="ghost"
+					size="icon"
+					aria-label={`New issue ${keysFor("issue.new").join("")}`}
+					onClick={onNewIssue}
+					className="size-7 bg-card text-fg-3 shadow-card"
+				>
+					<Plus className="size-4" />
+				</Button>
 			</div>
 			<div className="flex min-h-0 flex-col gap-3.5 overflow-y-auto">
 				<SidebarGroup title="Projects">
@@ -115,9 +131,9 @@ function SyncFooter({ syncedAt }: { syncedAt: string | null }) {
 	const prefs = useSyncPrefs();
 	const setPrefs = useSetSyncPrefs();
 	const { theme, setTheme } = usePreferences();
-	const [settingsOpen, setSettingsOpen] = useState(false);
-	const showSettings = useCallback(() => setSettingsOpen(true), []);
-	useShortcut(shortcuts.settings, showSettings);
+	const settingsOpen = useUi((s) => s.overlay?.type === "settings");
+	const setSettingsOpen = (open: boolean) => useUi.getState().open(open ? { type: "settings" } : null);
+	const showSettings = () => setSettingsOpen(true);
 	const now = useNow(30_000);
 	const { tone, text } = footerText(status.data, syncedAt, now);
 	return (
@@ -149,15 +165,9 @@ function SyncFooter({ syncedAt }: { syncedAt: string | null }) {
 					await commands.authSignOut();
 					await queryClient.invalidateQueries({ queryKey: ["auth"] });
 				}}
-				shortcuts={[
-					{ label: "Command palette", keys: shortcuts.palette.label },
-					{ label: "Sync now", keys: shortcuts.syncNow.label },
-					{ label: "Settings", keys: shortcuts.settings.label },
-					{ label: "Lift a card", keys: "Space" },
-					{ label: "Move a lifted card", keys: "← ↑ ↓ →" },
-					{ label: "Drop a card", keys: "↵" },
-					{ label: "Cancel / close", keys: "esc" },
-				]}
+				shortcuts={shortcuts
+					.filter((s, index) => shortcuts.findIndex((row) => row.command === s.command) === index)
+					.map((s) => ({ label: s.label, keys: keysOf(s.key).join("") }))}
 			/>
 		</>
 	);

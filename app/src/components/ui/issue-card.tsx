@@ -2,8 +2,9 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { GitMerge, GitPullRequest, GitPullRequestDraft } from "lucide-react";
 import type { ComponentProps } from "react";
 import { AvatarStack, type AvatarUser } from "@/components/ui/avatar";
+import { Kbd } from "@/components/ui/kbd";
 import { type CardLabel, LabelChip } from "@/components/ui/label-chip";
-import { type Priority, PriorityGlyph, ProgressRing } from "@/components/ui/planche-glyph";
+import { type Priority, PriorityGlyph, ProgressRing, StatusGlyph } from "@/components/ui/planche-glyph";
 import { type StatusKey, StatusSquare } from "@/components/ui/status";
 import { cn } from "@/lib/cn";
 
@@ -153,5 +154,40 @@ export function CardPlaceholder({ height, className, style, ...props }: Componen
 			className={cn("rounded-lg border-[1.5px] border-line-strong border-dashed bg-hover", className)}
 			{...props}
 		/>
+	);
+}
+
+type DraftFieldProps = Omit<ComponentProps<"input">, "className"> & { className?: string };
+
+/** The title field of a new draft, shaped like the card it becomes, with its keys under it. */
+export function DraftField({ className, ...props }: DraftFieldProps) {
+	return (
+		<div
+			data-slot="draft-field"
+			className={cn(
+				"flex flex-col gap-[5px] rounded-lg bg-surface px-[9px] py-2 shadow-[var(--pl-shadow-card),0_0_0_2px_var(--pl-focus)]",
+				className,
+			)}
+		>
+			<div className="flex items-start gap-[7px]">
+				<span aria-hidden className="grid h-[17px] w-3.5 shrink-0 place-items-center text-fg-3">
+					<StatusGlyph status="draft" />
+				</span>
+				<input
+					aria-label="Draft title"
+					placeholder="Draft title"
+					className="min-w-0 flex-1 bg-transparent font-medium text-base text-fg leading-[17px] outline-none placeholder:text-fg-3"
+					{...props}
+				/>
+			</div>
+			<div className="flex h-[18px] items-center gap-1 pl-[21px] text-2xs text-fg-3">
+				<Kbd size="sm">↵</Kbd>
+				Create
+				<Kbd size="sm" className="ml-1.5">
+					esc
+				</Kbd>
+				Cancel
+			</div>
+		</div>
 	);
 }
