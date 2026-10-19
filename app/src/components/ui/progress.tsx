@@ -21,7 +21,7 @@ export function Progress({ className, indeterminate, value, ...props }: Progress
 		>
 			<div
 				data-slot="progress-indicator"
-				className={cn("h-full rounded-[2px] bg-accent", sliding ? "w-2/5 animate-pl-slide" : "transition-[width]")}
+				className={cn("h-full rounded-[2px] bg-fg-3", sliding ? "w-2/5 animate-pl-slide" : "transition-[width]")}
 				style={sliding ? undefined : { width: `${clamped}%` }}
 			/>
 		</div>

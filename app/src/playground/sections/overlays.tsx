@@ -204,7 +204,7 @@ function ConfirmBody() {
 }
 
 function Hit({ children }: { children: ReactNode }) {
-	return <span className="rounded-[2px] bg-accent-soft font-semibold">{children}</span>;
+	return <span className="rounded-[2px] bg-active font-semibold">{children}</span>;
 }
 
 function PaletteFooter() {
@@ -279,8 +279,8 @@ function PaletteBody({ preview = false }: { preview?: boolean }) {
 							Shortcut to <Hit>move</Hit> a card to the next column
 						</span>
 						<span className="font-mono text-fg-3 text-xs">app #214</span>
-						<span className="inline-flex h-4 items-center gap-1 rounded-xs bg-kbd px-[5px] text-2xs text-fg-2">
-							<span className="size-1.5 rounded-[2px] bg-status-backlog" />
+						<span className="inline-flex h-4 items-center gap-1 rounded-xs bg-hover px-[5px] text-2xs text-fg-2">
+							<span className="size-1.5 rounded-[2px] bg-status-draft" />
 							Backlog
 						</span>
 					</CommandItem>
@@ -292,7 +292,7 @@ function PaletteBody({ preview = false }: { preview?: boolean }) {
 							<Hit>Move</Hit> filters into the toolbar
 						</span>
 						<span className="font-mono text-fg-3 text-xs">app #198</span>
-						<span className="inline-flex h-4 items-center gap-1 rounded-xs bg-kbd px-[5px] text-2xs text-fg-2">
+						<span className="inline-flex h-4 items-center gap-1 rounded-xs bg-hover px-[5px] text-2xs text-fg-2">
 							<span className="size-1.5 rounded-[2px] bg-status-done" />
 							Done
 						</span>
@@ -408,7 +408,7 @@ function OverlaysDemo() {
 								</div>
 								<div className="flex flex-col gap-px p-1">
 									<div className="flex h-[26px] items-center gap-2 rounded-sm bg-active px-2 text-sm">
-										<span className="grid size-3.5 place-items-center rounded-xs bg-accent text-accent-fg">
+										<span className="grid size-3.5 place-items-center rounded-xs bg-primary text-primary-fg">
 											<Check className="size-3" strokeWidth={3} />
 										</span>
 										<span className="size-1.5 rounded-full bg-status-review" />

@@ -1,15 +1,16 @@
 import { CircleCheck, CircleX } from "lucide-react";
 import type { ComponentProps } from "react";
-import icon from "@/assets/planche-icon.svg";
 import { Avatar } from "@/components/ui/avatar";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/cn";
+import icon from "../../../../design/brand/icon/planche-icon-flat.svg";
+import smallIcon from "../../../../design/brand/icon/planche-icon-small.svg";
 
 /** The full-bleed app icon from design/brand/icon, as the onboarding shows it. */
 export function AppIcon({ size = 64, className, style, ...props }: ComponentProps<"img"> & { size?: number }) {
 	return (
 		<img
-			src={icon}
+			src={size < 32 ? smallIcon : icon}
 			width={size}
 			height={size}
 			alt=""
@@ -29,7 +30,7 @@ export function Logotype({ className, ...props }: ComponentProps<"svg">) {
 			viewBox="-32.6 -770.6 4226.5 853.1"
 			role="img"
 			aria-label="Planche"
-			className={cn("h-[25px] w-[124px] shrink-0", className)}
+			className={cn("h-7 w-[112px] shrink-0", className)}
 			{...props}
 		>
 			<g className="fill-logo-ink">
@@ -59,7 +60,6 @@ export function Logotype({ className, ...props }: ComponentProps<"svg">) {
 					d="M52 0L52 688L490 688L490 541L228 541L228 422L450 422L450 277L228 277L228 147L496 147L496 0Z"
 				/>
 			</g>
-			<path className="fill-logo-dot" transform="translate(3914.41 0) scale(1 -1)" d="M49 0L49 172L197 172L197 0Z" />
 		</svg>
 	);
 }
@@ -82,7 +82,7 @@ export function ScopeRow({ name, why, state, className, ...props }: ScopeRowProp
 				{state === "missing" ? <CircleX className="size-4 fill-danger text-bg" /> : null}
 				{state === "idle" ? <span className="size-1.5 rounded-full bg-line-strong" /> : null}
 			</span>
-			<span className="w-[72px] font-mono text-xs">{name}</span>
+			<span className="w-[72px] font-sans text-xs">{name}</span>
 			<span className="text-fg-3">{why}</span>
 		</div>
 	);
@@ -101,8 +101,7 @@ export function AccountBlock({ login, avatarUrl, projects, className, ...props }
 			<div className="flex min-w-0 flex-col">
 				<span className="font-semibold">{login}</span>
 				<span className="text-fg-3 text-xs">
-					Signed in as <span className="font-mono">{login}</span> · {projects} {projects === 1 ? "project" : "projects"}{" "}
-					found
+					Signed in as <span>{login}</span> · {projects} {projects === 1 ? "project" : "projects"} found
 				</span>
 			</div>
 		</div>

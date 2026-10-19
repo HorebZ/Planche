@@ -4,7 +4,7 @@ import { Progress } from "@/components/ui/progress";
 import type { Board } from "@/ipc/bindings";
 import { statusTone } from "./statusTone";
 
-const boardClass = "flex h-full items-start gap-2.5 overflow-x-auto px-3.5 py-3";
+const boardClass = "flex h-full items-start gap-2.5 overflow-x-auto px-3 pt-0.5 pb-3";
 
 /** 5a: the first sync has not finished. */
 export function LoadingBoard() {
@@ -26,7 +26,7 @@ export function EmptyBoard({ board }: { board: Board }) {
 				{board.columns.map((column) => (
 					<BoardColumn
 						key={column.option_id ?? "none"}
-						status={statusTone(column.color)}
+						status={statusTone(column.color, column.name)}
 						name={column.name}
 						count={0}
 						empty
@@ -43,5 +43,5 @@ export function EmptyBoard({ board }: { board: Board }) {
 
 /** The 2 px bar under the toolbar while a sync runs. */
 export function SyncBar() {
-	return <Progress indeterminate className="absolute inset-x-0 top-[47px] z-10 w-auto" />;
+	return <Progress indeterminate className="absolute inset-x-0 top-[90px] z-10 w-auto" />;
 }
