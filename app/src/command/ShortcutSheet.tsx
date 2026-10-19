@@ -5,7 +5,9 @@ import { useUi } from "@/stores/ui";
 
 const scopes: Record<Scope, string> = {
 	global: "Anywhere",
-	board: "On the board",
+	board: "On the board or list",
+	sidebar: "On a sidebar project",
+	drag: "While a card is lifted",
 	menu: "In the Status menu",
 	palette: "In the palette",
 	dialog: "In a dialog or a field",
@@ -37,7 +39,10 @@ export function ShortcutSheet() {
 						<section key={scope} className="flex flex-col gap-0.5">
 							<h3 className="mb-1 font-semibold text-2xs text-fg-3">{scopes[scope]}</h3>
 							{rows(scope).map((row) => (
-								<div key={row.label} className="flex h-[26px] items-center gap-2 text-sm">
+								<div
+									key={`${row.label}-${row.keys.flat().join("")}`}
+									className="flex h-[26px] items-center gap-2 text-sm"
+								>
 									<span className="min-w-0 flex-1 truncate">{row.label}</span>
 									{row.keys.map((keys) => (
 										<span key={keys.join()} className="flex gap-[3px]">

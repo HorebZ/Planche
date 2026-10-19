@@ -32,18 +32,15 @@ type Check =
 export function Onboarding({ signedIn }: { signedIn: boolean }) {
 	const [step, setStep] = useState<1 | 2>(signedIn ? 2 : 1);
 	return (
-		<div className="grid h-screen grid-cols-[280px_1fr] bg-bg">
-			<aside
-				data-tauri-drag-region
-				className="flex flex-col gap-[18px] border-line border-r bg-sidebar px-8 pt-[72px] pb-7 backdrop-blur-[40px] backdrop-saturate-[1.8]"
-			>
+		<div className="grid h-screen grid-cols-[270px_minmax(0,1fr)] bg-bg-sunken">
+			<aside data-tauri-drag-region className="flex flex-col gap-[18px] px-[30px] pt-[72px] pb-[26px]">
 				<AppIcon size={64} />
 				<div className="flex flex-col gap-1.5">
 					<Logotype />
-					<p className="text-pretty text-fg-2 leading-[18px]">Your GitHub Projects as a keyboard-first board.</p>
+					<p className="text-pretty text-fg-2 leading-[18px]">Your GitHub Projects, keyboard-first.</p>
 				</div>
 				<span className="flex-1" />
-				<span className="font-mono text-[11px] text-fg-3">v{pkg.version} · macOS 15+</span>
+				<span className="text-[11.5px] text-fg-3 tabular-nums">v{pkg.version} · macOS 15+</span>
 			</aside>
 			{step === 1 ? <TokenStep onDone={() => setStep(2)} /> : <ProjectStep />}
 		</div>
@@ -53,14 +50,15 @@ export function Onboarding({ signedIn }: { signedIn: boolean }) {
 function StepHeader({ step, title, children }: { step: 1 | 2; title: string; children: string }) {
 	return (
 		<div className="flex flex-col gap-2">
-			<div className="font-semibold text-[11px] text-fg-3 uppercase tracking-[0.05em]">Step {step} of 2</div>
-			<h1 className="font-bold text-2xl tracking-[-0.015em]">{title}</h1>
+			<div className="font-medium text-[12px] text-fg-3">Step {step} of 2</div>
+			<h1 className="font-semibold text-xl tracking-[-0.018em]">{title}</h1>
 			<p className="max-w-[440px] text-pretty text-fg-2 leading-[19px]">{children}</p>
 		</div>
 	);
 }
 
-const panelClass = "flex min-w-0 flex-col gap-5 px-12 pt-16 pb-8";
+const panelClass =
+	"my-2 mr-2 flex min-h-0 min-w-0 flex-col gap-4 overflow-y-auto rounded-xl bg-bg px-10 pt-9 pb-[18px] shadow-panel";
 
 function TokenStep({ onDone }: { onDone: () => void }) {
 	const queryClient = useQueryClient();
@@ -117,7 +115,7 @@ function TokenStep({ onDone }: { onDone: () => void }) {
 				<button
 					type="button"
 					onClick={() => openUrl(TOKEN_URL)}
-					className="flex w-max items-center gap-[3px] rounded-[4px] text-accent text-xs outline-none focus-visible:shadow-ring"
+					className="flex w-max items-center gap-[3px] rounded-[4px] text-fg-2 text-sm underline decoration-line-strong underline-offset-[3px] outline-none focus-visible:shadow-ring"
 				>
 					Create a token with the right scopes
 					<ArrowUpRight className="size-3.5" aria-hidden />
@@ -242,7 +240,7 @@ function ProjectStep() {
 			</div>
 			<Footer>
 				<Button type="submit" variant="primary" disabled={!picked || opening}>
-					{opening ? <Spinner size={11} className="text-accent-fg" /> : null}
+					{opening ? <Spinner size={11} className="text-primary-fg" /> : null}
 					Open board
 					<Kbd variant="onAccent">↵</Kbd>
 				</Button>

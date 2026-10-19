@@ -1,6 +1,6 @@
 import type { Board, ItemId } from "@/ipc/bindings";
 
-export type Scope = "global" | "board" | "menu" | "palette" | "dialog";
+export type Scope = "global" | "board" | "menu" | "palette" | "dialog" | "sidebar" | "drag";
 
 /** One key per row. `key` is `KeyboardEvent.key`, after `Meta+` and `Shift+` when held. */
 type Shortcut = { key: string; command: string; scope: Scope; label: string };
@@ -11,6 +11,10 @@ export const shortcuts = [
 	{ key: "c", command: "issue.new", scope: "global", label: "New issue" },
 	{ key: "Meta+r", command: "sync.now", scope: "global", label: "Sync now" },
 	{ key: "?", command: "help.open", scope: "global", label: "All shortcuts" },
+	{ key: "Meta+,", command: "settings.open", scope: "global", label: "Settings" },
+	{ key: "Meta+Shift+h", command: "sidebar.hide", scope: "sidebar", label: "Hide from sidebar" },
+
+	{ key: " ", command: "drag.lift", scope: "board", label: "Lift a card" },
 
 	{ key: "j", command: "card.next", scope: "board", label: "Next card" },
 	{ key: "ArrowDown", command: "card.next", scope: "board", label: "Next card" },
@@ -33,12 +37,21 @@ export const shortcuts = [
 	{ key: "3", command: "status.3", scope: "menu", label: "Third status" },
 	{ key: "4", command: "status.4", scope: "menu", label: "Fourth status" },
 	{ key: "5", command: "status.5", scope: "menu", label: "Fifth status" },
+	{ key: "6", command: "status.6", scope: "menu", label: "Sixth status" },
 
-	{ key: "ArrowUp", command: "palette.prev", scope: "palette", label: "Navigate" },
-	{ key: "ArrowDown", command: "palette.next", scope: "palette", label: "Navigate" },
+	{ key: "ArrowUp", command: "palette.prev", scope: "palette", label: "Previous command" },
+	{ key: "ArrowDown", command: "palette.next", scope: "palette", label: "Next command" },
 	{ key: "Enter", command: "palette.run", scope: "palette", label: "Run" },
 	{ key: "Backspace", command: "palette.clearContext", scope: "palette", label: "Clear" },
 	{ key: "?", command: "help.open", scope: "palette", label: "All shortcuts" },
+
+	{ key: "ArrowLeft", command: "drag.left", scope: "drag", label: "Previous status" },
+	{ key: "ArrowRight", command: "drag.right", scope: "drag", label: "Next status" },
+	{ key: "ArrowUp", command: "drag.up", scope: "drag", label: "Previous position" },
+	{ key: "ArrowDown", command: "drag.down", scope: "drag", label: "Next position" },
+	{ key: "Enter", command: "drag.drop", scope: "drag", label: "Drop" },
+	{ key: " ", command: "drag.drop", scope: "drag", label: "Drop" },
+	{ key: "Escape", command: "drag.cancel", scope: "drag", label: "Cancel" },
 
 	{ key: "Escape", command: "dialog.close", scope: "dialog", label: "Close" },
 ] as const satisfies readonly Shortcut[];
@@ -47,6 +60,7 @@ export type CommandId = (typeof shortcuts)[number]["command"];
 
 const glyphs: Record<string, string> = {
 	Meta: "⌘",
+	" ": "Space",
 	Shift: "⇧",
 	ArrowUp: "↑",
 	ArrowDown: "↓",
@@ -110,4 +124,9 @@ export function navigate(board: Board, selected: ItemId | null, direction: Direc
 		if (target.length > 0) return target[Math.min(index, target.length - 1)].item_id;
 	}
 	return selected;
+}
+
+/** dnd-kit consumes physical codes for lift, drop and cancel. */
+export function dragCodes(command: "drag.lift" | "drag.drop" | "drag.cancel"): string[] {
+	return shortcuts.filter((s) => s.command === command).map((s) => (s.key === " " ? "Space" : s.key));
 }

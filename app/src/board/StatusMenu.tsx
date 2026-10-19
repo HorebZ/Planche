@@ -9,7 +9,7 @@ import { statusTone } from "./statusTone";
 
 type StatusMenuProps = { board: Board; card: Card; onMove: (to: OptionId) => void };
 
-/** `S` on a card: its Status menu, under the card. `1` to `5` pick the option of that rank. */
+/** `S` on a card: its Status menu, under the card. `1` to `6` pick the option of that rank. */
 export function StatusMenu({ board, card, onMove }: StatusMenuProps) {
 	const open = useUi((s) => s.overlay?.type === "status");
 	// biome-ignore lint/correctness/useExhaustiveDependencies: the card element can change between two openings
@@ -18,7 +18,7 @@ export function StatusMenu({ board, card, onMove }: StatusMenuProps) {
 	const options = board.columns.flatMap((c) =>
 		c.option_id === null
 			? []
-			: [{ id: c.option_id, name: c.name, status: statusTone(c.color), current: c.option_id === current }],
+			: [{ id: c.option_id, name: c.name, status: statusTone(c.color, c.name), current: c.option_id === current }],
 	);
 	const shown = options.map((o, i) => ({ ...o, keys: keysFor(`status.${i + 1}` as CommandId).join("") || undefined }));
 	const pick = (id: string) => {

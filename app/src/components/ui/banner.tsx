@@ -23,7 +23,7 @@ export function Banner({ icon, title, description, meta, action, className, ...p
 			{icon && <span className="flex shrink-0 text-danger [&_svg]:size-[18px]">{icon}</span>}
 			<span className="shrink-0 font-semibold text-danger">{title}</span>
 			{description && <span className="min-w-0 flex-1 truncate text-fg-2">{description}</span>}
-			{meta && <span className="shrink-0 font-mono text-fg-3 text-xs">{meta}</span>}
+			{meta && <span className="shrink-0 text-fg-3 text-xs tabular-nums">{meta}</span>}
 			{action}
 		</div>
 	);

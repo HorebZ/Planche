@@ -50,7 +50,7 @@ test("5d: an empty board offers its columns as drop zones and the empty card", a
 	await open(page, "empty");
 	await expect(page.getByText("This board is empty")).toBeVisible();
 	await expect(page.getByText("Drop cards here")).toHaveCount(5);
-	await expect(page.getByRole("button", { name: /New issue/ })).toBeDisabled();
+	await expect(page.locator('[data-slot="empty-board-card"]').getByRole("button", { name: /New issue/ })).toBeEnabled();
 });
 
 test("offline: the toolbar, the footer and the pending card say so", async ({ page }) => {

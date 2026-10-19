@@ -8,6 +8,7 @@ export type Overlay =
 	| { type: "status" }
 	| { type: "assign" }
 	| { type: "help" }
+	| { type: "settings" }
 	| { type: "draft"; column: OptionId | null };
 
 type UiState = {

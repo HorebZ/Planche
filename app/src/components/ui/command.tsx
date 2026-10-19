@@ -30,7 +30,7 @@ function CommandInput({
 			<CommandPrimitive.Input
 				data-slot="command-input"
 				className={cn(
-					"h-full min-w-0 flex-1 bg-transparent text-[16px] leading-5 outline-none placeholder:text-fg-3",
+					"h-full min-w-0 flex-1 bg-transparent text-[16px] leading-5 outline-none placeholder:text-fg-3 focus-visible:shadow-none",
 					className,
 				)}
 				{...props}
@@ -46,13 +46,12 @@ function CommandContext({ className, children, ...props }: ComponentProps<"span"
 		<span
 			data-slot="command-context"
 			className={cn(
-				"flex h-[22px] shrink-0 items-center gap-[5px] rounded-sm bg-accent-soft px-[7px] font-semibold text-accent text-sm",
+				"flex h-[22px] min-w-0 max-w-[320px] shrink items-center gap-[5px] rounded-sm bg-hover px-[7px] font-semibold text-fg-2 text-sm",
 				className,
 			)}
 			{...props}
 		>
-			<span aria-hidden className="size-2.5 rounded-[2.5px] shadow-[inset_0_0_0_1.5px_var(--pl-accent)]" />
-			<span className="font-mono text-[11.5px]">{children}</span>
+			<span className="flex min-w-0 items-center gap-1.5 truncate text-[11.5px]">{children}</span>
 		</span>
 	);
 }
@@ -76,7 +75,7 @@ function CommandHighlight({ text, query }: { text: string; query: string }) {
 		const part = text.slice(i, j);
 		parts.push(
 			hit[i] ? (
-				<span key={i} className="rounded-[2px] bg-accent-soft font-semibold">
+				<span key={i} className="rounded-[2px] bg-active font-semibold">
 					{part}
 				</span>
 			) : (
@@ -99,7 +98,7 @@ function CommandFooter({ className, ...props }: ComponentProps<"div">) {
 		<div
 			data-slot="command-footer"
 			className={cn(
-				"flex h-9 items-center gap-4 border-line border-t bg-bg-sunken px-3.5 text-[11.5px] text-fg-3",
+				"flex h-[38px] items-center gap-4 border-line border-t bg-bg-sunken px-3.5 text-[11.5px] text-fg-3",
 				className,
 			)}
 			{...props}
@@ -196,7 +195,7 @@ function CommandDialog({
 			<DialogContent
 				{...contentProps}
 				showClose={false}
-				className="top-[110px] w-[640px] max-w-[calc(100%-2rem)] translate-y-0 gap-0 overflow-hidden rounded-window bg-elevated p-0 shadow-pop"
+				className="top-[120px] w-[640px] max-w-[calc(100%-2rem)] translate-y-0 gap-0 overflow-hidden rounded-window bg-elevated p-0 shadow-pop"
 			>
 				<DialogTitle className="sr-only">Command palette</DialogTitle>
 				<DialogDescription className="sr-only">Search actions, issues, and pull requests.</DialogDescription>

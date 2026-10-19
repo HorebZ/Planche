@@ -86,6 +86,7 @@ export function Column({ column, index, activeId, landing, onCreateDraft }: Colu
 								>
 									{row.kind === "card" ? (
 										<Card
+											status={statusTone(column.color, column.name)}
 											card={row.card}
 											ghost={row.card.item_id === activeId}
 											selected={row.card.item_id === selectedId}

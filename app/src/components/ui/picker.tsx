@@ -9,15 +9,15 @@ import { cn } from "@/lib/cn";
 
 type PickerProps = Omit<ComponentProps<typeof Command>, "children"> & { placeholder: string; children: ReactNode };
 
-/** A filterable menu: a "Move to…" field over 26 px rows, 216 px wide, as screen 3 draws it. */
+/** A filterable menu: a "Move to…" field over 30 px rows, 252 px wide, as the v2 Status menu draws it. */
 function Picker({ placeholder, className, children, ...props }: PickerProps) {
 	return (
-		<Command loop className={cn("w-[216px] rounded-lg p-1 text-[12.5px]", className)} {...props}>
-			<div className="mb-[3px] flex h-[26px] items-center gap-1.5 border-line border-b px-1.5 pb-1 text-fg-3">
+		<Command loop className={cn("w-[252px] rounded-xl p-1 text-[12.5px]", className)} {...props}>
+			<div className="mb-[3px] flex h-[30px] items-center gap-1.5 border-line border-b px-1.5 pb-1 text-fg-3">
 				<Search className="size-[15px] shrink-0" aria-hidden />
 				<CommandPrimitive.Input
 					placeholder={placeholder}
-					className="min-w-0 flex-1 bg-transparent text-fg outline-none placeholder:text-fg-3"
+					className="min-w-0 flex-1 bg-transparent text-fg outline-none placeholder:text-fg-3 focus-visible:shadow-none"
 				/>
 			</div>
 			<CommandList className="max-h-[260px] p-0">{children}</CommandList>
@@ -25,7 +25,7 @@ function Picker({ placeholder, className, children, ...props }: PickerProps) {
 	);
 }
 
-const rowClass = "h-[26px] gap-2 rounded-sm pr-1.5 pl-2 text-[12.5px]";
+const rowClass = "h-[30px] gap-2 rounded-sm pr-1.5 pl-2 text-[12.5px]";
 
 export type StatusOption = { id: string; name: string; status: StatusKey; current: boolean; keys?: string };
 
@@ -37,7 +37,7 @@ type StatusListProps = Omit<PickerProps, "placeholder" | "children" | "onSelect"
 /** The Status menu: one row per option, a check on the current one, and its digit. */
 export function StatusList({ options, onPick, ...props }: StatusListProps) {
 	return (
-		<Picker placeholder="Move to…" {...props}>
+		<Picker placeholder="Change status…" {...props}>
 			<CommandEmpty className="py-2 text-xs">No status</CommandEmpty>
 			{options.map((option) => (
 				<CommandItem key={option.id} value={option.name} onSelect={() => onPick(option.id)} className={rowClass}>
