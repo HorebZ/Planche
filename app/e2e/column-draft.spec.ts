@@ -50,3 +50,28 @@ for (const colorScheme of ["light", "dark"] as const) {
 		await expect(selected).toBeFocused();
 	});
 }
+
+for (const activation of ["click", "Enter"] as const) {
+	test(`empty List: Todo add shows a focused draft via ${activation} and Escape releases shortcuts`, async ({ page }) => {
+		await page.goto("/?mock=empty");
+		await expect(page.getByText("This board is empty")).toBeVisible();
+		await page.getByRole("button", { name: "List", exact: true }).click();
+		const add = page.getByRole("button", { name: "Add draft to Todo", exact: true });
+		if (activation === "click") await add.click();
+		else {
+			await add.focus();
+			await page.keyboard.press("Enter");
+		}
+		const todo = page.locator('[data-slot="board-column"]').filter({ has: page.getByText("Todo", { exact: true }) });
+		await expect(todo.getByLabel("Draft title")).toBeFocused();
+		await page.keyboard.press("Escape");
+		await expect(page.getByLabel("Draft title")).toHaveCount(0);
+		await page.keyboard.press("c");
+		await expect(page.getByLabel("Draft title")).toBeFocused();
+		await page.keyboard.press("Escape");
+		await add.click();
+		await todo.getByLabel("Draft title").fill("Draft from empty List");
+		await page.keyboard.press("Enter");
+		await expect(todo.locator('[data-slot="issue-card"]').first()).toContainText("Draft from empty List");
+	});
+}
