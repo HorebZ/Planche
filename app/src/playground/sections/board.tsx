@@ -1,7 +1,8 @@
+import { useState } from "react";
 import { Avatar, AvatarStack } from "@/components/ui/avatar";
 import { BoardColumn } from "@/components/ui/board-column";
 import { DragBubble, DragHelpBar } from "@/components/ui/drag";
-import { CardPlaceholder, IssueCard, type IssueCardData } from "@/components/ui/issue-card";
+import { CardPlaceholder, DraftField, IssueCard, type IssueCardData } from "@/components/ui/issue-card";
 import { IssueListGroup } from "@/components/ui/issue-list";
 import { LabelChip } from "@/components/ui/label-chip";
 import { PriorityGlyph, ProgressRing } from "@/components/ui/planche-glyph";
@@ -226,7 +227,7 @@ export function BoardSection() {
 							</BoardColumn>
 						</State>
 						<State label="empty">
-							<BoardColumn status="backlog" count={0} empty />
+							<DraftColumnPreview />
 						</State>
 						<State label="drop target · 3 + 1">
 							<BoardColumn status="doing" count={3} dropTarget>
@@ -316,5 +317,14 @@ function DragMock() {
 			<DragBubble className="absolute top-[196px] left-[250px] z-20">Move to In progress · position 2</DragBubble>
 			<DragHelpBar className="absolute bottom-0 left-1/2 z-20 -translate-x-1/2" />
 		</div>
+	);
+}
+
+function DraftColumnPreview() {
+	const [drafting, setDrafting] = useState(false);
+	return (
+		<BoardColumn status="backlog" count={0} empty={!drafting} onAddDraft={() => setDrafting(true)}>
+			{drafting ? <DraftField autoFocus aria-label="Draft title" onBlur={() => setDrafting(false)} /> : null}
+		</BoardColumn>
 	);
 }
