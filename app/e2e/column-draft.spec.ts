@@ -1,0 +1,28 @@
+import { expect, test } from "@playwright/test";
+
+for (const scenario of ["board", "empty"] as const) {
+	for (const activation of ["click", "Enter", "Space"] as const) {
+		test(`${scenario}: column add opens and creates a draft in Todo via ${activation}`, async ({ page }) => {
+			await page.goto(`/?mock=${scenario}`);
+			if (scenario === "board") {
+				await page.locator('[data-item-id="PVTI_231"]').click();
+			} else {
+				await expect(page.getByText("This board is empty")).toBeVisible();
+			}
+			const todo = page.locator('[data-slot="board-column"]').filter({ has: page.getByText("Todo", { exact: true }) });
+			const add = todo.getByRole("button").first();
+			if (activation === "click") await add.click();
+			else {
+				await add.focus();
+				await page.keyboard.press(activation);
+			}
+			const field = todo.getByLabel("Draft title");
+			await expect(field).toBeFocused();
+			await expect(todo.getByRole("button", { name: "Add draft to Todo", exact: true })).toBeVisible();
+			await expect(page.locator('[data-slot="board-column"]').getByRole("button", { name: "More", exact: true })).toHaveCount(0);
+			await field.fill("Column draft");
+			await page.keyboard.press("Enter");
+			await expect(todo.locator('[data-slot="issue-card"]').first()).toContainText("Column draft");
+		});
+	}
+}
