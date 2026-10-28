@@ -1,4 +1,4 @@
-import { MoreHorizontal, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import type { ComponentProps } from "react";
 import { Button } from "@/components/ui/button";
 import { type StatusKey, StatusSquare, statusLabels } from "@/components/ui/status";
@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 type BoardColumnProps = ComponentProps<"section"> & {
 	status: StatusKey;
 	count: number;
+	onAddDraft?: () => void;
 	name?: string;
 	/** A card from another column is over this one, so the header counts it before the drop. */
 	dropTarget?: boolean;
@@ -19,6 +20,7 @@ const headerButtonClass = "size-6 rounded-sm text-fg-3 hover:text-fg [&_svg]:siz
 export function BoardColumn({
 	status,
 	count,
+	onAddDraft,
 	name,
 	dropTarget = false,
 	hiddenCount,
@@ -44,12 +46,18 @@ export function BoardColumn({
 					{dropTarget ? count + 1 : count}
 				</span>
 				<span className="flex-1" />
-				<Button type="button" variant="ghost" size="icon" aria-label="Add card" className={headerButtonClass}>
-					<Plus />
-				</Button>
-				<Button type="button" variant="ghost" size="icon" aria-label="More" className={headerButtonClass}>
-					<MoreHorizontal />
-				</Button>
+				{onAddDraft ? (
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						aria-label={`Add draft to ${name ?? statusLabels[status]}`}
+						className={headerButtonClass}
+						onClick={onAddDraft}
+					>
+						<Plus />
+					</Button>
+				) : null}
 			</header>
 			{empty ? (
 				<div className="grid h-[72px] place-items-center rounded-lg border border-line-strong border-dashed text-[11.5px] text-fg-3">
