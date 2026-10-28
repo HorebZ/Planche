@@ -2,6 +2,7 @@ import { BoardColumn } from "@/components/ui/board-column";
 import { EmptyBoardCard, SkeletonColumn } from "@/components/ui/board-states";
 import { Progress } from "@/components/ui/progress";
 import type { Board } from "@/ipc/bindings";
+import { useUi } from "@/stores/ui";
 import { statusTone } from "./statusTone";
 
 const boardClass = "flex h-full items-start gap-2.5 overflow-x-auto px-3 pt-0.5 pb-3";
@@ -29,6 +30,7 @@ export function EmptyBoard({ board, onNewIssue }: { board: Board; onNewIssue: ()
 						status={statusTone(column.color, column.name)}
 						name={column.name}
 						count={0}
+						onAddDraft={() => useUi.getState().open({ type: "draft", column: column.option_id })}
 						empty
 					/>
 				))}

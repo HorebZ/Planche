@@ -66,6 +66,7 @@ export function Column({ column, index, activeId, landing, onCreateDraft }: Colu
 			status={statusTone(column.color)}
 			name={column.name}
 			count={column.cards.length}
+			onAddDraft={() => useUi.getState().open({ type: "draft", column: column.option_id })}
 			dropTarget={incoming}
 			empty={column.cards.length === 0 && !incoming && !drafting}
 			className="max-h-full"
