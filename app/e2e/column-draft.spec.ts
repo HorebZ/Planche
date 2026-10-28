@@ -52,7 +52,9 @@ for (const colorScheme of ["light", "dark"] as const) {
 }
 
 for (const activation of ["click", "Enter"] as const) {
-	test(`empty List: Todo add shows a focused draft via ${activation} and Escape releases shortcuts`, async ({ page }) => {
+	test(`empty List: Todo add shows a focused draft via ${activation} and Escape releases shortcuts`, async ({
+		page,
+	}) => {
 		await page.goto("/?mock=empty");
 		await expect(page.getByText("This board is empty")).toBeVisible();
 		await page.getByRole("button", { name: "List", exact: true }).click();

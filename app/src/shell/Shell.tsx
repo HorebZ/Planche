@@ -13,7 +13,7 @@ import { archive, columnIndexOf, createDraft, moveTo, paletteCommands, toggleAss
 import { ShortcutSheet } from "@/command/ShortcutSheet";
 import { IssueListGroup } from "@/components/ui/issue-list";
 import { notify } from "@/components/ui/toast";
-import type { Card, Column, ProjectId, User } from "@/ipc/bindings";
+import type { Card, Column, OptionId, ProjectId, User } from "@/ipc/bindings";
 import {
 	errorMessage,
 	useAuth,
@@ -68,11 +68,14 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
 		selectProject(id);
 		openProject.mutate(id);
 	};
+	const newDraft = (column: OptionId | null) => {
+		setLayout("board");
+		show({ type: "draft", column });
+	};
 	const newIssue = () => {
 		if (!data) return;
-		setLayout("board");
 		const column = card ? data.columns[columnIndexOf(data, card)] : data.columns[0];
-		show({ type: "draft", column: column?.option_id ?? null });
+		newDraft(column?.option_id ?? null);
 	};
 	const step = (direction: Direction) => {
 		if (!data) return;
@@ -185,7 +188,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
 					{data == null ? (
 						<LoadingBoard />
 					) : cards === 0 && !drafting ? (
-						<EmptyBoard board={data} onNewIssue={newIssue} />
+						<EmptyBoard board={data} onNewIssue={newIssue} onNewDraft={newDraft} />
 					) : layout === "list" ? (
 						<div data-slot="issue-list" className="h-full overflow-y-auto">
 							{data.columns.map((column) => (
