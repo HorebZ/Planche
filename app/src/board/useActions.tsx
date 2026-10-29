@@ -1,35 +1,79 @@
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 import { notify, ToastCard, toast } from "@/components/ui/toast";
-import { type AuthStatus, type Board, commands, type Intent, type ProjectId, type ViewId } from "@/ipc/bindings";
-import { authQuery, boardQuery, currentProjectQuery, errorMessage } from "@/ipc/queries";
+import {
+	type AppError,
+	type AuthStatus,
+	type Board,
+	commands,
+	type Intent,
+	type ProjectId,
+	type ViewId,
+} from "@/ipc/bindings";
+import {
+	authQuery,
+	beginBoardWrite,
+	boardAccountEpoch,
+	boardQuery,
+	currentProjectQuery,
+	errorMessage,
+	reconcileBoard,
+} from "@/ipc/queries";
 import { keysFor } from "@/keyboard/shortcuts";
 import { useUi } from "@/stores/ui";
 import { describe, inverse, verbs } from "@/undo/inverse";
 import { applyIntent } from "./moveCard";
 
-/**
- * Applies an intent at once in the cached board, then queues it in Rust. Rust's board, with the
- * intent replayed on the server state, replaces the optimistic one. Resolves to `false` when
- * Rust refused it.
- */
-export async function dispatchIntent(client: QueryClient, projectId: ProjectId, viewId: ViewId | null, intent: Intent) {
-	const key = boardQuery(projectId, viewId).queryKey;
-	// A refetch in flight would overwrite the optimistic board with an older one.
-	void client.cancelQueries({ queryKey: key });
-	const before = client.getQueryData<Board | null>(key);
-	if (before) client.setQueryData(key, markPending(applyIntent(before, intent), intent.item_id));
-	try {
-		client.setQueryData(key, await commands.dispatchIntent(intent, viewId));
-		return true;
-	} catch (error) {
-		client.setQueryData(key, before);
-		notify(`Couldn't ${verbs[intent.type]} the card: ${errorMessage(error)}`, "error");
-		return false;
-	}
+export type DispatchResult =
+	| { type: "accepted" }
+	| { type: "rejected"; error: AppError }
+	| { type: "unknown"; message: string };
+/** Await the first bounded result; observe also receives late confirmation. Unknown is not a refusal. */
+export function dispatchIntent(
+	client: QueryClient,
+	projectId: ProjectId,
+	viewId: ViewId | null,
+	intent: Intent,
+	observe?: (result: DispatchResult) => void,
+	prepared?: (before: Board | null | undefined) => void,
+): Promise<DispatchResult> {
+	return new Promise((resolve) => {
+		let initial = true;
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		const publish = (result: DispatchResult) => {
+			if (!initial && result.type === "unknown") return;
+			clearTimeout(timer);
+			if (initial) {
+				initial = false;
+				lease.release();
+				resolve(result);
+			} else reconcileBoard(client, projectId, lease.accountEpoch);
+			observe?.(result);
+		};
+		const lease = beginBoardWrite(client, projectId, () => {
+			const key = boardQuery(projectId, viewId).queryKey;
+			const before = client.getQueryData<Board | null>(key);
+			prepared?.(before);
+			if (before) client.setQueryData(key, markPending(applyIntent(before, intent), intent.item_id));
+			timer = setTimeout(() => publish({ type: "unknown", message: "No response after 15 s" }), 15_000);
+			let receipt: Promise<Board>;
+			try {
+				receipt = commands.dispatchIntent(intent, viewId);
+			} catch (error) {
+				receipt = Promise.reject(error);
+			}
+			void receipt.then(
+				() => publish({ type: "accepted" }),
+				(error: unknown) => publish({ type: "unknown", message: errorMessage(error) }),
+			);
+		});
+		void lease.prepared.catch((error: unknown) =>
+			publish({ type: "rejected", error: { kind: "Invalid", message: errorMessage(error) } }),
+		);
+	});
 }
 
-/** The touched card says "Pending" where it is now, until Rust's board replaces this one. */
+/** Keep the touched card Pending until the next board read replaces this projection. */
 function markPending(board: Board, id: string): Board {
 	return {
 		...board,
@@ -56,7 +100,6 @@ export function useActions(projectId: ProjectId, viewId: ViewId | null) {
 		});
 	}, [client]);
 	return useMemo(() => {
-		const board = () => client.getQueryData<Board | null>(boardQuery(projectId, viewId).queryKey);
 		const inContext = () => {
 			const state = useUi.getState();
 			return (
@@ -65,33 +108,57 @@ export function useActions(projectId: ProjectId, viewId: ViewId | null) {
 			);
 		};
 		const identity = () => client.getQueryData<AuthStatus>(authQuery.queryKey)?.id;
-		const run = async (intent: Intent) => {
+		const run = (intent: Intent, observe?: (result: DispatchResult) => void) => {
 			const owner = useUi.getState().claimAction();
 			const account = identity();
-			const before = board();
-			const undo = before ? inverse(before, intent) : null;
-			const label = before ? describe(before, intent) : "Done";
-			if (!(await dispatchIntent(client, projectId, viewId, intent))) return;
-			if (!inContext() || identity() !== account) return;
-			if (!useUi.getState().acceptUndo(owner, undo && { owner, intent: undo, label })) return;
-			toast.custom((t) => (
-				<ToastCard
-					tone="success"
-					message={label}
-					action={
-						undo
-							? {
-									label: "Undo",
-									kbd: keysFor("undo").join(""),
-									onClick: () => {
-										toast.dismiss(t);
-										void undoLast(owner);
-									},
+			const epoch = boardAccountEpoch(client);
+			const context = useUi.getState().contextVersion;
+			let undo: Intent | null = null;
+			let label = `${verbs[intent.type]} ${intent.item_id}`;
+			return dispatchIntent(
+				client,
+				projectId,
+				viewId,
+				intent,
+				(result) => {
+					try {
+						if (
+							context !== useUi.getState().contextVersion ||
+							epoch !== boardAccountEpoch(client) ||
+							!inContext() ||
+							identity() !== account
+						)
+							return;
+						if (result.type === "unknown") notify(`Could not confirm: ${label}. ${result.message}`, "error");
+						if (result.type !== "accepted") return;
+						if (!useUi.getState().acceptUndo(owner, undo && { owner, intent: undo, label })) return;
+						toast.custom((t) => (
+							<ToastCard
+								tone="success"
+								message={label}
+								action={
+									undo
+										? {
+												label: "Undo",
+												kbd: keysFor("undo").join(""),
+												onClick: () => {
+													toast.dismiss(t);
+													void undoLast(owner);
+												},
+											}
+										: undefined
 								}
-							: undefined
+							/>
+						));
+					} finally {
+						observe?.(result);
 					}
-				/>
-			));
+				},
+				(before) => {
+					undo = before ? inverse(before, intent) : null;
+					if (before) label = describe(before, intent);
+				},
+			);
 		};
 		const undoLast = async (expectedOwner?: number) => {
 			if (!inContext()) return;
@@ -99,11 +166,22 @@ export function useActions(projectId: ProjectId, viewId: ViewId | null) {
 			const last = useUi.getState().takeUndo(expectedOwner);
 			if (!last) return;
 			const version = useUi.getState().actionVersion;
+			const context = useUi.getState().contextVersion;
+			const epoch = boardAccountEpoch(client);
 			toast.dismiss();
-			if (await dispatchIntent(client, projectId, viewId, last.intent)) {
-				if (inContext() && identity() === account && useUi.getState().actionVersion === version)
-					notify(`Undone: ${last.label}`, "success");
-			}
+			return dispatchIntent(client, projectId, viewId, last.intent, (result) => {
+				if (
+					!inContext() ||
+					identity() !== account ||
+					epoch !== boardAccountEpoch(client) ||
+					context !== useUi.getState().contextVersion
+				)
+					return;
+				if (result.type === "unknown") notify(`Could not confirm Undo: ${last.label}. ${result.message}`, "error");
+				if (result.type === "accepted") {
+					if (useUi.getState().actionVersion === version) notify(`Undone: ${last.label}`, "success");
+				}
+			});
 		};
 		return { run, undo: undoLast };
 	}, [client, projectId, viewId]);

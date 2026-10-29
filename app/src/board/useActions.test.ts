@@ -7,7 +7,8 @@ import { clearMocks, mockIPC } from "@tauri-apps/api/mocks";
 import { createElement } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
-import { afterEach, expect, test } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
+import { afterEach, expect, test, vi } from "vitest";
 import { toast } from "@/components/ui/toast";
 import type { Board, Intent } from "@/ipc/bindings";
 import { authQuery, boardQuery, createQueryClient, currentProjectQuery, listenToCore } from "@/ipc/queries";
@@ -15,7 +16,10 @@ import { useUi } from "@/stores/ui";
 import { applyIntent } from "./moveCard";
 import { dispatchIntent, useActions } from "./useActions";
 
-afterEach(() => clearMocks());
+afterEach(() => {
+	vi.useRealTimers();
+	clearMocks();
+});
 
 const [first]: { board: Board; intent: Intent }[] = JSON.parse(
 	// happy-dom gives import.meta.url an http scheme, so the path starts from app/.
@@ -33,13 +37,14 @@ test("a move shows at once, and a mutation-failed puts the cached board back", a
 			cards: c.cards.map((card) => (card.item_id === first.intent.item_id ? { ...card, pending: true } : card)),
 		})),
 	};
+	const receipt = deferred();
 	const calls: string[] = [];
 	mockIPC(
-		(cmd, args) => {
+		(cmd) => {
 			calls.push(cmd);
-			if (cmd === "get_board") return original;
+			if (cmd === "get_board") return calls.includes("dispatch_intent") ? moved : original;
 			// Rust queues the move and returns the board with it replayed.
-			if (cmd === "dispatch_intent") return applyIntent(original, (args as { intent: Intent }).intent);
+			if (cmd === "dispatch_intent") return receipt.promise;
 			throw new Error(`unexpected ${cmd}`);
 		},
 		{ shouldMockEvents: true },
@@ -51,13 +56,15 @@ test("a move shows at once, and a mutation-failed puts the cached board back", a
 	await expect.poll(() => client.getQueryData(query.queryKey)).toEqual(original);
 
 	const sent = dispatchIntent(client, original.project.id, null, first.intent);
-	// The same tick as the drop, before Rust answers.
+	await expect.poll(() => calls.includes("dispatch_intent")).toBe(true);
 	expect(client.getQueryData(query.queryKey)).toEqual(optimistic);
+	receipt.resolve(moved);
 	await sent;
 	expect(calls).toContain("dispatch_intent");
-	expect(client.getQueryData(query.queryKey)).toEqual(moved);
+	await expect.poll(() => client.getQueryData(query.queryKey)).toEqual(moved);
 
 	// GitHub refuses it: Rust drops the row and the board changes back.
+	calls.length = 0;
 	await emit("mutation-failed", { intent: first.intent, message: "Could not resolve to a node" });
 	await emit("board-changed", { project_id: original.project.id });
 	await expect.poll(() => client.getQueryData(query.queryKey)).toEqual(original);
@@ -83,6 +90,7 @@ function harness() {
 	useUi.getState().selectProject(first.board.project.id);
 	const receipts: ReturnType<typeof deferred>[] = [];
 	mockIPC((cmd) => {
+		if (cmd === "get_board") return first.board;
 		if (cmd !== "dispatch_intent") throw new Error(`unexpected ${cmd}`);
 		const receipt = deferred();
 		receipts.push(receipt);
@@ -122,6 +130,7 @@ test.each([draft, first.intent])("an older $type receipt preserves the newer mov
 	try {
 		const a = h.actions.run(intent);
 		const b = h.actions.run(first.intent);
+		await expect.poll(() => h.receipts.length).toBeGreaterThan(1);
 		h.receipts[1].resolve(first.board);
 		await b;
 		const undoB = useUi.getState().undo;
@@ -134,15 +143,26 @@ test.each([draft, first.intent])("an older $type receipt preserves the newer mov
 	}
 });
 
-test.each(["project", "view", "account", "fallback"])("a %s context change cannot resurrect Undo", async (context) => {
+test.each(
+	["project", "view", "account", "fallback"].flatMap((context) => [
+		[context, "action"],
+		[context, "undo"],
+	]),
+)("a %s roundtrip suppresses old %s outcomes", async (context, kind) => {
 	const h = harness();
 	try {
 		h.client.setQueryData(authQuery.queryKey, { id: "U", login: "u", avatar_url: null, missing_scopes: [] });
+		h.client.setQueryData(boardQuery(first.board.project.id, null).queryKey, first.board);
 		const confirmed = h.actions.run(first.intent);
+		await expect.poll(() => h.receipts.length).toBeGreaterThan(0);
 		h.receipts[0].resolve(first.board);
 		await confirmed;
 		expect(useUi.getState().undo).not.toBeNull();
-		const sent = h.actions.run(first.intent);
+		vi.useFakeTimers();
+		const results: string[] = [];
+		const sent = kind === "undo" ? h.actions.undo() : h.actions.run(first.intent, (r) => results.push(r.type));
+		await vi.advanceTimersByTimeAsync(0);
+		expect(h.receipts).toHaveLength(2);
 		const toastCount = toast.getHistory().length;
 		if (context === "project") {
 			useUi.getState().selectProject("Q");
@@ -153,13 +173,20 @@ test.each(["project", "view", "account", "fallback"])("a %s context change canno
 		} else if (context === "account") {
 			h.client.setQueryData(authQuery.queryKey, { id: "V", login: "v", avatar_url: null, missing_scopes: [] });
 			h.client.setQueryData(authQuery.queryKey, { id: "U", login: "u", avatar_url: null, missing_scopes: [] });
+			h.client.setQueryData(boardQuery(first.board.project.id, null).queryKey, first.board);
 		} else {
 			useUi.setState({ projectId: null });
 			h.client.setQueryData(currentProjectQuery.queryKey, "Q");
 			h.client.setQueryData(currentProjectQuery.queryKey, first.board.project.id);
 		}
+		await expect.poll(() => h.receipts.length).toBeGreaterThan(1);
+		await vi.advanceTimersByTimeAsync(15_000);
+		expect(await sent).toMatchObject({ type: "unknown" });
+		expect(toast.getHistory()).toHaveLength(toastCount);
 		h.receipts[1].resolve(first.board);
-		await sent;
+		await vi.advanceTimersByTimeAsync(0);
+		if (kind === "action") expect(results).toEqual(["unknown", "accepted"]);
+		expect(h.receipts).toHaveLength(2);
 		expect(useUi.getState().undo).toBeNull();
 		expect(toast.getHistory()).toHaveLength(toastCount);
 	} finally {
@@ -171,12 +198,14 @@ test.each([0, 1])("rejected receipt %i preserves the confirmed Undo", async (rej
 	const h = harness();
 	try {
 		const confirmed = h.actions.run(first.intent);
+		await expect.poll(() => h.receipts.length).toBeGreaterThan(0);
 		h.receipts[0].resolve(first.board);
 		await confirmed;
 		const prior = useUi.getState().undo;
 		const a = h.actions.run(first.intent);
 		const b = h.actions.run(first.intent);
 		expect(useUi.getState().undo).toBe(prior);
+		await expect.poll(() => h.receipts.length).toBeGreaterThan(rejected + 1);
 		h.receipts[rejected + 1].reject(new Error("transport"));
 		await (rejected === 0 ? a : b);
 		expect(useUi.getState().undo).toBe(prior);
@@ -193,12 +222,13 @@ test("Undo consumes once and prevents an in-flight receipt from reinstalling it"
 	const h = harness();
 	try {
 		const confirmed = h.actions.run(first.intent);
+		await expect.poll(() => h.receipts.length).toBeGreaterThan(0);
 		h.receipts[0].resolve(first.board);
 		await confirmed;
 		const pending = h.actions.run(first.intent);
 		const undone = h.actions.undo();
 		await h.actions.undo();
-		expect(h.receipts).toHaveLength(3);
+		await expect.poll(() => h.receipts.length).toBe(3);
 		expect(useUi.getState().undo).toBeNull();
 		h.receipts[1].resolve(first.board);
 		h.receipts[2].resolve(first.board);
@@ -215,12 +245,14 @@ test("an old toast cannot consume a newer Undo", async () => {
 	const toastRoot = createRoot(container);
 	try {
 		const a = h.actions.run(first.intent);
+		await expect.poll(() => h.receipts.length).toBeGreaterThan(0);
 		h.receipts[0].resolve(first.board);
 		await a;
 		const old = toast.getHistory().at(-1);
 		if (!old || !("jsx" in old) || !old.jsx) throw new Error("missing Undo toast");
 		flushSync(() => toastRoot.render(old.jsx));
 		const b = h.actions.run(first.intent);
+		await expect.poll(() => h.receipts.length).toBeGreaterThan(1);
 		h.receipts[1].resolve(first.board);
 		await b;
 		const undoB = useUi.getState().undo;
@@ -236,7 +268,7 @@ test("an old toast cannot consume a newer Undo", async () => {
 		if (!currentButton) throw new Error("missing current Undo button");
 		const historyCount = toast.getHistory().length;
 		currentButton.click();
-		expect(h.receipts).toHaveLength(3);
+		await expect.poll(() => h.receipts.length).toBe(3);
 		expect(useUi.getState().undo).toBeNull();
 		h.receipts[2].resolve(first.board);
 		await expect.poll(() => toast.getHistory().length).toBe(historyCount + 1);
@@ -253,7 +285,9 @@ test("a current draft clears Undo, while a cosmetic auth update preserves it", a
 	try {
 		const auth = { id: "U", login: "u", avatar_url: null, missing_scopes: [] };
 		h.client.setQueryData(authQuery.queryKey, auth);
+		h.client.setQueryData(boardQuery(first.board.project.id, null).queryKey, first.board);
 		const move = h.actions.run(first.intent);
+		await expect.poll(() => h.receipts.length).toBeGreaterThan(0);
 		h.receipts[0].resolve(first.board);
 		await move;
 		const confirmed = useUi.getState().undo;
@@ -262,10 +296,212 @@ test("a current draft clears Undo, while a cosmetic auth update preserves it", a
 		expect(useUi.getState().undo).toBe(confirmed);
 		const created = h.actions.run(draft);
 		expect(useUi.getState().undo).toBe(confirmed);
+		await expect.poll(() => h.receipts.length).toBeGreaterThan(1);
 		h.receipts[1].resolve(first.board);
 		await created;
 		expect(useUi.getState().undo).toBeNull();
 	} finally {
+		h.close();
+	}
+});
+test("an older dispatch receipt never replaces a newer optimistic action", async () => {
+	const a = deferred();
+	const b = deferred();
+	let sends = 0;
+	mockIPC((cmd) => {
+		if (cmd === "dispatch_intent") return ++sends === 1 ? a.promise : b.promise;
+		if (cmd === "get_board") return first.board;
+		throw new Error(`unexpected ${cmd}`);
+	});
+	const client = createQueryClient();
+	const query = boardQuery(first.board.project.id, null);
+	client.setQueryData(query.queryKey, first.board);
+	const observed: unknown[] = [];
+	const stop = new QueryObserver(client, query).subscribe((result) => observed.push(result.data));
+	try {
+		const sentA = dispatchIntent(client, first.board.project.id, null, first.intent);
+		await expect.poll(() => sends).toBe(1);
+		const sentB = dispatchIntent(client, first.board.project.id, null, draft);
+		await expect.poll(() => sends).toBe(2);
+		const optimisticB = client.getQueryData(query.queryKey);
+		const boundary = observed.length;
+		a.resolve(first.board);
+		await sentA;
+		expect(client.getQueryData(query.queryKey)).toBe(optimisticB);
+		expect(observed.slice(boundary)).not.toContainEqual(first.board);
+		b.resolve(first.board);
+		await sentB;
+	} finally {
+		a.resolve(first.board);
+		b.resolve(first.board);
+		stop();
+		client.clear();
+	}
+});
+
+test.each(
+	["success", "failure"].flatMap((late) => [
+		[late, "newer"],
+		[late, "action"],
+		[late, "undo"],
+	]),
+)("timeout releases reads and observes late %s with %s", async (late, kind) => {
+	const h = harness();
+	try {
+		const observed: string[] = [];
+		vi.useFakeTimers();
+		if (kind === "undo") {
+			const seed = h.actions.run(first.intent);
+			await vi.advanceTimersByTimeAsync(0);
+			h.receipts[0].resolve(first.board);
+			await seed;
+		}
+		const index = h.receipts.length;
+		const count = toast.getHistory().length;
+		const a = kind === "undo" ? h.actions.undo() : h.actions.run(first.intent, (result) => observed.push(result.type));
+		await vi.advanceTimersByTimeAsync(0);
+		expect(h.receipts).toHaveLength(index + 1);
+		await vi.advanceTimersByTimeAsync(15_000);
+		expect(await a).toMatchObject({ type: "unknown" });
+		expect(toast.getHistory()).toHaveLength(count + 1);
+		await expect(h.client.fetchQuery(boardQuery(first.board.project.id, null))).resolves.toEqual(first.board);
+		const b = kind === "newer" ? h.actions.run(first.intent) : undefined;
+		await vi.advanceTimersByTimeAsync(0);
+		if (b) h.receipts[index + 1].resolve(first.board);
+		await b;
+		const undoB = useUi.getState().undo;
+		if (late === "success") h.receipts[index].resolve(first.board);
+		else h.receipts[index].reject(new Error("late transport"));
+		await vi.advanceTimersByTimeAsync(0);
+		if (kind !== "undo") expect(observed).toEqual(late === "success" ? ["unknown", "accepted"] : ["unknown"]);
+		if (kind === "newer" || late === "failure" || kind === "undo") expect(useUi.getState().undo).toBe(undoB);
+		expect(h.receipts).toHaveLength(index + (b ? 2 : 1));
+		expect(toast.getHistory()).toHaveLength(count + (b || late === "success" ? 2 : 1));
+		const unknown = toast
+			.getHistory()
+			.slice(count)
+			.filter((entry) => "jsx" in entry && entry.jsx && renderToStaticMarkup(entry.jsx).includes("Could not confirm"));
+		expect(unknown).toHaveLength(1);
+	} finally {
+		vi.useRealTimers();
+		h.close();
+	}
+});
+
+test.each(["action", "undo", "project", "account"])("unconfirmed %s reports only in its context", async (kind) => {
+	const h = harness();
+	try {
+		const confirmed = h.actions.run(first.intent);
+		await expect.poll(() => h.receipts.length).toBe(1);
+		h.receipts[0].resolve(first.board);
+		await confirmed;
+		const sent = kind === "undo" ? h.actions.undo() : h.actions.run(first.intent);
+		await expect.poll(() => h.receipts.length).toBe(2);
+		if (kind === "project") useUi.getState().selectProject("Q");
+		const auth = { id: "V", login: "v", avatar_url: null, missing_scopes: [] };
+		if (kind === "account") h.client.setQueryData(authQuery.queryKey, auth);
+		const count = toast.getHistory().length;
+		h.receipts[1].reject(new Error("transport"));
+		expect(await sent).toMatchObject({ type: "unknown" });
+		expect(toast.getHistory()).toHaveLength(count + Number(kind === "action" || kind === "undo"));
+		if (kind === "action" || kind === "undo") {
+			const last = toast.getHistory().at(-1);
+			if (!last || !("jsx" in last) || !last.jsx) throw new Error("missing notification");
+			expect(renderToStaticMarkup(last.jsx)).toContain("Could not confirm");
+		}
+	} finally {
+		h.close();
+	}
+});
+
+test("account roundtrip before preparation rejects locally without invoking IPC", async () => {
+	const h = harness();
+	try {
+		const sent = h.actions.run(first.intent);
+		h.client.setQueryData(authQuery.queryKey, { id: "V", login: "v", avatar_url: null, missing_scopes: [] });
+		h.client.setQueryData(authQuery.queryKey, { id: "U", login: "u", avatar_url: null, missing_scopes: [] });
+		expect(await sent).toMatchObject({ type: "rejected" });
+		expect(h.receipts).toHaveLength(0);
+	} finally {
+		h.close();
+	}
+});
+
+test("same-stack preparations capture optimism in user order without awaiting receipts", async () => {
+	const h = harness();
+	const snapshots: (Board | null | undefined)[] = [];
+	try {
+		const a = dispatchIntent(h.client, first.board.project.id, null, first.intent, undefined, (before) =>
+			snapshots.push(before),
+		);
+		const b = dispatchIntent(h.client, first.board.project.id, null, first.intent, undefined, (before) =>
+			snapshots.push(before),
+		);
+		await expect.poll(() => h.receipts.length).toBe(2);
+		expect(snapshots[0]).toEqual(first.board);
+		expect(
+			snapshots[1]?.columns.flatMap((column) => column.cards).find((card) => card.item_id === first.intent.item_id)
+				?.pending,
+		).toBe(true);
+		h.receipts[1].resolve(first.board);
+		h.receipts[0].resolve(first.board);
+		await Promise.all([a, b]);
+	} finally {
+		h.close();
+	}
+});
+
+async function startPendingAction(h: ReturnType<typeof harness>, kind: string, observe = true) {
+	if (kind === "undo") {
+		const seed = h.actions.run(first.intent);
+		await vi.advanceTimersByTimeAsync(0);
+		h.receipts[0].resolve(first.board);
+		await seed;
+	}
+	const index = h.receipts.length;
+	const results: string[] = [];
+	const pending =
+		kind === "undo" ? h.actions.undo() : h.actions.run(first.intent, observe ? (r) => results.push(r.type) : undefined);
+	await vi.advanceTimersByTimeAsync(0);
+	return { pending, index, results };
+}
+
+test.each([
+	["action", "transport"],
+	["action", "timeout"],
+	["undo", "transport"],
+	["undo", "timeout"],
+])("an older %s still reports %s after an unrelated newer gesture", async (kind, failure) => {
+	const h = harness();
+	vi.useFakeTimers();
+	try {
+		const a = await startPendingAction(h, kind, false);
+		const b = h.actions.run({ ...first.intent, item_id: "PVTI_A" });
+		await vi.advanceTimersByTimeAsync(0);
+		h.receipts[a.index + 1].resolve(first.board);
+		await b;
+		const undoB = useUi.getState().undo;
+		expect(undoB?.intent.item_id).toBe("PVTI_A");
+		const optimism = h.client.getQueryData(boardQuery(first.board.project.id, null).queryKey);
+		const count = toast.getHistory().length;
+		if (failure === "transport") h.receipts[a.index].reject(new Error("transport"));
+		else await vi.advanceTimersByTimeAsync(15_000);
+		expect(await a.pending).toMatchObject({ type: "unknown" });
+		expect(useUi.getState().undo).toBe(undoB);
+		expect(h.client.getQueryData(boardQuery(first.board.project.id, null).queryKey)).toBe(optimism);
+		expect(h.receipts).toHaveLength(a.index + 2);
+		expect(toast.getHistory()).toHaveLength(count + 1);
+		const last = toast.getHistory().at(-1);
+		if (!last || !("jsx" in last) || !last.jsx) throw new Error("missing notification");
+		const rendered = renderToStaticMarkup(last.jsx);
+		expect(rendered).toContain(kind === "undo" ? "Could not confirm Undo:" : "Could not confirm:");
+		expect(rendered).toContain("&quot;Card C&quot; moved to In Progress");
+		expect(rendered).toContain(failure === "transport" ? "transport" : "No response after 15 s");
+		h.receipts[a.index].reject(new Error("late transport"));
+		await vi.advanceTimersByTimeAsync(0);
+		expect(toast.getHistory()).toHaveLength(count + 1);
+	} finally {
+		vi.useRealTimers();
 		h.close();
 	}
 });
