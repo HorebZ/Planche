@@ -2,6 +2,26 @@ import { expect, type Page, test } from "@playwright/test";
 
 type Theme = "light" | "dark";
 
+for (const theme of ["light", "dark"] as const) {
+	test(`stacked notifications stay readable without hovering in ${theme}`, async ({ page }) => {
+		const panel = scope(page, "overlays", theme);
+		await panel.getByRole("button", { name: "Show toast", exact: true }).click();
+		await panel.getByRole("button", { name: "Show toast", exact: true }).click();
+		await page.mouse.move(0, 0);
+		const notifications = panel.locator("[data-sonner-toast]");
+		await expect(notifications).toHaveCount(2);
+		await expect
+			.poll(() =>
+				notifications.evaluateAll((nodes) => {
+					if (nodes.length !== 2) return false;
+					const [a, b] = nodes.map((node) => node.getBoundingClientRect());
+					return a.bottom <= b.top || b.bottom <= a.top;
+				}),
+			)
+			.toBe(true);
+	});
+}
+
 const scope = (page: Page, section: string, theme: Theme) => page.locator(`#${section} [data-theme-scope="${theme}"]`);
 
 test.beforeEach(async ({ page }) => {

@@ -68,6 +68,7 @@ export function Toaster({ id, className, toastOptions, ...props }: ToasterProps)
 	return (
 		<Sonner
 			position="bottom-center"
+			expand
 			offset={16}
 			{...props}
 			id={id}
