@@ -3,13 +3,31 @@ import { cardRect } from "@/board/flip";
 import { notify } from "@/components/ui/toast";
 import { useUi } from "@/stores/ui";
 import { verbs } from "@/undo/inverse";
-import { type Board, commands, events, type ProjectId, type SyncPrefs, type SyncStatus, type ViewId } from "./bindings";
+import {
+	type AuthStatus,
+	type Board,
+	commands,
+	events,
+	type ProjectId,
+	type SyncPrefs,
+	type SyncStatus,
+	type ViewId,
+} from "./bindings";
 
 /** The cache in Rust is the source of truth, so queries refetch on events, not on a timer. */
 export function createQueryClient() {
-	return new QueryClient({
+	const client = new QueryClient({
 		defaultOptions: { queries: { staleTime: Number.POSITIVE_INFINITY, retry: false, refetchOnWindowFocus: false } },
 	});
+	let identity: string | null = null;
+	client.getQueryCache().subscribe((event) => {
+		if (event.query.queryKey.length !== 1 || event.query.queryKey[0] !== "auth") return;
+		const next = client.getQueryData<AuthStatus>(["auth"])?.id ?? null;
+		if (next === identity) return;
+		identity = next;
+		useUi.getState().invalidateUndo();
+	});
+	return client;
 }
 
 export const queryClient = createQueryClient();
