@@ -7,6 +7,8 @@ for (const layout of ["Board", "List"] as const) {
 		const add = page.getByRole("button", { name: "Add draft to Todo", exact: true });
 		await add.click();
 		await page.getByLabel("Draft title").fill("Session title");
+		await add.click();
+		await expect(page.getByLabel("Draft title")).toBeFocused();
 		await page.keyboard.press("Tab");
 		await expect(page.getByLabel("Draft title")).toHaveCount(0);
 		await add.click();

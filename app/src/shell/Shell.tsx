@@ -219,6 +219,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
 									draft={
 										overlay?.type === "draft" && overlay.column === column.option_id ? (
 											<NewDraft
+												key={overlay.editor}
 												projectId={projectId}
 												column={column.option_id}
 												onSubmit={(title, observe) => onCreateDraft(column, title, observe)}
