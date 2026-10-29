@@ -1,14 +1,18 @@
 // @vitest-environment happy-dom
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { QueryObserver } from "@tanstack/react-query";
+import { QueryClientProvider, QueryObserver } from "@tanstack/react-query";
 import { emit } from "@tauri-apps/api/event";
 import { clearMocks, mockIPC } from "@tauri-apps/api/mocks";
+import { createElement } from "react";
+import { flushSync } from "react-dom";
+import { createRoot } from "react-dom/client";
 import { afterEach, expect, test } from "vitest";
 import type { Board, Intent } from "@/ipc/bindings";
 import { boardQuery, createQueryClient, listenToCore } from "@/ipc/queries";
+import { useUi } from "@/stores/ui";
 import { applyIntent } from "./moveCard";
-import { dispatchIntent } from "./useActions";
+import { dispatchIntent, useActions } from "./useActions";
 
 afterEach(() => clearMocks());
 
@@ -59,4 +63,71 @@ test("a move shows at once, and a mutation-failed puts the cached board back", a
 
 	unsubscribe();
 	stop();
+});
+
+function deferred() {
+	let resolve: (board: Board) => void = () => {};
+	let reject: (error: Error) => void = () => {};
+	const promise = new Promise<Board>((yes, no) => {
+		resolve = yes;
+		reject = no;
+	});
+	return { promise, resolve, reject };
+}
+
+function harness() {
+	const client = createQueryClient();
+	client.setQueryData(boardQuery(first.board.project.id, null).queryKey, first.board);
+	useUi.getState().selectProject(first.board.project.id);
+	const receipts: ReturnType<typeof deferred>[] = [];
+	mockIPC((cmd) => {
+		if (cmd !== "dispatch_intent") throw new Error(`unexpected ${cmd}`);
+		const receipt = deferred();
+		receipts.push(receipt);
+		return receipt.promise;
+	});
+	const mounted: { actions?: ReturnType<typeof useActions> } = {};
+	function Hook() {
+		mounted.actions = useActions(first.board.project.id, null);
+		return null;
+	}
+	const root = createRoot(document.createElement("div"));
+	flushSync(() => root.render(createElement(QueryClientProvider, { client }, createElement(Hook))));
+	if (!mounted.actions) throw new Error("hook did not mount");
+	return {
+		actions: mounted.actions,
+		client,
+		receipts,
+		close: () => {
+			for (const receipt of receipts) receipt.resolve(first.board);
+			flushSync(() => root.unmount());
+			client.clear();
+		},
+	};
+}
+
+const draft: Intent = {
+	type: "create_draft",
+	project_id: first.board.project.id,
+	item_id: "draft:a",
+	field_id: first.board.field.id,
+	column: null,
+	title: "A",
+};
+
+test.each([draft, first.intent])("an older $type receipt preserves the newer move Undo", async (intent) => {
+	const h = harness();
+	try {
+		const a = h.actions.run(intent);
+		const b = h.actions.run(first.intent);
+		h.receipts[1].resolve(first.board);
+		await b;
+		const undoB = useUi.getState().undo;
+		expect(undoB?.intent).toMatchObject({ type: "move_card", item_id: first.intent.item_id });
+		h.receipts[0].resolve(first.board);
+		await a;
+		expect(useUi.getState().undo).toBe(undoB);
+	} finally {
+		h.close();
+	}
 });
