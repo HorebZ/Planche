@@ -21,6 +21,7 @@ type UiState = {
 	/** The inverse of the last action, for the toast's Undo and ⌘Z. One level. */
 	undo: { owner: number; intent: Intent; label: string } | null;
 	actionVersion: number;
+	contextVersion: number;
 	/** A card is lifted. Board updates wait for the drop, so nothing jumps under the pointer. */
 	dragging: boolean;
 	/** The card going back after a failed move, and where it was, to slide it back. */
@@ -44,18 +45,28 @@ export const useUi = create<UiState>()((set, get) => ({
 	overlay: null,
 	undo: null,
 	actionVersion: 0,
+	contextVersion: 0,
 	dragging: false,
 	reverting: null,
 	selectProject: (projectId) =>
-		set((s) => ({ projectId, viewId: null, selectedId: null, undo: null, actionVersion: s.actionVersion + 1 })),
-	selectView: (viewId) => set((s) => ({ viewId, undo: null, actionVersion: s.actionVersion + 1 })),
+		set((s) => ({
+			projectId,
+			viewId: null,
+			selectedId: null,
+			undo: null,
+			actionVersion: s.actionVersion + 1,
+			contextVersion: s.contextVersion + 1,
+		})),
+	selectView: (viewId) =>
+		set((s) => ({ viewId, undo: null, actionVersion: s.actionVersion + 1, contextVersion: s.contextVersion + 1 })),
 	select: (selectedId) => set({ selectedId }),
 	open: (overlay) => set({ overlay }),
 	claimAction: () => {
 		set((s) => ({ actionVersion: s.actionVersion + 1 }));
 		return get().actionVersion;
 	},
-	invalidateUndo: () => set((s) => ({ undo: null, actionVersion: s.actionVersion + 1 })),
+	invalidateUndo: () =>
+		set((s) => ({ undo: null, actionVersion: s.actionVersion + 1, contextVersion: s.contextVersion + 1 })),
 	acceptUndo: (owner, undo) => {
 		let accepted = false;
 		set((s) => {
