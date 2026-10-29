@@ -113,7 +113,14 @@ export function BoardSection() {
 					</Row>
 					<Row label="list">
 						<div className="w-full">
-							<IssueListGroup name="Todo" status="todo" items={[{ ...openIssue, id: "preview" }]} onOpen={() => {}} />
+							<IssueListGroup
+								name="Todo"
+								status="todo"
+								draft={<DraftField value="Draft kept in List" onChange={() => {}} />}
+								onAddDraft={() => {}}
+								items={[{ ...openIssue, id: "preview" }]}
+								onOpen={() => {}}
+							/>
 						</div>
 					</Row>
 					<Row label="card">

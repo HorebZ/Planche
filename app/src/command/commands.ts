@@ -119,9 +119,9 @@ export function paletteCommands(
 	}
 	commands.push(
 		{
-			value: "New issue",
+			value: "New draft",
 			group: "commands",
-			label: "New issue",
+			label: "New draft",
 			icon: Plus,
 			keys: keysFor("issue.new"),
 			run: actions.newIssue,

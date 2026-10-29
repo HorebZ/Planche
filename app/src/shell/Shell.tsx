@@ -5,9 +5,10 @@ import { AssigneePicker } from "@/board/AssigneePicker";
 import { Board } from "@/board/Board";
 import { EmptyBoard, LoadingBoard, SyncBar } from "@/board/BoardStates";
 import { cardData } from "@/board/Card";
+import { NewDraft } from "@/board/NewDraft";
 import { StatusMenu } from "@/board/StatusMenu";
 import { statusTone } from "@/board/statusTone";
-import { useActions } from "@/board/useActions";
+import { type DispatchResult, useActions } from "@/board/useActions";
 import { CommandPalette } from "@/command/CommandPalette";
 import { archive, columnIndexOf, createDraft, moveTo, paletteCommands, toggleAssignee } from "@/command/commands";
 import { ShortcutSheet } from "@/command/ShortcutSheet";
@@ -70,7 +71,6 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
 		openProject.mutate(id);
 	};
 	const newDraft = (column: OptionId | null) => {
-		setLayout("board");
 		show({ type: "draft", column });
 	};
 	const newIssue = () => {
@@ -153,7 +153,10 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
 
 	const { run } = actions;
 	const onCreateDraft = useCallback(
-		(column: Column, title: string) => data && void run(createDraft(data, column.option_id, title)),
+		(column: Column, title: string, observe?: (result: DispatchResult) => void): Promise<DispatchResult> =>
+			data
+				? run(createDraft(data, column.option_id, title), observe)
+				: Promise.resolve({ type: "rejected", error: { kind: "Invalid", message: "Project unavailable" } }),
 		[data, run],
 	);
 	const openIssue = (id: string) => {
@@ -195,7 +198,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
 				<div className="min-h-0 flex-1">
 					{data == null ? (
 						<LoadingBoard />
-					) : cards === 0 && !drafting ? (
+					) : cards === 0 && !drafting && layout === "board" ? (
 						<EmptyBoard board={data} onNewIssue={newIssue} onNewDraft={newDraft} />
 					) : layout === "list" ? (
 						<div data-slot="issue-list" className="h-full overflow-y-auto">
@@ -212,8 +215,16 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
 									}))}
 									onOpen={openIssue}
 									onSelect={select}
-									selectedId={selectedId}
-									focusSelection={overlay === null}
+									onAddDraft={() => newDraft(column.option_id)}
+									draft={
+										overlay?.type === "draft" && overlay.column === column.option_id ? (
+											<NewDraft
+												projectId={projectId}
+												column={column.option_id}
+												onSubmit={(title, observe) => onCreateDraft(column, title, observe)}
+											/>
+										) : undefined
+									}
 								/>
 							))}
 						</div>
