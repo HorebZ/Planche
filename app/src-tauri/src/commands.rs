@@ -327,6 +327,7 @@ pub async fn get_board(
     core.board(&project_id, view_id.as_ref())
 }
 
+/// Accepted confirms the local enqueue commit, not synchronization with GitHub.
 #[tauri::command]
 #[specta::specta]
 pub async fn dispatch_intent(core: State<'_, Core>, intent: Intent) -> Result<DispatchOutcome> {

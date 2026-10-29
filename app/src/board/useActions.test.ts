@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { CancelledError, QueryClientProvider, QueryObserver } from "@tanstack/react-query";
+import { QueryClientProvider, QueryObserver } from "@tanstack/react-query";
 import { emit } from "@tauri-apps/api/event";
 import { clearMocks, mockIPC } from "@tauri-apps/api/mocks";
 import { createElement } from "react";
@@ -90,8 +90,12 @@ function harness() {
 	client.setQueryData(boardQuery(first.board.project.id, null).queryKey, first.board);
 	useUi.getState().selectProject(first.board.project.id);
 	const receipts: ReturnType<typeof deferred>[] = [];
+	let reads = 0;
 	mockIPC((cmd) => {
-		if (cmd === "get_board") return first.board;
+		if (cmd === "get_board") {
+			reads++;
+			return first.board;
+		}
 		if (cmd !== "dispatch_intent") throw new Error(`unexpected ${cmd}`);
 		const receipt = deferred();
 		receipts.push(receipt);
@@ -107,6 +111,7 @@ function harness() {
 	if (!mounted.actions) throw new Error("hook did not mount");
 	return {
 		actions: mounted.actions,
+		readCount: () => reads,
 		client,
 		receipts,
 		close: () => {
@@ -577,7 +582,7 @@ test("accepted seq survives projection failure with cached board and a recoverab
 	const h = harness();
 	const container = document.createElement("div");
 	const root = createRoot(container);
-	let fail: boolean | "cancel" = true;
+	let fail = true;
 	let sends = 0;
 	mockIPC((cmd) => {
 		if (cmd === "dispatch_intent") {
@@ -585,7 +590,6 @@ test("accepted seq survives projection failure with cached board and a recoverab
 			return { type: "accepted", seq: 42 };
 		}
 		if (cmd === "get_board") {
-			if (fail === "cancel") throw new CancelledError({ revert: true });
 			if (fail) throw new Error("cache read failed");
 			return first.board;
 		}
@@ -619,13 +623,100 @@ test("accepted seq survives projection failure with cached board and a recoverab
 		await h.client.invalidateQueries({ queryKey: key });
 		await expect.poll(() => container.querySelector('[role="alert"]')).toBeNull();
 		expect(results).toEqual([{ type: "accepted", seq: 42 }]);
-		fail = "cancel";
-		await h.client.invalidateQueries({ queryKey: key });
-		expect(container.querySelector('[role="alert"]')).toBeNull();
-		expect(h.client.getQueryData(key)).toEqual(first.board);
 		expect(sends).toBe(1);
 	} finally {
 		flushSync(() => root.unmount());
+		h.close();
+	}
+});
+
+test.each([
+	[false, false],
+	[true, false],
+	[false, true],
+	[true, true],
+])("rejecting an older identical move preserves newer accepted=%s timeout=%s", async (accepted, timeout) => {
+	const h = harness();
+	vi.useFakeTimers();
+	try {
+		const key = boardQuery(first.board.project.id, null).queryKey;
+		const a = h.actions.run(first.intent);
+		await vi.advanceTimersByTimeAsync(0);
+		expect(h.receipts).toHaveLength(1);
+		const optimisticA = h.client.getQueryData(key);
+		if (timeout) {
+			await vi.advanceTimersByTimeAsync(15_000);
+			expect(await a).toMatchObject({ type: "unknown" });
+		}
+		const b = h.actions.run(first.intent);
+		await vi.advanceTimersByTimeAsync(0);
+		expect(h.receipts).toHaveLength(2);
+		const optimisticB = h.client.getQueryData(key);
+		expect(optimisticB).toBe(optimisticA);
+		if (accepted) {
+			h.receipts[1].resolve({ type: "accepted", seq: 2 });
+			await b;
+		}
+		const read = accepted ? undefined : h.client.fetchQuery(boardQuery(first.board.project.id, null));
+		const undoB = useUi.getState().undo;
+		if (accepted) expect(undoB?.intent).toMatchObject({ type: "move_card", item_id: "PVTI_C" });
+		h.receipts[0].resolve({ type: "rejected", error: { kind: "Cache", message: "busy" } });
+		await vi.advanceTimersByTimeAsync(0);
+		await a;
+		expect(useUi.getState().undo).toBe(undoB);
+		expect(h.receipts).toHaveLength(2);
+		expect(h.client.getQueryData(key)).toBe(optimisticB);
+		if (!accepted) {
+			expect(h.readCount()).toBe(0);
+			h.receipts[1].resolve({ type: "accepted", seq: 2 });
+			await b;
+		}
+		await read;
+		expect(await h.client.fetchQuery(boardQuery(first.board.project.id, null))).toEqual(first.board);
+	} finally {
+		vi.useRealTimers();
+		h.close();
+	}
+});
+
+test("late rejection from previous account cannot erase shared optimistic reference", async () => {
+	const h = harness();
+	try {
+		const key = boardQuery(first.board.project.id, null).queryKey;
+		const a = h.actions.run(first.intent);
+		await expect.poll(() => h.receipts.length).toBe(1);
+		const optimistic = h.client.getQueryData(key);
+		h.client.setQueryData(authQuery.queryKey, { id: "V", login: "v", avatar_url: null, missing_scopes: [] });
+		h.client.setQueryData(authQuery.queryKey, { id: "U", login: "u", avatar_url: null, missing_scopes: [] });
+		h.client.setQueryData(key, optimistic);
+		h.receipts[0].resolve({ type: "rejected", error: { kind: "Cache", message: "busy" } });
+		await a;
+		expect(h.client.getQueryData(key)).toBe(optimistic);
+	} finally {
+		h.close();
+	}
+});
+
+test("a certain Undo rejection reports its cause and consumes Undo once", async () => {
+	const h = harness();
+	try {
+		const seed = h.actions.run(first.intent);
+		await expect.poll(() => h.receipts.length).toBe(1);
+		h.receipts[0].resolve({ type: "accepted", seq: 1 });
+		await seed;
+		const undone = h.actions.undo();
+		await expect.poll(() => h.receipts.length).toBe(2);
+		h.receipts[1].resolve({ type: "rejected", error: { kind: "Cache", message: "disk full" } });
+		expect(await undone).toMatchObject({ type: "rejected" });
+		const last = toast.getHistory().at(-1);
+		if (!last || !("jsx" in last) || !last.jsx) throw new Error("missing Undo rejection toast");
+		expect(renderToStaticMarkup(last.jsx)).toContain(
+			"Could not Undo: &quot;Card C&quot; moved to In Progress. disk full",
+		);
+		await h.actions.undo();
+		expect(useUi.getState().undo).toBeNull();
+		expect(h.receipts).toHaveLength(2);
+	} finally {
 		h.close();
 	}
 });

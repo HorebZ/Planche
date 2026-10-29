@@ -65,6 +65,7 @@ export function dispatchIntent(
 				(result) => {
 					if (
 						result.type === "rejected" &&
+						lease.ownsProjection() &&
 						optimistic &&
 						boardAccountEpoch(client) === lease.accountEpoch &&
 						client.getQueryData(key) === optimistic

@@ -48,6 +48,7 @@ export const commands = {
 } | null>("get_board", { projectId, viewId }),
 	/**  Syncs now and waits for the result. */
 	refreshProject: (projectId: ProjectId) => __TAURI_INVOKE<SyncReport>("refresh_project", { projectId }),
+	/**  Accepted confirms the local enqueue commit, not synchronization with GitHub. */
 	dispatchIntent: (intent: Intent) => __TAURI_INVOKE<DispatchOutcome>("dispatch_intent", { intent }),
 	/**  Who can be assigned in `repo`, an `owner/name`. */
 	listAssignableUsers: (repo: string) => __TAURI_INVOKE<User[]>("list_assignable_users", { repo }),
