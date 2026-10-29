@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { QueryClientProvider, QueryObserver } from "@tanstack/react-query";
+import { CancelledError, QueryClientProvider, QueryObserver } from "@tanstack/react-query";
 import { emit } from "@tauri-apps/api/event";
 import { clearMocks, mockIPC } from "@tauri-apps/api/mocks";
 import { createElement } from "react";
@@ -10,11 +10,12 @@ import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, expect, test, vi } from "vitest";
 import { toast } from "@/components/ui/toast";
-import type { Board, Intent } from "@/ipc/bindings";
+import type { Board, DispatchOutcome, Intent } from "@/ipc/bindings";
 import { authQuery, boardQuery, createQueryClient, currentProjectQuery, listenToCore } from "@/ipc/queries";
+import { Shell } from "@/shell/Shell";
 import { useUi } from "@/stores/ui";
 import { applyIntent } from "./moveCard";
-import { dispatchIntent, useActions } from "./useActions";
+import { type DispatchResult, dispatchIntent, useActions } from "./useActions";
 
 afterEach(() => {
 	vi.useRealTimers();
@@ -58,7 +59,7 @@ test("a move shows at once, and a mutation-failed puts the cached board back", a
 	const sent = dispatchIntent(client, original.project.id, null, first.intent);
 	await expect.poll(() => calls.includes("dispatch_intent")).toBe(true);
 	expect(client.getQueryData(query.queryKey)).toEqual(optimistic);
-	receipt.resolve(moved);
+	receipt.resolve({ type: "accepted", seq: 1 });
 	await sent;
 	expect(calls).toContain("dispatch_intent");
 	await expect.poll(() => client.getQueryData(query.queryKey)).toEqual(moved);
@@ -74,9 +75,9 @@ test("a move shows at once, and a mutation-failed puts the cached board back", a
 });
 
 function deferred() {
-	let resolve: (board: Board) => void = () => {};
+	let resolve: (outcome: DispatchOutcome) => void = () => {};
 	let reject: (error: Error) => void = () => {};
-	const promise = new Promise<Board>((yes, no) => {
+	const promise = new Promise<DispatchOutcome>((yes, no) => {
 		resolve = yes;
 		reject = no;
 	});
@@ -109,7 +110,7 @@ function harness() {
 		client,
 		receipts,
 		close: () => {
-			for (const receipt of receipts) receipt.resolve(first.board);
+			for (const receipt of receipts) receipt.resolve({ type: "accepted", seq: 1 });
 			flushSync(() => root.unmount());
 			client.clear();
 		},
@@ -131,11 +132,11 @@ test.each([draft, first.intent])("an older $type receipt preserves the newer mov
 		const a = h.actions.run(intent);
 		const b = h.actions.run(first.intent);
 		await expect.poll(() => h.receipts.length).toBeGreaterThan(1);
-		h.receipts[1].resolve(first.board);
+		h.receipts[1].resolve({ type: "accepted", seq: 1 });
 		await b;
 		const undoB = useUi.getState().undo;
 		expect(undoB?.intent).toMatchObject({ type: "move_card", item_id: first.intent.item_id });
-		h.receipts[0].resolve(first.board);
+		h.receipts[0].resolve({ type: "accepted", seq: 1 });
 		await a;
 		expect(useUi.getState().undo).toBe(undoB);
 	} finally {
@@ -155,7 +156,7 @@ test.each(
 		h.client.setQueryData(boardQuery(first.board.project.id, null).queryKey, first.board);
 		const confirmed = h.actions.run(first.intent);
 		await expect.poll(() => h.receipts.length).toBeGreaterThan(0);
-		h.receipts[0].resolve(first.board);
+		h.receipts[0].resolve({ type: "accepted", seq: 1 });
 		await confirmed;
 		expect(useUi.getState().undo).not.toBeNull();
 		vi.useFakeTimers();
@@ -183,7 +184,7 @@ test.each(
 		await vi.advanceTimersByTimeAsync(15_000);
 		expect(await sent).toMatchObject({ type: "unknown" });
 		expect(toast.getHistory()).toHaveLength(toastCount);
-		h.receipts[1].resolve(first.board);
+		h.receipts[1].resolve({ type: "accepted", seq: 1 });
 		await vi.advanceTimersByTimeAsync(0);
 		if (kind === "action") expect(results).toEqual(["unknown", "accepted"]);
 		expect(h.receipts).toHaveLength(2);
@@ -199,7 +200,7 @@ test.each([0, 1])("rejected receipt %i preserves the confirmed Undo", async (rej
 	try {
 		const confirmed = h.actions.run(first.intent);
 		await expect.poll(() => h.receipts.length).toBeGreaterThan(0);
-		h.receipts[0].resolve(first.board);
+		h.receipts[0].resolve({ type: "accepted", seq: 1 });
 		await confirmed;
 		const prior = useUi.getState().undo;
 		const a = h.actions.run(first.intent);
@@ -209,7 +210,7 @@ test.each([0, 1])("rejected receipt %i preserves the confirmed Undo", async (rej
 		h.receipts[rejected + 1].reject(new Error("transport"));
 		await (rejected === 0 ? a : b);
 		expect(useUi.getState().undo).toBe(prior);
-		h.receipts[2 - rejected].resolve(first.board);
+		h.receipts[2 - rejected].resolve({ type: "accepted", seq: 1 });
 		await (rejected === 0 ? b : a);
 		if (rejected === 1) expect(useUi.getState().undo).toBe(prior);
 		else expect(useUi.getState().undo).not.toBe(prior);
@@ -223,15 +224,15 @@ test("Undo consumes once and prevents an in-flight receipt from reinstalling it"
 	try {
 		const confirmed = h.actions.run(first.intent);
 		await expect.poll(() => h.receipts.length).toBeGreaterThan(0);
-		h.receipts[0].resolve(first.board);
+		h.receipts[0].resolve({ type: "accepted", seq: 1 });
 		await confirmed;
 		const pending = h.actions.run(first.intent);
 		const undone = h.actions.undo();
 		await h.actions.undo();
 		await expect.poll(() => h.receipts.length).toBe(3);
 		expect(useUi.getState().undo).toBeNull();
-		h.receipts[1].resolve(first.board);
-		h.receipts[2].resolve(first.board);
+		h.receipts[1].resolve({ type: "accepted", seq: 1 });
+		h.receipts[2].resolve({ type: "accepted", seq: 1 });
 		await Promise.all([pending, undone]);
 		expect(useUi.getState().undo).toBeNull();
 	} finally {
@@ -246,14 +247,14 @@ test("an old toast cannot consume a newer Undo", async () => {
 	try {
 		const a = h.actions.run(first.intent);
 		await expect.poll(() => h.receipts.length).toBeGreaterThan(0);
-		h.receipts[0].resolve(first.board);
+		h.receipts[0].resolve({ type: "accepted", seq: 1 });
 		await a;
 		const old = toast.getHistory().at(-1);
 		if (!old || !("jsx" in old) || !old.jsx) throw new Error("missing Undo toast");
 		flushSync(() => toastRoot.render(old.jsx));
 		const b = h.actions.run(first.intent);
 		await expect.poll(() => h.receipts.length).toBeGreaterThan(1);
-		h.receipts[1].resolve(first.board);
+		h.receipts[1].resolve({ type: "accepted", seq: 1 });
 		await b;
 		const undoB = useUi.getState().undo;
 		const button = container.querySelector("button");
@@ -271,7 +272,7 @@ test("an old toast cannot consume a newer Undo", async () => {
 		currentButton.click();
 		await expect.poll(() => h.receipts.length).toBe(3);
 		expect(useUi.getState().undo).toBeNull();
-		h.receipts[2].resolve(first.board);
+		h.receipts[2].resolve({ type: "accepted", seq: 1 });
 		await expect.poll(() => toast.getHistory().length).toBe(historyCount + 1);
 	} finally {
 		flushSync(() => {
@@ -289,7 +290,7 @@ test("a current draft clears Undo, while a cosmetic auth update preserves it", a
 		h.client.setQueryData(boardQuery(first.board.project.id, null).queryKey, first.board);
 		const move = h.actions.run(first.intent);
 		await expect.poll(() => h.receipts.length).toBeGreaterThan(0);
-		h.receipts[0].resolve(first.board);
+		h.receipts[0].resolve({ type: "accepted", seq: 1 });
 		await move;
 		const confirmed = useUi.getState().undo;
 		expect(confirmed).not.toBeNull();
@@ -298,7 +299,7 @@ test("a current draft clears Undo, while a cosmetic auth update preserves it", a
 		const created = h.actions.run(draft);
 		expect(useUi.getState().undo).toBe(confirmed);
 		await expect.poll(() => h.receipts.length).toBeGreaterThan(1);
-		h.receipts[1].resolve(first.board);
+		h.receipts[1].resolve({ type: "accepted", seq: 1 });
 		await created;
 		expect(useUi.getState().undo).toBeNull();
 	} finally {
@@ -326,15 +327,15 @@ test("an older dispatch receipt never replaces a newer optimistic action", async
 		await expect.poll(() => sends).toBe(2);
 		const optimisticB = client.getQueryData(query.queryKey);
 		const boundary = observed.length;
-		a.resolve(first.board);
+		a.resolve({ type: "accepted", seq: 1 });
 		await sentA;
 		expect(client.getQueryData(query.queryKey)).toBe(optimisticB);
 		expect(observed.slice(boundary)).not.toContainEqual(first.board);
-		b.resolve(first.board);
+		b.resolve({ type: "accepted", seq: 1 });
 		await sentB;
 	} finally {
-		a.resolve(first.board);
-		b.resolve(first.board);
+		a.resolve({ type: "accepted", seq: 1 });
+		b.resolve({ type: "accepted", seq: 1 });
 		stop();
 		client.clear();
 	}
@@ -354,7 +355,7 @@ test.each(
 		if (kind === "undo") {
 			const seed = h.actions.run(first.intent);
 			await vi.advanceTimersByTimeAsync(0);
-			h.receipts[0].resolve(first.board);
+			h.receipts[0].resolve({ type: "accepted", seq: 1 });
 			await seed;
 		}
 		const index = h.receipts.length;
@@ -368,10 +369,10 @@ test.each(
 		await expect(h.client.fetchQuery(boardQuery(first.board.project.id, null))).resolves.toEqual(first.board);
 		const b = kind === "newer" ? h.actions.run(first.intent) : undefined;
 		await vi.advanceTimersByTimeAsync(0);
-		if (b) h.receipts[index + 1].resolve(first.board);
+		if (b) h.receipts[index + 1].resolve({ type: "accepted", seq: 1 });
 		await b;
 		const undoB = useUi.getState().undo;
-		if (late === "success") h.receipts[index].resolve(first.board);
+		if (late === "success") h.receipts[index].resolve({ type: "accepted", seq: 1 });
 		else h.receipts[index].reject(new Error("late transport"));
 		await vi.advanceTimersByTimeAsync(0);
 		if (kind !== "undo") expect(observed).toEqual(late === "success" ? ["unknown", "accepted"] : ["unknown"]);
@@ -394,7 +395,7 @@ test.each(["action", "undo", "project", "account"])("unconfirmed %s reports only
 	try {
 		const confirmed = h.actions.run(first.intent);
 		await expect.poll(() => h.receipts.length).toBe(1);
-		h.receipts[0].resolve(first.board);
+		h.receipts[0].resolve({ type: "accepted", seq: 1 });
 		await confirmed;
 		const sent = kind === "undo" ? h.actions.undo() : h.actions.run(first.intent);
 		await expect.poll(() => h.receipts.length).toBe(2);
@@ -444,8 +445,8 @@ test("same-stack preparations capture optimism in user order without awaiting re
 			snapshots[1]?.columns.flatMap((column) => column.cards).find((card) => card.item_id === first.intent.item_id)
 				?.pending,
 		).toBe(true);
-		h.receipts[1].resolve(first.board);
-		h.receipts[0].resolve(first.board);
+		h.receipts[1].resolve({ type: "accepted", seq: 1 });
+		h.receipts[0].resolve({ type: "accepted", seq: 1 });
 		await Promise.all([a, b]);
 	} finally {
 		h.close();
@@ -456,7 +457,7 @@ async function startPendingAction(h: ReturnType<typeof harness>, kind: string, o
 	if (kind === "undo") {
 		const seed = h.actions.run(first.intent);
 		await vi.advanceTimersByTimeAsync(0);
-		h.receipts[0].resolve(first.board);
+		h.receipts[0].resolve({ type: "accepted", seq: 1 });
 		await seed;
 	}
 	const index = h.receipts.length;
@@ -479,7 +480,7 @@ test.each([
 		const a = await startPendingAction(h, kind, false);
 		const b = h.actions.run({ ...first.intent, item_id: "PVTI_A" });
 		await vi.advanceTimersByTimeAsync(0);
-		h.receipts[a.index + 1].resolve(first.board);
+		h.receipts[a.index + 1].resolve({ type: "accepted", seq: 1 });
 		await b;
 		const undoB = useUi.getState().undo;
 		expect(undoB?.intent.item_id).toBe("PVTI_A");
@@ -508,10 +509,123 @@ test.each([
 		expect(h.receipts).toHaveLength(a.index + 3);
 		await h.actions.undo();
 		expect(h.receipts).toHaveLength(a.index + 3);
-		h.receipts[a.index + 2].resolve(first.board);
+		h.receipts[a.index + 2].resolve({ type: "accepted", seq: 1 });
 		await undone;
 	} finally {
 		vi.useRealTimers();
+		h.close();
+	}
+});
+
+test.each([false, true])("a certain rejection after timeout=%s preserves newer optimism and Undo", async (timeout) => {
+	const h = harness();
+	vi.useFakeTimers();
+	try {
+		const results: DispatchOutcome["type"][] = [];
+		const a = h.actions.run(draft, (r) => {
+			if (r.type !== "unknown") results.push(r.type);
+		});
+		await vi.advanceTimersByTimeAsync(0);
+		if (timeout) {
+			await vi.advanceTimersByTimeAsync(15_000);
+			expect(await a).toMatchObject({ type: "unknown" });
+		}
+		const b = h.actions.run(first.intent);
+		await vi.advanceTimersByTimeAsync(0);
+		h.receipts[1].resolve({ type: "accepted", seq: 2 });
+		await b;
+		const undoB = useUi.getState().undo;
+		const key = boardQuery(first.board.project.id, null).queryKey;
+		const optimism = h.client.getQueryData(key);
+		h.receipts[0].resolve({ type: "rejected", error: { kind: "Cache", message: "disk full" } });
+		await vi.advanceTimersByTimeAsync(0);
+		expect(results).toEqual(["rejected"]);
+		expect(useUi.getState().undo).toBe(undoB);
+		expect(h.client.getQueryData(key)).toBe(optimism);
+		expect(h.receipts).toHaveLength(2);
+		const last = toast.getHistory().at(-1);
+		if (!last || !("jsx" in last) || !last.jsx) throw new Error("missing rejection toast");
+		expect(renderToStaticMarkup(last.jsx)).toContain("disk full");
+	} finally {
+		vi.useRealTimers();
+		h.close();
+	}
+});
+
+test("a certain rejection restores only its own projection and preserves prior Undo", async () => {
+	const h = harness();
+	try {
+		const seed = h.actions.run(first.intent);
+		await expect.poll(() => h.receipts.length).toBe(1);
+		h.receipts[0].resolve({ type: "accepted", seq: 1 });
+		await seed;
+		const undo = useUi.getState().undo;
+		const key = boardQuery(first.board.project.id, null).queryKey;
+		const before = h.client.getQueryData(key);
+		const sent = h.actions.run(draft);
+		await expect.poll(() => h.receipts.length).toBe(2);
+		h.receipts[1].resolve({ type: "rejected", error: { kind: "Cache", message: "disk full" } });
+		expect(await sent).toEqual({ type: "rejected", error: { kind: "Cache", message: "disk full" } });
+		expect(h.client.getQueryData(key)).toEqual(before);
+		expect(useUi.getState().undo).toBe(undo);
+	} finally {
+		h.close();
+	}
+});
+
+test("accepted seq survives projection failure with cached board and a recoverable Shell alert", async () => {
+	const h = harness();
+	const container = document.createElement("div");
+	const root = createRoot(container);
+	let fail: boolean | "cancel" = true;
+	let sends = 0;
+	mockIPC((cmd) => {
+		if (cmd === "dispatch_intent") {
+			sends++;
+			return { type: "accepted", seq: 42 };
+		}
+		if (cmd === "get_board") {
+			if (fail === "cancel") throw new CancelledError({ revert: true });
+			if (fail) throw new Error("cache read failed");
+			return first.board;
+		}
+		if (cmd === "list_projects" || cmd === "cached_projects") return { owners: [] };
+		if (cmd === "sync_status") return { state: { type: "idle" }, retry_at: null };
+		if (cmd === "get_project") return null;
+		if (cmd === "get_sync_prefs") return { interval: "off", on_wake: false, on_focus: false };
+		throw new Error(`unexpected ${cmd}`);
+	});
+	try {
+		flushSync(() =>
+			root.render(
+				createElement(
+					QueryClientProvider,
+					{ client: h.client },
+					createElement(Shell, { projectId: first.board.project.id }),
+				),
+			),
+		);
+		const results: DispatchResult[] = [];
+		expect(await h.actions.run(first.intent, (r) => results.push(r))).toEqual({ type: "accepted", seq: 42 });
+		const key = boardQuery(first.board.project.id, null).queryKey;
+		const optimistic = h.client.getQueryData(key);
+		await expect
+			.poll(() => container.querySelector('[role="alert"]')?.textContent)
+			.toContain("Could not refresh this projectcache read failed");
+		expect(container.querySelector('[data-slot="board-column"]')?.textContent).toContain("Todo");
+		expect(h.client.getQueryData(key)).toBe(optimistic);
+		expect(results).toEqual([{ type: "accepted", seq: 42 }]);
+		fail = false;
+		await h.client.invalidateQueries({ queryKey: key });
+		await expect.poll(() => container.querySelector('[role="alert"]')).toBeNull();
+		expect(results).toEqual([{ type: "accepted", seq: 42 }]);
+		fail = "cancel";
+		await h.client.invalidateQueries({ queryKey: key });
+		expect(container.querySelector('[role="alert"]')).toBeNull();
+		expect(h.client.getQueryData(key)).toEqual(first.board);
+		expect(sends).toBe(1);
+	} finally {
+		flushSync(() => root.unmount());
 		h.close();
 	}
 });

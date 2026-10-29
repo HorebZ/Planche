@@ -48,11 +48,7 @@ export const commands = {
 } | null>("get_board", { projectId, viewId }),
 	/**  Syncs now and waits for the result. */
 	refreshProject: (projectId: ProjectId) => __TAURI_INVOKE<SyncReport>("refresh_project", { projectId }),
-	/**
-	 *  Queues a user action, asks the engine to send it now, and returns the board with it
-	 *  applied. The front shows that board in place of its own optimistic one.
-	 */
-	dispatchIntent: (intent: Intent, viewId: string | null) => __TAURI_INVOKE<Board>("dispatch_intent", { intent, viewId }),
+	dispatchIntent: (intent: Intent) => __TAURI_INVOKE<DispatchOutcome>("dispatch_intent", { intent }),
 	/**  Who can be assigned in `repo`, an `owner/name`. */
 	listAssignableUsers: (repo: string) => __TAURI_INVOKE<User[]>("list_assignable_users", { repo }),
 	syncStatus: () => __TAURI_INVOKE<SyncStatus>("sync_status"),
@@ -147,6 +143,8 @@ export type Column = {
 
 /**  Node ID of the item content, an `Issue`, `PullRequest` or `DraftIssue`. */
 export type ContentId = string;
+
+export type DispatchOutcome = { type: "accepted"; seq: number } | { type: "rejected"; error: AppError };
 
 export type ErrorKind = "Auth" | "Network" | "RateLimited" | "NotFound" | "GitHub" | "Cache" | "Invalid";
 

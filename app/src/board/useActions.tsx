@@ -2,10 +2,10 @@ import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 import { notify, ToastCard, toast } from "@/components/ui/toast";
 import {
-	type AppError,
 	type AuthStatus,
 	type Board,
 	commands,
+	type DispatchOutcome,
 	type Intent,
 	type ProjectId,
 	type ViewId,
@@ -24,10 +24,7 @@ import { useUi } from "@/stores/ui";
 import { describe, inverse, verbs } from "@/undo/inverse";
 import { applyIntent } from "./moveCard";
 
-export type DispatchResult =
-	| { type: "accepted" }
-	| { type: "rejected"; error: AppError }
-	| { type: "unknown"; message: string };
+export type DispatchResult = DispatchOutcome | { type: "unknown"; message: string };
 /** Await the first bounded result; observe also receives late confirmation. Unknown is not a refusal. */
 export function dispatchIntent(
 	client: QueryClient,
@@ -54,16 +51,27 @@ export function dispatchIntent(
 			const key = boardQuery(projectId, viewId).queryKey;
 			const before = client.getQueryData<Board | null>(key);
 			prepared?.(before);
-			if (before) client.setQueryData(key, markPending(applyIntent(before, intent), intent.item_id));
+			const optimistic = before
+				? client.setQueryData(key, markPending(applyIntent(before, intent), intent.item_id))
+				: undefined;
 			timer = setTimeout(() => publish({ type: "unknown", message: "No response after 15 s" }), 15_000);
-			let receipt: Promise<Board>;
+			let receipt: Promise<DispatchOutcome>;
 			try {
-				receipt = commands.dispatchIntent(intent, viewId);
+				receipt = commands.dispatchIntent(intent);
 			} catch (error) {
 				receipt = Promise.reject(error);
 			}
 			void receipt.then(
-				() => publish({ type: "accepted" }),
+				(result) => {
+					if (
+						result.type === "rejected" &&
+						optimistic &&
+						boardAccountEpoch(client) === lease.accountEpoch &&
+						client.getQueryData(key) === optimistic
+					)
+						client.setQueryData(key, before);
+					publish(result);
+				},
 				(error: unknown) => publish({ type: "unknown", message: errorMessage(error) }),
 			);
 		});
@@ -131,6 +139,7 @@ export function useActions(projectId: ProjectId, viewId: ViewId | null) {
 						)
 							return;
 						if (result.type === "unknown") notify(`Could not confirm: ${label}. ${result.message}`, "error");
+						if (result.type === "rejected") notify(`Could not apply: ${label}. ${result.error.message}`, "error");
 						if (result.type !== "accepted") return;
 						if (!useUi.getState().acceptUndo(owner, undo && { owner, intent: undo, label })) return;
 						toast.custom(
@@ -182,6 +191,7 @@ export function useActions(projectId: ProjectId, viewId: ViewId | null) {
 				)
 					return;
 				if (result.type === "unknown") notify(`Could not confirm Undo: ${last.label}. ${result.message}`, "error");
+				if (result.type === "rejected") notify(`Could not Undo: ${last.label}. ${result.error.message}`, "error");
 				if (result.type === "accepted") {
 					if (useUi.getState().actionVersion === version) notify(`Undone: ${last.label}`, "success");
 				}
