@@ -224,6 +224,7 @@ export function installMockBackend(scenario: Scenario) {
 	let auth = onboarding(scenario) ? signedOut : signedIn;
 	let board = boardFor(scenario);
 	const changed = () => emit("board-changed", { project_id: PROJECT });
+	let dispatchSeq = 0;
 	const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
 		auth_status: () => auth,
 		auth_set_token: async () => {
@@ -257,7 +258,7 @@ export function installMockBackend(scenario: Scenario) {
 			],
 		}),
 		get_board: () => board,
-		// Like Rust: queue, return the board with the move, then send it in the background.
+		// Queue locally before sending in the background.
 		dispatch_intent: (args) => {
 			const intent = args.intent as Intent;
 			const before = board;
@@ -285,7 +286,7 @@ export function installMockBackend(scenario: Scenario) {
 					scenario === "rollback" ? 0 : 300,
 				);
 			}
-			return board;
+			return { type: "accepted", seq: ++dispatchSeq };
 		},
 		list_assignable_users: () =>
 			Object.entries(people).map(([who, login]) => ({ id: `U_${who}`, login, avatar_url: "" })),

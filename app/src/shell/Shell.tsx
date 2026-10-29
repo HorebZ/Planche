@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { isCancelledError, useQueryClient } from "@tanstack/react-query";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useCallback, useState } from "react";
 import { AssigneePicker } from "@/board/AssigneePicker";
@@ -11,6 +11,7 @@ import { useActions } from "@/board/useActions";
 import { CommandPalette } from "@/command/CommandPalette";
 import { archive, columnIndexOf, createDraft, moveTo, paletteCommands, toggleAssignee } from "@/command/commands";
 import { ShortcutSheet } from "@/command/ShortcutSheet";
+import { Banner } from "@/components/ui/banner";
 import { IssueListGroup } from "@/components/ui/issue-list";
 import { notify } from "@/components/ui/toast";
 import type { Card, Column, OptionId, ProjectId, User } from "@/ipc/bindings";
@@ -184,6 +185,13 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
 				/>
 				{syncing ? <SyncBar /> : null}
 				{offline ? <OfflineBanner retryAt={status.data?.retry_at ?? null} onRetry={syncNow} /> : null}
+				{data && board.error && !isCancelledError(board.error) ? (
+					<Banner
+						className="mx-3.5 mt-2.5"
+						title="Could not refresh this project"
+						description={errorMessage(board.error)}
+					/>
+				) : null}
 				<div className="min-h-0 flex-1">
 					{data == null ? (
 						<LoadingBoard />
