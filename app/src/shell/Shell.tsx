@@ -1,4 +1,4 @@
-import { isCancelledError, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useCallback, useState } from "react";
 import { AssigneePicker } from "@/board/AssigneePicker";
@@ -185,7 +185,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
 				/>
 				{syncing ? <SyncBar /> : null}
 				{offline ? <OfflineBanner retryAt={status.data?.retry_at ?? null} onRetry={syncNow} /> : null}
-				{data && board.error && !isCancelledError(board.error) ? (
+				{data && board.error ? (
 					<Banner
 						className="mx-3.5 mt-2.5"
 						title="Could not refresh this project"

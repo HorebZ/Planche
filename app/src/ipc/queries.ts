@@ -14,7 +14,13 @@ import {
 	type ViewId,
 } from "./bindings";
 
-type Gate = { generation: number; sending: Set<object>; tail: Promise<void>; wake: Set<() => void> };
+type Gate = {
+	preparation: number;
+	generation: number;
+	sending: Set<object>;
+	tail: Promise<void>;
+	wake: Set<() => void>;
+};
 const coordination = new WeakMap<QueryClient, { accountEpoch: number; gates: Map<ProjectId, Gate> }>();
 function state(client: QueryClient) {
 	let value = coordination.get(client);
@@ -28,7 +34,7 @@ function gateFor(client: QueryClient, projectId: ProjectId) {
 	const gates = state(client).gates;
 	let gate = gates.get(projectId);
 	if (!gate) {
-		gate = { generation: 0, sending: new Set(), tail: Promise.resolve(), wake: new Set() };
+		gate = { preparation: 0, generation: 0, sending: new Set(), tail: Promise.resolve(), wake: new Set() };
 		gates.set(projectId, gate);
 	}
 	return gate;
@@ -47,6 +53,7 @@ export function beginBoardWrite(client: QueryClient, projectId: ProjectId, prepa
 	const accountEpoch = boardAccountEpoch(client);
 	const gate = gateFor(client, projectId);
 	const token = {};
+	let preparation = 0;
 	gate.sending.add(token);
 	gate.generation++;
 	const release = () => {
@@ -58,10 +65,12 @@ export function beginBoardWrite(client: QueryClient, projectId: ProjectId, prepa
 		// Preserve optimism and keep cancellation out of the visible query error.
 		await client.cancelQueries({ queryKey: ["board", projectId] }, { revert: false, silent: true });
 		if (boardAccountEpoch(client) !== accountEpoch) throw new Error("Account changed before sending");
+		preparation = ++gate.preparation;
 		prepareAndSend();
 	});
 	gate.tail = prepared.catch(release);
-	return { accountEpoch, prepared, release };
+	// Structural sharing can preserve a reference across separate optimistic writes.
+	return { accountEpoch, prepared, release, ownsProjection: () => preparation > 0 && preparation === gate.preparation };
 }
 function waitForBoard(gate: Gate, signal: AbortSignal): Promise<void> {
 	signal.throwIfAborted();
