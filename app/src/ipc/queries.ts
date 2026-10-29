@@ -3,19 +3,143 @@ import { cardRect } from "@/board/flip";
 import { notify } from "@/components/ui/toast";
 import { useUi } from "@/stores/ui";
 import { verbs } from "@/undo/inverse";
-import { type Board, commands, events, type ProjectId, type SyncPrefs, type SyncStatus, type ViewId } from "./bindings";
+import {
+	type AuthStatus,
+	type Board,
+	commands,
+	events,
+	type ProjectId,
+	type SyncPrefs,
+	type SyncStatus,
+	type ViewId,
+} from "./bindings";
+
+type Gate = {
+	preparation: number;
+	generation: number;
+	sending: Set<object>;
+	tail: Promise<void>;
+	wake: Set<() => void>;
+};
+const coordination = new WeakMap<QueryClient, { accountEpoch: number; gates: Map<ProjectId, Gate> }>();
+function state(client: QueryClient) {
+	let value = coordination.get(client);
+	if (!value) {
+		value = { accountEpoch: 0, gates: new Map() };
+		coordination.set(client, value);
+	}
+	return value;
+}
+function gateFor(client: QueryClient, projectId: ProjectId) {
+	const gates = state(client).gates;
+	let gate = gates.get(projectId);
+	if (!gate) {
+		gate = { preparation: 0, generation: 0, sending: new Set(), tail: Promise.resolve(), wake: new Set() };
+		gates.set(projectId, gate);
+	}
+	return gate;
+}
+export function boardAccountEpoch(client: QueryClient) {
+	return state(client).accountEpoch;
+}
+export function reconcileBoard(client: QueryClient, projectId: ProjectId, epoch: number) {
+	if (boardAccountEpoch(client) !== epoch) return;
+	const gate = gateFor(client, projectId);
+	gate.generation++;
+	for (const wake of gate.wake) wake();
+	void client.invalidateQueries({ queryKey: ["board", projectId] });
+}
+export function beginBoardWrite(client: QueryClient, projectId: ProjectId, prepareAndSend: () => void) {
+	const accountEpoch = boardAccountEpoch(client);
+	const gate = gateFor(client, projectId);
+	const token = {};
+	let preparation = 0;
+	gate.sending.add(token);
+	gate.generation++;
+	const release = () => {
+		if (gate.sending.delete(token)) reconcileBoard(client, projectId, accountEpoch);
+	};
+	const prepared = gate.tail.then(async () => {
+		// An old account's queued write must not cancel the new account's reads.
+		if (boardAccountEpoch(client) !== accountEpoch) throw new Error("Account changed before sending");
+		// Preserve optimism and keep cancellation out of the visible query error.
+		await client.cancelQueries({ queryKey: ["board", projectId] }, { revert: false, silent: true });
+		if (boardAccountEpoch(client) !== accountEpoch) throw new Error("Account changed before sending");
+		preparation = ++gate.preparation;
+		prepareAndSend();
+	});
+	gate.tail = prepared.catch(release);
+	// Structural sharing can preserve a reference across separate optimistic writes.
+	return { accountEpoch, prepared, release, ownsProjection: () => preparation > 0 && preparation === gate.preparation };
+}
+function waitForBoard(gate: Gate, signal: AbortSignal): Promise<void> {
+	signal.throwIfAborted();
+	if (!gate.sending.size) return Promise.resolve();
+	return new Promise((resolve, reject) => {
+		const cleanup = () => {
+			gate.wake.delete(wake);
+			signal.removeEventListener("abort", abort);
+		};
+		const wake = () => {
+			cleanup();
+			resolve();
+		};
+		const abort = () => {
+			cleanup();
+			reject(signal.reason);
+		};
+		gate.wake.add(wake);
+		signal.addEventListener("abort", abort, { once: true });
+	});
+}
 
 /** The cache in Rust is the source of truth, so queries refetch on events, not on a timer. */
 export function createQueryClient() {
-	return new QueryClient({
+	const client = new QueryClient({
 		defaultOptions: { queries: { staleTime: Number.POSITIVE_INFINITY, retry: false, refetchOnWindowFocus: false } },
 	});
+	let identity: string | null = null;
+	client.getQueryCache().subscribe((event) => {
+		if (event.query.queryKey.length !== 1 || event.query.queryKey[0] !== "auth") return;
+		const next = client.getQueryData<AuthStatus>(["auth"])?.id ?? null;
+		if (next === identity) return;
+		identity = next;
+		const current = state(client);
+		current.accountEpoch++;
+		void client.cancelQueries({ queryKey: ["board"] }, { revert: false, silent: true });
+		client.removeQueries({ queryKey: ["board"] });
+		for (const gate of current.gates.values()) for (const wake of gate.wake) wake();
+		current.gates.clear();
+		useUi.getState().invalidateUndo();
+	});
+	return client;
 }
 
 export const queryClient = createQueryClient();
 
 export const boardQuery = (projectId: ProjectId, viewId: ViewId | null) =>
-	queryOptions({ queryKey: ["board", projectId, viewId], queryFn: () => commands.getBoard(projectId, viewId) });
+	queryOptions({
+		queryKey: ["board", projectId, viewId],
+		queryFn: async ({ client, signal }) => {
+			for (;;) {
+				const gate = gateFor(client, projectId);
+				await waitForBoard(gate, signal);
+				signal.throwIfAborted();
+				if (gate.sending.size) continue;
+				const epoch = boardAccountEpoch(client);
+				const generation = gate.generation;
+				// A write can begin while getBoard is pending; discard that older result or error.
+				try {
+					const board = await commands.getBoard(projectId, viewId);
+					signal.throwIfAborted();
+					if (epoch === boardAccountEpoch(client) && generation === gate.generation) return board;
+				} catch (error) {
+					signal.throwIfAborted();
+					if (epoch === boardAccountEpoch(client) && generation === gate.generation) throw error;
+				}
+			}
+		},
+	});
 
 /** Who can be assigned in `repo`. Fetched from GitHub once per session. */
 export const assignableUsersQuery = (repo: string) =>

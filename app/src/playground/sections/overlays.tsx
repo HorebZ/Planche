@@ -564,7 +564,7 @@ function OverlaysDemo() {
 										action={{ label: "Undo", kbd: "⌘Z", onClick: () => toast.dismiss(id) }}
 									/>
 								),
-								{ toasterId, id: toasterId },
+								{ toasterId },
 							)
 						}
 					>

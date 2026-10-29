@@ -69,6 +69,18 @@ impl From<Error> for AppError {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum DispatchOutcome {
+    Accepted {
+        #[specta(type = specta_typescript::Number)]
+        seq: i64,
+    },
+    Rejected {
+        error: AppError,
+    },
+}
+
 type Result<T> = std::result::Result<T, AppError>;
 
 pub struct Core {
@@ -109,6 +121,15 @@ impl Core {
                 .map(|v| v.number),
         };
         Ok(cache.board(project, number)?)
+    }
+
+    pub fn dispatch_intent(&self, intent: &Intent) -> DispatchOutcome {
+        match self.cache().enqueue(intent) {
+            Ok(seq) => DispatchOutcome::Accepted { seq },
+            Err(error) => DispatchOutcome::Rejected {
+                error: error.into(),
+            },
+        }
     }
 
     pub fn project(&self, project: &ProjectId) -> Result<Option<ProjectMeta>> {
@@ -306,29 +327,17 @@ pub async fn get_board(
     core.board(&project_id, view_id.as_ref())
 }
 
-/// Queues a user action, asks the engine to send it now, and returns the board with it
-/// applied. The front shows that board in place of its own optimistic one.
+/// Accepted confirms the local enqueue commit, not synchronization with GitHub.
 #[tauri::command]
 #[specta::specta]
-pub async fn dispatch_intent(
-    core: State<'_, Core>,
-    intent: Intent,
-    view_id: Option<ViewId>,
-) -> Result<Board> {
-    let project_id = intent.project_id();
-    core.cache().enqueue(&intent)?;
-    // Read the board before the engine sends: a fast failure would already have dropped the
-    // row, and the card would jump back before the front hears of the failure.
-    let board = core
-        .board(project_id, view_id.as_ref())?
-        .ok_or_else(|| AppError {
-            kind: ErrorKind::NotFound,
-            message: format!("project {project_id} is not in the cache"),
-        })?;
-    if let Some(engine) = core.engine().await {
+pub async fn dispatch_intent(core: State<'_, Core>, intent: Intent) -> Result<DispatchOutcome> {
+    let outcome = core.dispatch_intent(&intent);
+    if matches!(outcome, DispatchOutcome::Accepted { .. })
+        && let Some(engine) = core.engine().await
+    {
         engine.send(SyncCommand::Flush).await;
     }
-    Ok(board)
+    Ok(outcome)
 }
 
 /// Who can be assigned in `repo`, an `owner/name`.
@@ -428,6 +437,46 @@ mod tests {
             .collect();
         cache.write_snapshot(&meta, &items, true).unwrap();
         (Core::new(cache), meta.id)
+    }
+
+    #[test]
+    fn dispatch_receipt_survives_reopening_and_rejects_missing_project() {
+        let (core, project) = core_with_fixtures("receipt");
+        let intent = Intent::CreateDraft {
+            project_id: project.clone(),
+            item_id: planche_core::domain::ItemId("draft:receipt".into()),
+            field_id: core.board(&project, None).unwrap().unwrap().field.id,
+            column: None,
+            title: "Durable draft".into(),
+        };
+        let DispatchOutcome::Accepted { seq } = core.dispatch_intent(&intent) else {
+            panic!("enqueue should commit");
+        };
+        let mut invalid = intent.clone();
+        if let Intent::CreateDraft { project_id, .. } = &mut invalid {
+            *project_id = ProjectId("PVT_missing".into());
+        }
+        assert!(matches!(
+            core.dispatch_intent(&invalid),
+            DispatchOutcome::Rejected {
+                error: AppError {
+                    kind: ErrorKind::Cache,
+                    ..
+                }
+            }
+        ));
+        drop(core);
+        let path = std::env::temp_dir().join(format!(
+            "planche-app-{}-receipt/cache.sqlite",
+            std::process::id()
+        ));
+        let reopened = Cache::open(path).unwrap();
+        assert_eq!(reopened.intents(&project).unwrap(), vec![intent.clone()]);
+        assert!(reopened.intents(invalid.project_id()).unwrap().is_empty());
+        let row = reopened.claim_next(&project).unwrap().unwrap();
+        assert_eq!(row.seq, seq);
+        assert_eq!(row.intent, intent);
+        assert!(reopened.claim_next(&project).unwrap().is_none());
     }
 
     #[test]

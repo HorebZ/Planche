@@ -7,7 +7,7 @@ import { CardPlaceholder } from "@/components/ui/issue-card";
 import type { Column as BoardColumnData, ItemId } from "@/ipc/bindings";
 import { useUi } from "@/stores/ui";
 import { Card } from "./Card";
-import { NewDraft } from "./NewDraft";
+import { type DraftSubmit, NewDraft } from "./NewDraft";
 import { statusTone } from "./statusTone";
 
 const GAP = 5;
@@ -17,17 +17,18 @@ export type Landing = { index: number; height: number; fromHere: boolean };
 
 type ColumnProps = {
 	column: BoardColumnData;
+	projectId: string;
 	index: number;
 	/** The lifted card, shown here as a ghost when it comes from this column. */
 	activeId: ItemId | null;
 	landing: Landing | null;
-	onCreateDraft: (title: string) => void;
+	onCreateDraft: DraftSubmit;
 };
 
 type Row = { kind: "card"; card: BoardColumnData["cards"][number] } | { kind: "placeholder"; height: number };
 
 /** A column whose cards scroll inside it. Only the cards in view are mounted. */
-export function Column({ column, index, activeId, landing, onCreateDraft }: ColumnProps) {
+export function Column({ column, projectId, index, activeId, landing, onCreateDraft }: ColumnProps) {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const { setNodeRef } = useDroppable({ id: `column:${index}` });
 	const rows = useMemo<Row[]>(() => {
@@ -52,7 +53,9 @@ export function Column({ column, index, activeId, landing, onCreateDraft }: Colu
 		},
 	});
 	const selectedId = useUi((s) => s.selectedId);
-	const drafting = useUi((s) => s.overlay?.type === "draft" && s.overlay.column === column.option_id);
+	const drafting = useUi((s) =>
+		s.overlay?.type === "draft" && s.overlay.column === column.option_id ? s.overlay.editor : null,
+	);
 	// A selection out of view mounts its card first, so the card can take the focus.
 	useEffect(() => {
 		const at = rows.findIndex((row) => row.kind === "card" && row.card.item_id === selectedId);
@@ -71,7 +74,9 @@ export function Column({ column, index, activeId, landing, onCreateDraft }: Colu
 			empty={column.cards.length === 0 && !incoming && !drafting}
 			className="max-h-full"
 		>
-			{drafting ? <NewDraft onSubmit={onCreateDraft} /> : null}
+			{drafting ? (
+				<NewDraft key={drafting} projectId={projectId} column={column.option_id} onSubmit={onCreateDraft} />
+			) : null}
 			<SortableContext items={column.cards.map((c) => c.item_id)} strategy={verticalListSortingStrategy}>
 				<div ref={scrollRef} data-slot="column-scroll" className="-m-[5px] mt-0 min-h-0 overflow-y-auto p-[5px] pt-0">
 					<div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>

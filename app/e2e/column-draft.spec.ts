@@ -64,7 +64,9 @@ for (const activation of ["click", "Enter"] as const) {
 			await add.focus();
 			await page.keyboard.press("Enter");
 		}
-		const todo = page.locator('[data-slot="board-column"]').filter({ has: page.getByText("Todo", { exact: true }) });
+		const todo = page
+			.locator('[data-slot="issue-list-group"]')
+			.filter({ has: page.getByText("Todo", { exact: true }) });
 		await expect(todo.getByLabel("Draft title")).toBeFocused();
 		await page.keyboard.press("Escape");
 		await expect(page.getByLabel("Draft title")).toHaveCount(0);
@@ -74,6 +76,6 @@ for (const activation of ["click", "Enter"] as const) {
 		await add.click();
 		await todo.getByLabel("Draft title").fill("Draft from empty List");
 		await page.keyboard.press("Enter");
-		await expect(todo.locator('[data-slot="issue-card"]').first()).toContainText("Draft from empty List");
+		await expect(todo.locator('[data-slot="issue-list-row"]').first()).toContainText("Draft from empty List");
 	});
 }
