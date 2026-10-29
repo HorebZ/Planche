@@ -25,6 +25,7 @@ import { Column, type Landing } from "./Column";
 import { markDropFrame, startFrames, stopFrames } from "./dragPerf";
 import { flip, type Rect } from "./flip";
 import { statusTone } from "./statusTone";
+import type { DispatchResult } from "./useActions";
 
 /** A spot on the board: a column, and an index among its cards without the lifted one. */
 type Spot = { column: number; index: number };
@@ -50,7 +51,11 @@ type BoardProps = {
 	board: BoardData;
 	onMove: (intent: Intent) => Promise<unknown>;
 	/** A title typed in a column's new-draft field, and that column. */
-	onCreateDraft: (column: BoardData["columns"][number], title: string) => void;
+	onCreateDraft: (
+		column: BoardData["columns"][number],
+		title: string,
+		observe?: (result: DispatchResult) => void,
+	) => Promise<DispatchResult>;
 };
 
 /** The board: one column per option, each scrolling on its own. Cards move by drag or keyboard. */
@@ -225,10 +230,11 @@ export const Board = memo(function Board({ board, onMove, onCreateDraft }: Board
 						<Column
 							key={column.option_id ?? "none"}
 							column={column}
+							projectId={board.project.id}
 							index={index}
 							activeId={drag?.id ?? null}
 							landing={landingFor(index)}
-							onCreateDraft={(title) => onCreateDraft(column, title)}
+							onCreateDraft={(title, observe) => onCreateDraft(column, title, observe)}
 						/>
 					))}
 				</div>

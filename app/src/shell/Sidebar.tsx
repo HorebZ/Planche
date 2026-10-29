@@ -94,7 +94,7 @@ export function AppSidebar({ projectId, cardCount, syncedAt, onSelect, onSearch,
 				<Button
 					variant="ghost"
 					size="icon"
-					aria-label={`New issue ${keysFor("issue.new").join("")}`}
+					aria-label={`New draft ${keysFor("issue.new").join("")}`}
 					onClick={onNewIssue}
 					className="size-7 bg-card text-fg-3 shadow-card"
 				>

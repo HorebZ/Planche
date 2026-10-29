@@ -8,7 +8,7 @@ type Shortcut = { key: string; command: string; scope: Scope; label: string };
 /** Every keyboard shortcut of the app. The handlers, the palette hints and the `?` sheet read it. */
 export const shortcuts = [
 	{ key: "Meta+k", command: "palette.open", scope: "global", label: "Command palette" },
-	{ key: "c", command: "issue.new", scope: "global", label: "New issue" },
+	{ key: "c", command: "issue.new", scope: "global", label: "New draft" },
 	{ key: "Meta+r", command: "sync.now", scope: "global", label: "Sync now" },
 	{ key: "?", command: "help.open", scope: "global", label: "All shortcuts" },
 	{ key: "Meta+,", command: "settings.open", scope: "global", label: "Settings" },

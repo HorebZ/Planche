@@ -748,7 +748,15 @@ async fn a_new_draft_is_created_once_then_moved_to_the_top_of_its_column() {
     let github = FakeGithub::new();
     let (_, mut cache, project) = synced("draft", &github).await;
     let intent = create_draft(&server_board(&cache, &project), "In Progress");
-    cache.enqueue(&intent).unwrap();
+    let seq = cache.enqueue(&intent).unwrap();
+    assert!(matches!(
+        sync::flush(&mut cache, &FakeOffline, &project, |_| {}).await,
+        Err(Error::Network(_))
+    ));
+    let retried = cache.claim_next(&project).unwrap().unwrap();
+    assert_eq!(retried.seq, seq);
+    assert_eq!(retried.intent, intent);
+    cache.release(seq, "offline").unwrap();
     let shown = cache.board(&project, None).unwrap().unwrap();
     assert_eq!(
         drafts(&shown),

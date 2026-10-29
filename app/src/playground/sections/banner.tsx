@@ -23,6 +23,9 @@ export function BannerSection() {
 							}
 						/>
 					</State>
+					<State label="projection failed, cached board retained" className="items-stretch">
+						<Banner title="Could not refresh this project" description="Could not read the local cache" />
+					</State>
 					<State label="retry focused" className="items-stretch">
 						<Banner
 							icon={<WifiOff />}
