@@ -236,7 +236,7 @@ test("settings, project menus and text fields keep board shortcuts inactive", as
 test("C creates the first draft on an empty board", async ({ page }) => {
 	await page.goto("/?mock=empty");
 	await expect(page.getByText("This board is empty")).toBeVisible();
-	await page.getByRole("button", { name: "New issue C", exact: true }).last().click();
+	await page.getByRole("button", { name: "New draft C", exact: true }).last().click();
 	await expect(page.getByLabel("Draft title")).toBeFocused();
 	await page.keyboard.type("First draft");
 	await page.keyboard.press("Enter");

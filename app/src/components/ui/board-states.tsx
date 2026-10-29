@@ -90,7 +90,7 @@ export function EmptyBoardCard({ onNewIssue, onAddFromRepo, className, ...props 
 					disabled={!onNewIssue}
 					onClick={onNewIssue}
 				>
-					New issue
+					New draft
 					<Kbd variant="onAccent" size="sm">
 						C
 					</Kbd>

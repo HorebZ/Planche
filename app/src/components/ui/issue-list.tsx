@@ -1,5 +1,5 @@
-import { ChevronDown, ChevronRight } from "lucide-react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { ChevronDown, ChevronRight, Plus } from "lucide-react";
+import { type ReactNode, useLayoutEffect, useState } from "react";
 import { AvatarStack } from "@/components/ui/avatar";
 import type { IssueCardData } from "@/components/ui/issue-card";
 import { LabelChip } from "@/components/ui/label-chip";
@@ -12,45 +12,55 @@ export function IssueListGroup({
 	items,
 	onOpen,
 	onSelect,
-	selectedId,
-	focusSelection = true,
+	draft,
+	onAddDraft,
 }: {
 	name: string;
 	status: StatusKey;
 	items: (IssueCardData & { id: string; pending?: boolean })[];
 	onOpen: (id: string) => void;
 	onSelect?: (id: string) => void;
-	selectedId?: string | null;
-	focusSelection?: boolean;
+	draft?: ReactNode;
+	onAddDraft?: () => void;
 }) {
 	const [expanded, setExpanded] = useState(true);
-	const groupRef = useRef<HTMLElement>(null);
+	const drafting = Boolean(draft);
 	useLayoutEffect(() => {
-		if (!expanded || !selectedId || !focusSelection || !items.some((item) => item.id === selectedId)) return;
-		const row = groupRef.current?.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(selectedId)}"]`);
-		row?.focus({ preventScroll: true });
-		row?.scrollIntoView({ block: "nearest" });
-	}, [selectedId, expanded, items, focusSelection]);
+		if (drafting) setExpanded(true);
+	}, [drafting]);
 	return (
-		<section ref={groupRef} data-slot="issue-list-group">
-			<button
-				type="button"
-				onClick={() => setExpanded(!expanded)}
-				onKeyDown={(event) => {
-					const command = commandFor(event.nativeEvent, "board");
-					if (command !== "column.prev" && command !== "column.next") return;
-					event.preventDefault();
-					event.stopPropagation();
-					setExpanded(command === "column.next");
-				}}
-				aria-expanded={expanded}
-				className="flex h-[34px] w-full items-center gap-2 border-line border-b bg-hover px-4 text-left font-medium focus-visible:bg-active"
-			>
-				{expanded ? <ChevronDown className="size-3.5 text-fg-3" /> : <ChevronRight className="size-3.5 text-fg-3" />}
-				<StatusSquare status={status} />
-				{name}
-				<span className="text-[12px] text-fg-3 tabular-nums">{items.length}</span>
-			</button>
+		<section data-slot="issue-list-group">
+			<div className="flex items-center bg-hover">
+				<button
+					type="button"
+					onClick={() => setExpanded(!expanded)}
+					onKeyDown={(event) => {
+						const command = commandFor(event.nativeEvent, "board");
+						if (command !== "column.prev" && command !== "column.next") return;
+						event.preventDefault();
+						event.stopPropagation();
+						setExpanded(command === "column.next");
+					}}
+					aria-expanded={expanded}
+					className="flex h-[34px] w-full items-center gap-2 border-line border-b bg-hover px-4 text-left font-medium focus-visible:bg-active"
+				>
+					{expanded ? <ChevronDown className="size-3.5 text-fg-3" /> : <ChevronRight className="size-3.5 text-fg-3" />}
+					<StatusSquare status={status} />
+					<span>{name}</span>
+					<span className="text-[12px] text-fg-3 tabular-nums">{items.length}</span>
+				</button>
+				{onAddDraft ? (
+					<button
+						type="button"
+						aria-label={`Add draft to ${name}`}
+						onClick={onAddDraft}
+						className="mr-3 grid size-6 shrink-0 place-items-center rounded-sm text-fg-3 hover:bg-active focus-visible:shadow-ring"
+					>
+						<Plus className="size-3.5" />
+					</button>
+				) : null}
+			</div>
+			{draft}
 			{expanded
 				? items.map((item) => (
 						<button

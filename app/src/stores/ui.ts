@@ -9,7 +9,7 @@ export type Overlay =
 	| { type: "assign" }
 	| { type: "help" }
 	| { type: "settings" }
-	| { type: "draft"; column: OptionId | null };
+	| { type: "draft"; column: OptionId | null; editor: string };
 
 type UiState = {
 	/** The project the user picked in this session. `null` falls back to the last opened one. */
@@ -30,7 +30,7 @@ type UiState = {
 	selectProject: (projectId: ProjectId) => void;
 	selectView: (viewId: ViewId | null) => void;
 	select: (selectedId: ItemId | null) => void;
-	open: (overlay: Overlay | null) => void;
+	open: (overlay: Exclude<Overlay, { type: "draft" }> | { type: "draft"; column: OptionId | null } | null) => void;
 	claimAction: () => number;
 	invalidateUndo: () => void;
 	acceptUndo: (owner: number, undo: UiState["undo"]) => boolean;
@@ -52,6 +52,7 @@ export const useUi = create<UiState>()((set, get) => ({
 	selectProject: (projectId) =>
 		set((s) => ({
 			projectId,
+			overlay: null,
 			viewId: null,
 			selectedId: null,
 			undo: null,
@@ -59,15 +60,27 @@ export const useUi = create<UiState>()((set, get) => ({
 			contextVersion: s.contextVersion + 1,
 		})),
 	selectView: (viewId) =>
-		set((s) => ({ viewId, undo: null, actionVersion: s.actionVersion + 1, contextVersion: s.contextVersion + 1 })),
+		set((s) => ({
+			viewId,
+			overlay: null,
+			undo: null,
+			actionVersion: s.actionVersion + 1,
+			contextVersion: s.contextVersion + 1,
+		})),
 	select: (selectedId) => set({ selectedId }),
-	open: (overlay) => set({ overlay }),
+	open: (overlay) =>
+		set({ overlay: overlay?.type === "draft" ? { ...overlay, editor: crypto.randomUUID() } : overlay }),
 	claimAction: () => {
 		set((s) => ({ actionVersion: s.actionVersion + 1 }));
 		return get().actionVersion;
 	},
 	invalidateUndo: () =>
-		set((s) => ({ undo: null, actionVersion: s.actionVersion + 1, contextVersion: s.contextVersion + 1 })),
+		set((s) => ({
+			overlay: null,
+			undo: null,
+			actionVersion: s.actionVersion + 1,
+			contextVersion: s.contextVersion + 1,
+		})),
 	acceptUndo: (owner, undo) => {
 		let accepted = false;
 		set((s) => {
