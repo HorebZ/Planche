@@ -27,7 +27,9 @@ export function NewDraft({
 		if (state.overlay?.type !== "draft" || state.overlay.editor !== editor) return;
 		const target = state.selectedId
 			? document.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(state.selectedId)}"]`)
-			: null;
+			: document.activeElement
+					?.closest('[data-slot="board-column"], [data-slot="issue-list-group"]')
+					?.querySelector<HTMLElement>('button[aria-label^="Add draft"]');
 		state.open(null);
 		if (focus) target?.focus();
 	};

@@ -53,7 +53,9 @@ export function Column({ column, projectId, index, activeId, landing, onCreateDr
 		},
 	});
 	const selectedId = useUi((s) => s.selectedId);
-	const drafting = useUi((s) => s.overlay?.type === "draft" && s.overlay.column === column.option_id);
+	const drafting = useUi((s) =>
+		s.overlay?.type === "draft" && s.overlay.column === column.option_id ? s.overlay.editor : null,
+	);
 	// A selection out of view mounts its card first, so the card can take the focus.
 	useEffect(() => {
 		const at = rows.findIndex((row) => row.kind === "card" && row.card.item_id === selectedId);
@@ -72,7 +74,9 @@ export function Column({ column, projectId, index, activeId, landing, onCreateDr
 			empty={column.cards.length === 0 && !incoming && !drafting}
 			className="max-h-full"
 		>
-			{drafting ? <NewDraft projectId={projectId} column={column.option_id} onSubmit={onCreateDraft} /> : null}
+			{drafting ? (
+				<NewDraft key={drafting} projectId={projectId} column={column.option_id} onSubmit={onCreateDraft} />
+			) : null}
 			<SortableContext items={column.cards.map((c) => c.item_id)} strategy={verticalListSortingStrategy}>
 				<div ref={scrollRef} data-slot="column-scroll" className="-m-[5px] mt-0 min-h-0 overflow-y-auto p-[5px] pt-0">
 					<div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
