@@ -17,6 +17,9 @@ type UiState = {
 	viewId: ViewId | null;
 	/** The card the keyboard acts on. It holds the focus ring. */
 	selectedId: ItemId | null;
+	revealId: ItemId | null;
+	revealCard: (id: ItemId) => void;
+	finishReveal: (id: ItemId) => void;
 	overlay: Overlay | null;
 	/** The inverse of the last action, for the toast's Undo and ⌘Z. One level. */
 	undo: { owner: number; intent: Intent; label: string } | null;
@@ -43,6 +46,7 @@ export const useUi = create<UiState>()((set, get) => ({
 	projectId: null,
 	viewId: null,
 	selectedId: null,
+	revealId: null,
 	overlay: null,
 	undo: null,
 	actionVersion: 0,
@@ -55,6 +59,7 @@ export const useUi = create<UiState>()((set, get) => ({
 			overlay: null,
 			viewId: null,
 			selectedId: null,
+			revealId: null,
 			undo: null,
 			actionVersion: s.actionVersion + 1,
 			contextVersion: s.contextVersion + 1,
@@ -62,12 +67,17 @@ export const useUi = create<UiState>()((set, get) => ({
 	selectView: (viewId) =>
 		set((s) => ({
 			viewId,
+			revealId: null,
 			overlay: null,
 			undo: null,
 			actionVersion: s.actionVersion + 1,
 			contextVersion: s.contextVersion + 1,
 		})),
 	select: (selectedId) => set({ selectedId }),
+	revealCard: (id) => set({ selectedId: id, revealId: id }),
+	finishReveal: (id) => {
+		if (get().revealId === id) set({ revealId: null });
+	},
 	open: (overlay) =>
 		set({ overlay: overlay?.type === "draft" ? { ...overlay, editor: crypto.randomUUID() } : overlay }),
 	claimAction: () => {
@@ -76,6 +86,7 @@ export const useUi = create<UiState>()((set, get) => ({
 	},
 	invalidateUndo: () =>
 		set((s) => ({
+			revealId: null,
 			overlay: null,
 			undo: null,
 			actionVersion: s.actionVersion + 1,
