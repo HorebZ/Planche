@@ -720,3 +720,25 @@ test("a certain Undo rejection reports its cause and consumes Undo once", async 
 		h.close();
 	}
 });
+
+test("a late refusal preserves a fresh read after timeout", async () => {
+	const h = harness();
+	vi.useFakeTimers();
+	try {
+		const sent = h.actions.run(first.intent);
+		await vi.advanceTimersByTimeAsync(15_000);
+		expect(await sent).toMatchObject({ type: "unknown" });
+		const fresh = { ...first.board, project: { ...first.board.project, title: "Fresh" } };
+		mockIPC((cmd) => {
+			if (cmd === "get_board") return fresh;
+			throw new Error(cmd);
+		});
+		const key = boardQuery(first.board.project.id, null).queryKey;
+		await h.client.fetchQuery({ ...boardQuery(first.board.project.id, null), staleTime: 0 });
+		h.receipts[0].resolve({ type: "rejected", error: { kind: "Cache", message: "busy" } });
+		await vi.advanceTimersByTimeAsync(0);
+		expect(h.client.getQueryData(key)).toEqual(fresh);
+	} finally {
+		h.close();
+	}
+});
