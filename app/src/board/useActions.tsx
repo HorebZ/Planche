@@ -85,7 +85,8 @@ function markPending(board: Board, id: string): Board {
 }
 
 /**
- * `run` dispatches a user action, keeps its inverse for ⌘Z, and shows a toast with "Undo".
+ * `run` keeps the inverse for ⌘Z and reports unconfirmed results once in their context.
+ * `observe` also receives late confirmation, even after leaving that context.
  * `undo` dispatches that inverse, once.
  */
 export function useActions(projectId: ProjectId, viewId: ViewId | null) {
@@ -132,24 +133,27 @@ export function useActions(projectId: ProjectId, viewId: ViewId | null) {
 						if (result.type === "unknown") notify(`Could not confirm: ${label}. ${result.message}`, "error");
 						if (result.type !== "accepted") return;
 						if (!useUi.getState().acceptUndo(owner, undo && { owner, intent: undo, label })) return;
-						toast.custom((t) => (
-							<ToastCard
-								tone="success"
-								message={label}
-								action={
-									undo
-										? {
-												label: "Undo",
-												kbd: keysFor("undo").join(""),
-												onClick: () => {
-													toast.dismiss(t);
-													void undoLast(owner);
-												},
-											}
-										: undefined
-								}
-							/>
-						));
+						toast.custom(
+							(t) => (
+								<ToastCard
+									tone="success"
+									message={label}
+									action={
+										undo
+											? {
+													label: "Undo",
+													kbd: keysFor("undo").join(""),
+													onClick: () => {
+														toast.dismiss(t);
+														void undoLast(owner);
+													},
+												}
+											: undefined
+									}
+								/>
+							),
+							{ id: `action-${owner}` },
+						);
 					} finally {
 						observe?.(result);
 					}
@@ -168,7 +172,7 @@ export function useActions(projectId: ProjectId, viewId: ViewId | null) {
 			const version = useUi.getState().actionVersion;
 			const context = useUi.getState().contextVersion;
 			const epoch = boardAccountEpoch(client);
-			toast.dismiss();
+			toast.dismiss(`action-${last.owner}`);
 			return dispatchIntent(client, projectId, viewId, last.intent, (result) => {
 				if (
 					!inContext() ||

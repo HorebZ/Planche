@@ -21,6 +21,7 @@ type UiState = {
 	/** The inverse of the last action, for the toast's Undo and ⌘Z. One level. */
 	undo: { owner: number; intent: Intent; label: string } | null;
 	actionVersion: number;
+	/** Only context changes silence old warnings; starting another gesture must preserve them. */
 	contextVersion: number;
 	/** A card is lifted. Board updates wait for the drop, so nothing jumps under the pointer. */
 	dragging: boolean;

@@ -263,6 +263,7 @@ test("an old toast cannot consume a newer Undo", async () => {
 		expect(useUi.getState().undo).toBe(undoB);
 		const current = toast.getHistory().at(-1);
 		if (!current || !("jsx" in current) || !current.jsx) throw new Error("missing current toast");
+		expect(toast.getToasts().map((entry) => entry.id)).toContain(current.id);
 		flushSync(() => toastRoot.render(current.jsx));
 		const currentButton = container.querySelector("button");
 		if (!currentButton) throw new Error("missing current Undo button");
@@ -500,6 +501,15 @@ test.each([
 		h.receipts[a.index].reject(new Error("late transport"));
 		await vi.advanceTimersByTimeAsync(0);
 		expect(toast.getHistory()).toHaveLength(count + 1);
+		const undone = h.actions.undo();
+		await vi.advanceTimersByTimeAsync(0);
+		expect(toast.getToasts().map((entry) => entry.id)).toContain(last.id);
+		expect(toast.getToasts().map((entry) => entry.id)).not.toContain(`action-${undoB?.owner}`);
+		expect(h.receipts).toHaveLength(a.index + 3);
+		await h.actions.undo();
+		expect(h.receipts).toHaveLength(a.index + 3);
+		h.receipts[a.index + 2].resolve(first.board);
+		await undone;
 	} finally {
 		vi.useRealTimers();
 		h.close();
