@@ -45,6 +45,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
 	const queryClient = useQueryClient();
 	const viewId = useUi((s) => s.viewId);
 	const selectedId = useUi((s) => s.selectedId);
+	const revealId = useUi((s) => s.revealId);
 	const overlay = useUi((s) => s.overlay);
 	const drafting = overlay?.type === "draft";
 	const { selectProject, selectView, select, open: show } = useUi.getState();
@@ -215,6 +216,8 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
 									}))}
 									onOpen={openIssue}
 									onSelect={select}
+									revealId={revealId}
+									onRevealed={useUi.getState().finishReveal}
 									onAddDraft={() => newDraft(column.option_id)}
 									draft={
 										overlay?.type === "draft" && overlay.column === column.option_id ? (

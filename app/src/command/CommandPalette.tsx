@@ -1,5 +1,5 @@
 import { GitMerge } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { focusCard } from "@/board/Card";
 import { statusTone } from "@/board/statusTone";
 import {
@@ -13,7 +13,6 @@ import {
 	CommandInput,
 	CommandItem,
 	CommandList,
-	CommandShortcut,
 } from "@/components/ui/command";
 import { Kbd } from "@/components/ui/kbd";
 import { StatusSquare } from "@/components/ui/status";
@@ -32,6 +31,7 @@ type CommandPaletteProps = {
 
 /** Screen 4: ⌘K. Runs every action, and finds a card to select. */
 export function CommandPalette({ board, card, commands }: CommandPaletteProps) {
+	const scopeId = useId();
 	const open = useUi((s) => s.overlay?.type === "palette");
 	const [query, setQuery] = useState("");
 	const [withContext, setWithContext] = useState(true);
@@ -78,6 +78,7 @@ export function CommandPalette({ board, card, commands }: CommandPaletteProps) {
 			}}
 		>
 			<CommandInput
+				aria-describedby={scopeId}
 				value={query}
 				onValueChange={setQuery}
 				placeholder={target ? "Run an action or search…" : "Search or run…"}
@@ -100,6 +101,13 @@ export function CommandPalette({ board, card, commands }: CommandPaletteProps) {
 				}
 				trailing={<Kbd className="px-[5px] text-fg-3">esc</Kbd>}
 			/>
+			<p
+				id={scopeId}
+				className="truncate border-line border-b px-3.5 py-2 text-fg-3 text-xs"
+				title={board?.project.title}
+			>
+				{board ? `Loaded project: ${board.project.title} — search loaded items only` : "No project loaded"}
+			</p>
 			<CommandList>
 				<CommandEmpty>No matches</CommandEmpty>
 				{target ? (
@@ -128,7 +136,7 @@ export function CommandPalette({ board, card, commands }: CommandPaletteProps) {
 								query={query}
 								onPick={() => {
 									close();
-									useUi.getState().select(c.item_id);
+									useUi.getState().revealCard(c.item_id);
 								}}
 							/>
 						))}
@@ -163,13 +171,6 @@ function PaletteRow({
 				<CommandHighlight text={command.label} query={query} />
 			</span>
 			{command.current ? <span className="text-fg-3 text-sm">Current</span> : null}
-			{command.keys?.length ? (
-				<CommandShortcut>
-					{command.keys.map((key) => (
-						<Kbd key={key}>{key}</Kbd>
-					))}
-				</CommandShortcut>
-			) : null}
 		</CommandItem>
 	);
 }

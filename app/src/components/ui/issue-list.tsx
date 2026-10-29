@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
-import { type ReactNode, useLayoutEffect, useState } from "react";
+import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { AvatarStack } from "@/components/ui/avatar";
 import type { IssueCardData } from "@/components/ui/issue-card";
 import { LabelChip } from "@/components/ui/label-chip";
@@ -14,6 +14,8 @@ export function IssueListGroup({
 	onSelect,
 	draft,
 	onAddDraft,
+	revealId,
+	onRevealed,
 }: {
 	name: string;
 	status: StatusKey;
@@ -22,14 +24,28 @@ export function IssueListGroup({
 	onSelect?: (id: string) => void;
 	draft?: ReactNode;
 	onAddDraft?: () => void;
+	revealId?: string | null;
+	onRevealed?: (id: string) => void;
 }) {
 	const [expanded, setExpanded] = useState(true);
+	const groupRef = useRef<HTMLElement>(null);
+	useLayoutEffect(() => {
+		if (!revealId || !items.some((item) => item.id === revealId)) return;
+		if (!expanded) {
+			setExpanded(true);
+			return;
+		}
+		const row = groupRef.current?.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(revealId)}"]`);
+		row?.scrollIntoView({ block: "nearest" });
+		row?.focus({ preventScroll: true });
+		if (row) onRevealed?.(revealId);
+	}, [revealId, expanded, items, onRevealed]);
 	const drafting = Boolean(draft);
 	useLayoutEffect(() => {
 		if (drafting) setExpanded(true);
 	}, [drafting]);
 	return (
-		<section data-slot="issue-list-group">
+		<section ref={groupRef} data-slot="issue-list-group">
 			<div className="flex items-center bg-hover">
 				<button
 					type="button"
