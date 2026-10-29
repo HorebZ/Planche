@@ -28,7 +28,6 @@ import {
 	CommandInput,
 	CommandItem,
 	CommandList,
-	CommandShortcut,
 } from "@/components/ui/command";
 import {
 	ContextMenu,
@@ -218,6 +217,9 @@ function PaletteBody({ preview = false }: { preview?: boolean }) {
 				trailing={<Kbd className="px-[5px] text-fg-3">esc</Kbd>}
 				{...(preview ? { value: query, onValueChange: () => undefined } : {})}
 			/>
+			<p className="border-line border-b px-3.5 py-2 text-fg-3 text-xs">
+				Loaded project: Planche — search loaded items only
+			</p>
 			<CommandList>
 				<CommandEmpty>No matches</CommandEmpty>
 				<CommandGroup heading="Change status">
@@ -226,20 +228,12 @@ function PaletteBody({ preview = false }: { preview?: boolean }) {
 						<span className="min-w-0 flex-1">
 							<CommandHighlight text="Move to In progress" query={query} />
 						</span>
-						<CommandShortcut>
-							<Kbd>⇧</Kbd>
-							<Kbd>→</Kbd>
-						</CommandShortcut>
 					</CommandItem>
 					<CommandItem value="move-backlog">
 						<ArrowLeft className="size-[18px] text-fg-2" />
 						<span className="min-w-0 flex-1">
 							<CommandHighlight text="Move to Backlog" query={query} />
 						</span>
-						<CommandShortcut>
-							<Kbd>⇧</Kbd>
-							<Kbd>←</Kbd>
-						</CommandShortcut>
 					</CommandItem>
 					<CommandItem value="assign">
 						<UserPlus className="size-[18px] text-fg-2" />

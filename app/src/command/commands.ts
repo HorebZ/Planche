@@ -14,7 +14,6 @@ import {
 import { statusTone } from "@/board/statusTone";
 import type { StatusKey } from "@/components/ui/status";
 import type { Board, Card, Intent, OptionId, OwnerProjects, User } from "@/ipc/bindings";
-import { type CommandId, keysFor } from "@/keyboard/shortcuts";
 
 /** The column of a card, as an index into `board.columns`. */
 export function columnIndexOf(board: Board, card: Card) {
@@ -69,7 +68,6 @@ export type PaletteCommand = {
 	status?: StatusKey;
 	label: string;
 	icon: LucideIcon;
-	keys?: string[];
 	run: () => void;
 };
 
@@ -96,9 +94,6 @@ export function paletteCommands(
 	const from = board && card ? columnIndexOf(board, card) : -1;
 	if (board && card && from >= 0) {
 		for (const [index, column] of board.columns.entries()) {
-			const optionIndex = board.columns
-				.filter((c) => c.option_id !== null)
-				.findIndex((c) => c.option_id === column.option_id);
 			commands.push({
 				value: `Move to ${column.name}`,
 				group: "status",
@@ -106,7 +101,6 @@ export function paletteCommands(
 				status: statusTone(column.color, column.name),
 				label: `Move to ${column.name}`,
 				icon: index > from ? ArrowRight : ArrowLeft,
-				keys: optionIndex >= 0 ? keysFor(`status.${optionIndex + 1}` as CommandId) : undefined,
 				run: () => {
 					if (index !== from) actions.move(column.option_id);
 				},
@@ -123,7 +117,6 @@ export function paletteCommands(
 			group: "commands",
 			label: "New draft",
 			icon: Plus,
-			keys: keysFor("issue.new"),
 			run: actions.newIssue,
 		},
 		{
@@ -131,7 +124,6 @@ export function paletteCommands(
 			group: "commands",
 			label: "Sync now",
 			icon: RefreshCw,
-			keys: keysFor("sync.now"),
 			run: actions.syncNow,
 		},
 	);

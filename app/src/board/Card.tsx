@@ -73,6 +73,7 @@ export const Card = memo(function Card({ card, status, ghost = false, selected =
 			{...attributes}
 			{...listeners}
 			onFocus={() => {
+				useUi.getState().finishReveal(card.item_id);
 				if (!selected) useUi.getState().select(card.item_id);
 			}}
 			data-item-id={card.item_id}

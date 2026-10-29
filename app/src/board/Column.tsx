@@ -53,14 +53,16 @@ export function Column({ column, projectId, index, activeId, landing, onCreateDr
 		},
 	});
 	const selectedId = useUi((s) => s.selectedId);
+	const revealId = useUi((s) => s.revealId);
 	const drafting = useUi((s) =>
 		s.overlay?.type === "draft" && s.overlay.column === column.option_id ? s.overlay.editor : null,
 	);
 	// A selection out of view mounts its card first, so the card can take the focus.
 	useEffect(() => {
-		const at = rows.findIndex((row) => row.kind === "card" && row.card.item_id === selectedId);
+		const id = revealId ?? selectedId;
+		const at = rows.findIndex((row) => row.kind === "card" && row.card.item_id === id);
 		if (at >= 0) virtualizer.scrollToIndex(at, { align: "auto" });
-	}, [selectedId, rows, virtualizer]);
+	}, [selectedId, rows, virtualizer, revealId]);
 	const incoming = landing != null && !landing.fromHere;
 	return (
 		<BoardColumn
