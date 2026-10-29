@@ -78,6 +78,7 @@ function deferred() {
 
 function harness() {
 	const client = createQueryClient();
+	client.setQueryData(authQuery.queryKey, { id: "U", login: "u", avatar_url: null, missing_scopes: [] });
 	client.setQueryData(boardQuery(first.board.project.id, null).queryKey, first.board);
 	useUi.getState().selectProject(first.board.project.id);
 	const receipts: ReturnType<typeof deferred>[] = [];
