@@ -4,6 +4,7 @@ const colors = [
   "bg",
   "bg-sunken",
   "surface",
+  "column",
   "elevated",
   "hover",
   "active",

@@ -21,6 +21,7 @@
   --color-surface: var(--pl-surface);
   --color-elevated: var(--pl-elevated);
   --color-card: var(--pl-card);
+  --color-column: var(--pl-column);
   --color-primary: var(--pl-primary);
   --color-primary-fg: var(--pl-primary-fg);
   --color-overlay: var(--pl-overlay);

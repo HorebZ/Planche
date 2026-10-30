@@ -25,7 +25,10 @@ export function SkeletonColumn({
     <section
       data-slot="skeleton-column"
       aria-hidden
-      className={cn("flex w-column shrink-0 flex-col gap-2 rounded-xl bg-hover p-[5px]", className)}
+      className={cn(
+        "flex w-column shrink-0 flex-col gap-2 rounded-xl bg-column p-[5px]",
+        className,
+      )}
       {...props}
     >
       <div className="flex h-[34px] items-center gap-[7px] px-1.5">

@@ -10,10 +10,10 @@ test("the inset shell and neutral controls follow the v2 light and dark tokens",
   await expect(page.locator("main")).toHaveCSS("margin-top", "8px");
   await expect(page.locator("main")).toHaveCSS("border-radius", "10px");
   await page.emulateMedia({ colorScheme: "dark" });
-  await expect(page.locator("main")).toHaveCSS("background-color", "rgb(25, 24, 23)");
+  await expect(page.locator("main")).toHaveCSS("background-color", "rgb(18, 18, 19)");
   await expect(page.locator('[data-slot="issue-card"]').first()).toHaveCSS(
     "background-color",
-    "rgb(33, 32, 30)",
+    "rgb(26, 26, 27)",
   );
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect(page.locator('[data-slot="issue-card"]').first()).toHaveCSS(
@@ -66,9 +66,9 @@ test("settings save sync preferences and persist the chosen theme", async ({ pag
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.keyboard.press("Escape");
   await page.reload();
-  await expect(page.locator("main")).toHaveCSS("background-color", "rgb(25, 24, 23)");
+  await expect(page.locator("main")).toHaveCSS("background-color", "rgb(18, 18, 19)");
   await page.getByRole("button", { name: "Settings ⌘," }).click();
-  await expect(page.getByRole("dialog")).toHaveCSS("background-color", "rgb(36, 35, 33)");
+  await expect(page.getByRole("dialog")).toHaveCSS("background-color", "rgb(36, 36, 37)");
   await page.keyboard.press("Escape");
 });
 

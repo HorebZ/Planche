@@ -34,7 +34,7 @@ export function BoardColumn({
       data-slot="board-column"
       data-drop-target={dropTarget || undefined}
       className={cn(
-        "relative flex w-column shrink-0 flex-col gap-2 rounded-xl bg-hover px-[5px] pt-0.5 pb-1.5",
+        "relative flex w-column shrink-0 flex-col gap-2 rounded-xl bg-column px-[5px] pt-0.5 pb-1.5",
         className,
       )}
       {...props}
