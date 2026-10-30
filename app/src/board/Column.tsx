@@ -104,7 +104,7 @@ export function Column({
         <div
           ref={scrollRef}
           data-slot="column-scroll"
-          className="-m-[5px] mt-0 min-h-0 overflow-y-auto p-[5px] pt-0"
+          className="-m-[5px] min-h-0 overflow-y-auto p-[5px]"
         >
           <div
             className="relative w-full"

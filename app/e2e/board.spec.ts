@@ -29,6 +29,31 @@ test("the board shows each column of the mock backend with its cards", async ({ 
   expect(errors).toEqual([]);
 });
 
+for (const colorScheme of ["light", "dark"] as const) {
+  test(`the first card shadow stays below the column header in ${colorScheme}`, async ({
+    page,
+  }) => {
+    await page.emulateMedia({ colorScheme });
+    await open(page, "board");
+    const todo = column(page, "Todo");
+    const card = todo.locator('[data-slot="issue-card"]').first();
+    await expect(card).toBeVisible();
+    const spacing = await todo.evaluate((el) => {
+      const header = el.querySelector("header")?.getBoundingClientRect();
+      const scroll = el.querySelector('[data-slot="column-scroll"]')?.getBoundingClientRect();
+      const card = el.querySelector('[data-slot="issue-card"]')?.getBoundingClientRect();
+      if (!header || !scroll || !card) {
+        throw new Error("Missing column content");
+      }
+      return { paintInset: card.top - scroll.top, headerGap: card.top - header.bottom };
+    });
+    expect(spacing.paintInset).toBeGreaterThanOrEqual(2);
+    expect(spacing.headerGap).toBe(6);
+    await card.focus();
+    await todo.screenshot({ path: test.info().outputPath(`column-header-${colorScheme}.png`) });
+  });
+}
+
 test("cards show PRs, both dependency directions and sub-issue progress without overflowing", async ({
   page,
 }) => {
