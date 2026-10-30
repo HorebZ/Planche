@@ -1,3 +1,4 @@
+import { CloudOff } from "lucide-react";
 import type { ComponentProps } from "react";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
@@ -10,6 +11,44 @@ const cardWidths = [
   ["86%", "40%"],
   ["58%", "62%"],
 ];
+
+export function BoardErrorCard({
+  message,
+  pending,
+  onRetry,
+  onBack,
+}: {
+  message: string;
+  pending: boolean;
+  onRetry: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <div
+      data-slot="board-error"
+      role="alert"
+      className="flex max-w-[440px] flex-col items-center gap-3 rounded-window bg-elevated p-6 text-center shadow-pop"
+    >
+      <CloudOff
+        className="size-6 text-danger"
+        aria-hidden
+      />
+      <h1 className="font-semibold text-[15px]">Could not load this project</h1>
+      <p className="max-w-full break-words text-fg-2">{message}</p>
+      <p className="text-fg-3 text-xs">No saved board is available to show.</p>
+      <div className="flex flex-wrap justify-center gap-2">
+        <Button onClick={onBack}>Choose another project</Button>
+        <Button
+          variant="primary"
+          disabled={pending}
+          onClick={onRetry}
+        >
+          {pending ? "Retrying…" : "Retry now"}
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 /** A column of placeholder cards while the first sync loads the board. */
 export function SkeletonColumn({

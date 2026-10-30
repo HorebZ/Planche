@@ -28,6 +28,11 @@ export type Scenario =
   | "syncing"
   | "empty"
   | "offline"
+  | "board-error"
+  | "sync-error"
+  | "refresh-error"
+  | "rate-limited"
+  | "uncached-sync-error"
   | "onboarding"
   | "checking"
   | "valid"
@@ -200,6 +205,7 @@ function boardFor(scenario: Scenario): Board | null {
       return board;
     }
     case "loading":
+    case "uncached-sync-error":
       return null;
     case "big":
       return bigBoard();
@@ -268,6 +274,11 @@ function statusFor(scenario: Scenario): SyncStatus {
       return { ...base, state: { type: "syncing", page: 3, pages: 5, items_total: 480 } };
     case "offline":
       return { ...base, pending: 1, retry_at: Date.now() + 24_000, state: { type: "offline" } };
+    case "rate-limited":
+      return { ...base, retry_at: Date.now() + 60_000, state: { type: "rate_limited" } };
+    case "sync-error":
+    case "uncached-sync-error":
+      return { ...base, state: { type: "error", message: "Token rejected by GitHub (401)" } };
     default:
       return { ...base, state: { type: "idle" } };
   }
@@ -291,6 +302,8 @@ export function installMockBackend(scenario: Scenario) {
   let prefs: SyncPrefs = { interval: "five_minutes", on_wake: true };
   let auth = onboarding(scenario) ? signedOut : signedIn;
   let board = boardFor(scenario);
+  let boardError = scenario === "board-error";
+  let status = statusFor(scenario);
   const changed = () => emit("board-changed", { project_id: PROJECT });
   let dispatchSeq = 0;
   let unlock: (() => void) | undefined;
@@ -349,7 +362,12 @@ export function installMockBackend(scenario: Scenario) {
         },
       ],
     }),
-    get_board: () => board,
+    get_board: () => {
+      if (boardError) {
+        throw { kind: "Cache", message: "Could not read the local cache" } satisfies AppError;
+      }
+      return board;
+    },
     // Queue locally before sending in the background.
     dispatch_intent: (args) => {
       const intent = args.intent as Intent;
@@ -386,8 +404,21 @@ export function installMockBackend(scenario: Scenario) {
     },
     list_assignable_users: () =>
       Object.entries(people).map(([who, login]) => ({ id: `U_${who}`, login, avatar_url: "" })),
-    refresh_project: () => ({ project: PROJECT, items: 17, cost: 4, usage: {}, changes: [] }),
-    sync_status: () => statusFor(scenario),
+    refresh_project: async () => {
+      if (scenario === "refresh-error" && calls.refresh_project === 1) {
+        throw { kind: "Network", message: "Could not start synchronization" } satisfies AppError;
+      }
+      if (
+        ["sync-error", "rate-limited", "uncached-sync-error", "refresh-error"].includes(scenario)
+      ) {
+        status = { ...status, state: { type: "idle" }, retry_at: null, last_sync_at: Date.now() };
+        board ??= mockupBoard();
+        await emit("sync-status", status);
+        await changed();
+      }
+      return { project: PROJECT, items: 17, cost: 4, usage: {}, changes: [] };
+    },
+    sync_status: () => status,
     get_sync_prefs: () => prefs,
     set_sync_prefs: (args) => {
       prefs = args.prefs as SyncPrefs;
@@ -410,5 +441,14 @@ export function installMockBackend(scenario: Scenario) {
     },
     { shouldMockEvents: true },
   );
-  Object.assign(window, { __planche: { emit, calls, unlock: () => unlock?.() } });
+  Object.assign(window, {
+    __planche: {
+      emit,
+      calls,
+      unlock: () => unlock?.(),
+      setBoardError: (fail: boolean) => {
+        boardError = fail;
+      },
+    },
+  });
 }

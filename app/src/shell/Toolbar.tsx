@@ -13,7 +13,7 @@ import { type ProjectTone, projectTones } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SyncIndicator } from "@/components/ui/sync-indicator";
 import type { Board, ProjectMeta, SyncStatus, ViewId } from "@/ipc/bindings";
-import { busyLabel } from "./syncText";
+import { busyLabel, footerText } from "./syncText";
 
 export type ProjectLayout = "board" | "list";
 type ToolbarProps = {
@@ -21,6 +21,7 @@ type ToolbarProps = {
   board: Board | null | undefined;
   project: ProjectMeta | null | undefined;
   status: SyncStatus | undefined;
+  error?: string | null;
   onSelectView: (viewId: ViewId) => void;
   layout: ProjectLayout;
   onLayoutChange: (layout: ProjectLayout) => void;
@@ -32,12 +33,16 @@ export function Toolbar({
   board,
   project,
   status,
+  error,
   onSelectView,
   layout,
   onLayoutChange,
   onSearch,
 }: ToolbarProps) {
   const busy = busyLabel(status, !board);
+  const feedback = footerText(status, board?.synced_at ?? null, Date.now(), error);
+  const failed = feedback.tone === "offline";
+  const loading = !board && !failed;
   const boardViews = project?.views.filter((v) => v.layout === "Board") ?? [];
   const currentView = project?.views.find((v) => v.number === board?.view?.number);
   const count = board?.columns.reduce((n, c) => n + c.cards.length, 0) ?? 0;
@@ -81,8 +86,23 @@ export function Toolbar({
         )}
         <span className="flex-1" />
         <SyncIndicator
-          state={busy ? "busy" : status?.state.type === "offline" ? "offline" : "idle"}
-          label={busy ?? undefined}
+          state={
+            failed
+              ? "offline"
+              : busy || loading
+                ? "busy"
+                : status || board?.synced_at
+                  ? "idle"
+                  : "unknown"
+          }
+          label={
+            failed
+              ? status?.state.type === "offline" && !error
+                ? "Offline"
+                : feedback.text
+              : (busy ?? (loading ? "Loading project…" : undefined))
+          }
+          title={failed ? feedback.text : undefined}
         />
         <Button
           variant="ghost"
@@ -119,7 +139,9 @@ export function Toolbar({
           ))}
         </fieldset>
         <span className="flex-1" />
-        <span className="mr-2 text-[12px] text-fg-3 tabular-nums">{count} issues</span>
+        {board ? (
+          <span className="mr-2 text-[12px] text-fg-3 tabular-nums">{count} issues</span>
+        ) : null}
         <Button
           variant="ghost"
           size="icon"

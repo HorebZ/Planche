@@ -30,7 +30,7 @@ type UiState = {
   dragging: boolean;
   /** The card going back after a failed move, and where it was, to slide it back. */
   reverting: { id: ItemId; from: Rect } | null;
-  selectProject: (projectId: ProjectId) => void;
+  selectProject: (projectId: ProjectId | null) => void;
   selectView: (viewId: ViewId | null) => void;
   select: (selectedId: ItemId | null) => void;
   open: (

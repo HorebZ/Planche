@@ -42,6 +42,19 @@ export function BannerSection() {
             <Banner
               title="Could not refresh this project"
               description="Could not read the local cache"
+              meta="Showing saved data"
+              action={<Button size="sm">Retry now</Button>}
+            />
+          </State>
+          <State
+            label="rate limited, cached board retained"
+            className="items-stretch"
+          >
+            <Banner
+              title="Could not refresh this project"
+              description="Rate limited by GitHub"
+              meta="Showing saved data"
+              action={<Button size="sm">Retry now</Button>}
             />
           </State>
           <State

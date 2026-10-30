@@ -45,3 +45,28 @@ test("the toolbar counts items while loading and pages while syncing", () => {
   );
   expect(busyLabel(status({ type: "idle" }), false)).toBeNull();
 });
+
+test("quota, sync failures and local read errors override a successful sync", () => {
+  expect(footerText(status({ type: "rate_limited" }), null)).toEqual({
+    tone: "offline",
+    text: "Rate limited by GitHub",
+  });
+  expect(footerText(status({ type: "error", message: "Token rejected" }), null)).toEqual({
+    tone: "offline",
+    text: "Token rejected",
+  });
+  expect(
+    footerText(status({ type: "idle" }, { last_sync_at: now }), null, now, "Cache unavailable"),
+  ).toEqual({
+    tone: "offline",
+    text: "Cache unavailable",
+  });
+  expect(
+    footerText(
+      status({ type: "syncing", page: 1, pages: 1, items_total: 9 }),
+      null,
+      now,
+      "Cache unavailable",
+    ).tone,
+  ).toBe("offline");
+});

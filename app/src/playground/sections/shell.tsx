@@ -1,7 +1,7 @@
 import { Settings } from "lucide-react";
 import { useState } from "react";
 import { AppLockContent } from "@/components/ui/app-lock";
-import { EmptyBoardCard, SkeletonColumn } from "@/components/ui/board-states";
+import { BoardErrorCard, EmptyBoardCard, SkeletonColumn } from "@/components/ui/board-states";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AccountBlock, AppIcon, Logotype, ScopeRow } from "@/components/ui/onboarding";
@@ -174,8 +174,39 @@ export function ShellSection() {
             <State label="offline">
               <SyncIndicator state="offline" />
             </State>
+            <State label="quota">
+              <SyncIndicator
+                state="offline"
+                label="Rate limited by GitHub"
+              />
+            </State>
+            <State label="sync error">
+              <SyncIndicator
+                state="offline"
+                label="Token rejected by GitHub"
+              />
+            </State>
+            <State label="unknown">
+              <SyncIndicator state="unknown" />
+            </State>
           </Row>
           <Row label="board states">
+            <State label="error without cache">
+              <BoardErrorCard
+                message="Could not read the local cache"
+                pending={false}
+                onRetry={() => {}}
+                onBack={() => {}}
+              />
+            </State>
+            <State label="retry in progress">
+              <BoardErrorCard
+                message="Rate limited by GitHub"
+                pending
+                onRetry={() => {}}
+                onBack={() => {}}
+              />
+            </State>
             <State label="5a skeleton column">
               <SkeletonColumn cards={3} />
             </State>
