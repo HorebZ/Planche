@@ -24,6 +24,50 @@ fn every_fixture_decodes() {
 }
 
 #[test]
+fn issue_relations_decode_and_survive_the_offline_cache() {
+    use planche_core::cache::Cache;
+    use planche_core::domain::{ItemContent, PullRequestState};
+
+    let meta = decode_project_meta(&fixture("project_meta.json")).unwrap();
+    let page = decode_project_items(&fixture("project_items_page1.json")).unwrap();
+    let ItemContent::Issue { details, .. } = &page.items[0].content else {
+        panic!("expected an issue");
+    };
+    assert_eq!(details.created_at.as_deref(), Some("2026-10-02T12:00:00Z"));
+    assert_eq!(details.parent_title.as_deref(), Some("Parent roadmap"));
+    let sub_issues = details.sub_issues.as_ref().unwrap();
+    assert_eq!((sub_issues.completed, sub_issues.total), (2, 5));
+    assert_eq!((details.blocked_by, details.blocking), (2, 1));
+    assert_eq!(details.pull_request_count, 1);
+    let pr = details.pull_request.as_ref().unwrap();
+    assert_eq!(
+        (pr.number, pr.state, pr.is_draft),
+        (42, PullRequestState::Merged, false)
+    );
+
+    let mut cache = Cache::open(":memory:").unwrap();
+    cache.write_snapshot(&meta, &page.items, true).unwrap();
+    assert_eq!(cache.snapshot(&meta.id).unwrap().unwrap().1, page.items);
+}
+
+#[test]
+fn multiple_linked_prs_use_the_total_count_and_empty_sub_issues_are_omitted() {
+    use planche_core::domain::ItemContent;
+
+    let mut page: Value = serde_json::from_str(&fixture("project_items_page1.json")).unwrap();
+    let content = &mut page["data"]["node"]["items"]["nodes"][0]["content"];
+    content["closedByPullRequestsReferences"]["totalCount"] = json!(3);
+    content["subIssuesSummary"] = json!({ "completed": 0, "total": 0 });
+    let decoded = decode_project_items(&page.to_string()).unwrap();
+    let ItemContent::Issue { details, .. } = &decoded.items[0].content else {
+        panic!("expected an issue");
+    };
+    assert_eq!(details.pull_request_count, 3);
+    assert!(details.pull_request.is_none());
+    assert!(details.sub_issues.is_none());
+}
+
+#[test]
 fn unknown_field_value_typename_is_ignored() {
     let mut page: Value = serde_json::from_str(&fixture("project_items_page1.json")).unwrap();
     let values = page["data"]["node"]["items"]["nodes"][0]["fieldValues"]["nodes"]

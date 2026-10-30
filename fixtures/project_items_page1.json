@@ -67,6 +67,29 @@
                     "color": "0E8A16"
                   }
                 ]
+              },
+              "createdAt": "2026-10-02T12:00:00Z",
+              "parent": {
+                "title": "Parent roadmap"
+              },
+              "subIssuesSummary": {
+                "completed": 2,
+                "total": 5
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 2,
+                "blocking": 1
+              },
+              "closedByPullRequestsReferences": {
+                "totalCount": 1,
+                "nodes": [
+                  {
+                    "number": 42,
+                    "title": "Implement roadmap",
+                    "prState": "MERGED",
+                    "isDraft": false
+                  }
+                ]
               }
             }
           },

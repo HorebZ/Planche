@@ -87,7 +87,7 @@ export function Column({
       onAddDraft={() => useUi.getState().open({ type: "draft", column: column.option_id })}
       dropTarget={incoming}
       empty={column.cards.length === 0 && !incoming && !drafting}
-      className="max-h-full"
+      className="h-full"
     >
       {drafting ? (
         <NewDraft

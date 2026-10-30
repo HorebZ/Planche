@@ -19,6 +19,7 @@ import type {
 } from "../src/ipc/bindings";
 
 export type Scenario =
+  | "relations"
   | "board"
   | "locked"
   | "unlock-cancelled"
@@ -77,6 +78,7 @@ function card(
     labels: labels.map((name) => ({ name, color: labelColors[name] })),
     pending: false,
     updated_by_sync: false,
+    details: { created_at: "2026-10-02T12:00:00Z" },
   };
   if (kind === "p") {
     return { ...common, kind: "pull_request", id: `PR_${number}`, state: "open", is_draft: false };
@@ -168,6 +170,30 @@ function bigBoard(): Board {
 
 function boardFor(scenario: Scenario): Board | null {
   switch (scenario) {
+    case "relations": {
+      const board = mockupBoard();
+      Object.assign(board.columns[0].cards[0], {
+        details: { sub_issues: { completed: 0, total: 2 } },
+      });
+      Object.assign(board.columns[0].cards[1], { details: { pull_request_count: 3 } });
+      Object.assign(board.columns[1].cards[0], {
+        details: {
+          created_at: "2026-10-02T12:00:00Z",
+          parent_title: "A parent issue with a very long title that should stay on one line",
+          pull_request_count: 1,
+          pull_request: {
+            number: 62222,
+            title: "Add linked pull requests",
+            state: "merged",
+            is_draft: false,
+          },
+          blocked_by: 2,
+          blocking: 1,
+          sub_issues: { completed: 2, total: 5 },
+        },
+      });
+      return board;
+    }
     case "six-statuses": {
       const board = mockupBoard();
       board.columns.push(column("cancelled", "Cancelled", "GRAY", []));

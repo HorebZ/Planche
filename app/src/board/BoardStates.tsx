@@ -18,6 +18,7 @@ export function LoadingBoard() {
           // biome-ignore lint/suspicious/noArrayIndexKey: fixed placeholders
           key={i}
           cards={cards}
+          className="h-full"
           titleWidth={[48, 36, 64, 52, 40][i]}
         />
       ))}
@@ -47,6 +48,7 @@ export function EmptyBoard({
             status={statusTone(column.color, column.name)}
             name={column.name}
             count={0}
+            className="h-full"
             onAddDraft={() => onNewDraft(column.option_id)}
             empty
           />

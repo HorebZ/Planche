@@ -134,6 +134,17 @@ export type CardChange = {
 	to: string | null,
 };
 
+export type CardDetails = {
+	created_at?: string | null,
+	parent_title?: string | null,
+	sub_issues?: SubIssues | null,
+	blocked_by?: number,
+	blocking?: number,
+	pull_request_count?: number,
+	/**  The linked PR when there is exactly one; otherwise the count is displayed. */
+	pull_request?: LinkedPullRequest | null,
+};
+
 export type Column = {
 	/**  `None` for the "No <field>" column. */
 	option_id: OptionId | null,
@@ -175,7 +186,7 @@ to: OptionId | null; placement: Placement } | { type: "set_assignees"; project_i
 
 export type IssueState = "open" | "closed";
 
-export type ItemContent = { kind: "draft"; id: ContentId; title: string; assignees: User[] } | { kind: "issue"; id: ContentId; number: number; title: string; url: string; repo: string; state: IssueState; assignees: User[]; labels: Label[] } | { kind: "pull_request"; id: ContentId; number: number; title: string; url: string; repo: string; state: PullRequestState; is_draft: boolean; assignees: User[]; labels: Label[] } | 
+export type ItemContent = { kind: "draft"; id: ContentId; title: string; assignees: User[] } | { kind: "issue"; id: ContentId; number: number; title: string; url: string; repo: string; state: IssueState; assignees: User[]; labels: Label[]; details?: CardDetails } | { kind: "pull_request"; id: ContentId; number: number; title: string; url: string; repo: string; state: PullRequestState; is_draft: boolean; assignees: User[]; labels: Label[]; details?: CardDetails } | 
 /**  Content the token cannot read, such as an issue from a private repo. */
 { kind: "redacted" };
 
@@ -186,6 +197,13 @@ export type Label = {
 	name: string,
 	/**  Hex color without `#`, as GitHub sends it. */
 	color: string,
+};
+
+export type LinkedPullRequest = {
+	number: number,
+	title: string,
+	state: PullRequestState,
+	is_draft: boolean,
 };
 
 /**  GitHub refused a queued intent for good, and the board rolled back. */
@@ -252,6 +270,11 @@ export type SelectOption = {
 	id: OptionId,
 	name: string,
 	color: string,
+};
+
+export type SubIssues = {
+	completed: number,
+	total: number,
 };
 
 export type SyncInterval = "one_minute" | "five_minutes" | "fifteen_minutes" | "manual";

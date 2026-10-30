@@ -1,7 +1,7 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import type { Scenario } from "./mockBackend";
 
-test.use({ viewport: { width: 1440, height: 900 } });
+test.use({ viewport: { width: 1920, height: 900 } });
 
 const card = (page: Page, number: number) =>
   page.locator(`[data-slot="issue-card"][data-item-id="PVTI_${number}"]`);

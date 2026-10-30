@@ -1,5 +1,12 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import { GitMerge, GitPullRequest, GitPullRequestDraft } from "lucide-react";
+import {
+  CircleMinus,
+  GitMerge,
+  GitPullRequest,
+  GitPullRequestClosed,
+  GitPullRequestDraft,
+  Hand,
+} from "lucide-react";
 import type { ComponentProps } from "react";
 import { AvatarStack, type AvatarUser } from "@/components/ui/avatar";
 import { Kbd } from "@/components/ui/kbd";
@@ -38,6 +45,15 @@ type CardBase = {
   createdAt?: string;
   parentTitle?: string;
   subIssues?: { completed: number; total: number };
+  blockedBy?: number;
+  blocking?: number;
+  pullRequestCount?: number;
+  pullRequest?: {
+    number: number;
+    title: string;
+    state: "open" | "closed" | "merged";
+    is_draft: boolean;
+  };
 };
 export type IssueCardData = CardBase &
   (
@@ -64,6 +80,10 @@ export function IssueCard({
   createdAt,
   parentTitle,
   subIssues,
+  blockedBy = 0,
+  blocking = 0,
+  pullRequestCount = 0,
+  pullRequest,
   selected = false,
   updated = false,
   pending = false,
@@ -76,6 +96,11 @@ export function IssueCard({
     status ??
     (state === "draft" ? "draft" : state === "closed" || state === "merged" ? "done" : "todo");
   const muted = resolvedStatus === "done" || resolvedStatus === "cancelled";
+  const prLabel = pullRequest
+    ? `Pull request #${pullRequest.number}: ${pullRequest.title} (${pullRequest.state === "open" && pullRequest.is_draft ? "draft" : pullRequest.state})`
+    : `${pullRequestCount} linked pull requests`;
+  const blockedLabel = `Blocked by ${blockedBy} issue${blockedBy === 1 ? "" : "s"}`;
+  const blockingLabel = `Blocking ${blocking} issue${blocking === 1 ? "" : "s"}`;
   return (
     <div
       data-slot="issue-card"
@@ -90,26 +115,36 @@ export function IssueCard({
       )}
       {...props}
     >
-      <div className="flex h-[18px] items-center gap-1.5 text-[12px] text-fg-3 tabular-nums">
-        <span className="shrink-0">
-          {repo}
-          {number != null ? `#${number}` : state === "draft" ? "Draft" : ""}
+      <div className="flex h-[18px] min-w-0 items-center gap-1.5 text-[12px] text-fg-3 tabular-nums">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5">
+          <span className={cn("truncate", parentTitle ? "max-w-3/5 shrink-0" : "min-w-0")}>
+            {repo}
+            {number != null ? `#${number}` : state === "draft" ? "Draft" : ""}
+          </span>
+          {parentTitle ? (
+            <span
+              className="min-w-0 truncate"
+              title={parentTitle}
+            >
+              › {parentTitle}
+            </span>
+          ) : null}
+        </div>
+        {pending ? <span className="shrink-0 font-medium text-warning">Pending</span> : null}
+        <span className="flex shrink-0 items-center">
+          {assignees.length ? (
+            <AvatarStack
+              users={assignees}
+              size={16}
+            />
+          ) : (
+            <span
+              role="img"
+              aria-label="Unassigned"
+              className="size-3.5 shrink-0 rounded-full opacity-60 shadow-[inset_0_0_0_1px_var(--pl-fg-3)]"
+            />
+          )}
         </span>
-        {parentTitle ? <span className="truncate">› {parentTitle}</span> : null}
-        {pending ? <span className="font-medium text-warning">Pending</span> : null}
-        <span className="flex-1" />
-        {assignees.length ? (
-          <AvatarStack
-            users={assignees}
-            size={16}
-          />
-        ) : (
-          <span
-            role="img"
-            aria-label="Unassigned"
-            className="size-3.5 shrink-0 rounded-full opacity-60 shadow-[inset_0_0_0_1px_var(--pl-fg-3)]"
-          />
-        )}
       </div>
       <div className={cn("flex items-start gap-2 font-medium text-base", muted && "text-fg-3")}>
         <span className="mt-0.5 flex shrink-0 text-fg-3">
@@ -118,6 +153,8 @@ export function IssueCard({
               <GitPullRequestDraft className="size-3.5" />
             ) : state === "merged" ? (
               <GitMerge className="size-3.5 text-status-done" />
+            ) : state === "closed" ? (
+              <GitPullRequestClosed className="size-3.5" />
             ) : (
               <GitPullRequest className="size-3.5" />
             )
@@ -127,7 +164,7 @@ export function IssueCard({
         </span>
         <span className="min-w-0 text-pretty">{title}</span>
       </div>
-      {priority || labels.length || subIssues ? (
+      {priority || subIssues || blockedBy > 0 || blocking > 0 || pullRequestCount > 0 ? (
         <div className="flex flex-wrap items-center gap-1">
           {priority ? (
             <span className="grid size-[22px] place-items-center rounded-md shadow-[inset_0_0_0_1px_var(--pl-border)]">
@@ -135,11 +172,61 @@ export function IssueCard({
             </span>
           ) : null}
           {subIssues ? (
-            <span className="inline-flex h-5 items-center gap-1 rounded-sm px-1.5 text-fg-3 text-sm tabular-nums shadow-[inset_0_0_0_1px_var(--pl-border)]">
+            <span
+              className={metadataClass}
+              role="img"
+              aria-label={`${subIssues.completed} of ${subIssues.total} sub-issues completed`}
+              title={`${subIssues.completed} of ${subIssues.total} sub-issues completed`}
+            >
               <ProgressRing value={subIssues.total ? subIssues.completed / subIssues.total : 0} />
               {subIssues.completed}/{subIssues.total}
             </span>
           ) : null}
+          {pullRequestCount > 0 ? (
+            <span
+              className={metadataClass}
+              role="img"
+              aria-label={prLabel}
+              title={prLabel}
+            >
+              {pullRequest?.state === "merged" ? (
+                <GitMerge className="size-3.5" />
+              ) : pullRequest?.state === "closed" ? (
+                <GitPullRequestClosed className="size-3.5" />
+              ) : pullRequest?.is_draft ? (
+                <GitPullRequestDraft className="size-3.5" />
+              ) : (
+                <GitPullRequest className="size-3.5" />
+              )}
+              {pullRequest ? `#${pullRequest.number}` : `${pullRequestCount} PRs`}
+            </span>
+          ) : null}
+          {blockedBy > 0 ? (
+            <span
+              className={cn(metadataClass, "bg-danger-soft text-danger")}
+              role="img"
+              aria-label={blockedLabel}
+              title={blockedLabel}
+            >
+              <CircleMinus className="size-3.5 fill-current [&_path]:stroke-card" />
+              Blocked by {blockedBy}
+            </span>
+          ) : null}
+          {blocking > 0 ? (
+            <span
+              className={metadataClass}
+              role="img"
+              aria-label={blockingLabel}
+              title={blockingLabel}
+            >
+              <Hand className="size-3.5" />
+              Blocks {blocking}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+      {labels.length ? (
+        <div className="flex flex-wrap items-center gap-1">
           {labels.map((label) => (
             <LabelChip
               key={`${label.name}-${label.color}`}
@@ -169,6 +256,9 @@ export function IssueCard({
     </div>
   );
 }
+
+const metadataClass =
+  "inline-flex h-5 items-center gap-1 rounded-sm px-1.5 text-fg-3 text-sm tabular-nums shadow-[inset_0_0_0_1px_var(--pl-border)]";
 
 export function CardPlaceholder({
   height,

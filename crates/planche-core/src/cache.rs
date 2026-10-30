@@ -20,7 +20,10 @@ use crate::domain::{
 use crate::error::{Error, Result};
 use crate::intent::{self, Intent, Placement};
 
-const MIGRATIONS: &[&str] = &[include_str!("../migrations/0001_init.sql")];
+const MIGRATIONS: &[&str] = &[
+    include_str!("../migrations/0001_init.sql"),
+    include_str!("../migrations/0002_card_details.sql"),
+];
 
 /// An acked row stays replayed until the snapshot reflects it, or for this many syncs.
 /// Phase 2 saw 0 stale reads in 20 reads right after a move, so 2 is a safety margin.
@@ -512,7 +515,7 @@ impl Cache {
         let id = project.as_str();
         let mut statement = self.conn.prepare_cached(
             "SELECT id, kind, content_id, title, number, url, repo, state, is_draft_pr,
-                    is_archived, updated_at
+                    is_archived, updated_at, details
              FROM item WHERE project_id = ?1 ORDER BY position",
         )?;
         let mut rows: Vec<ItemRow> = statement
@@ -529,6 +532,7 @@ impl Cache {
                     is_draft_pr: r.get(8)?,
                     archived: r.get(9)?,
                     updated_at: r.get(10)?,
+                    details: r.get(11)?,
                     single_selects: Vec::new(),
                     assignees: Vec::new(),
                     labels: Vec::new(),
@@ -686,8 +690,8 @@ fn write_meta(tx: &Transaction, meta: &ProjectMeta) -> Result<()> {
 fn write_items(tx: &Transaction, meta: &ProjectMeta, items: &[Item]) -> Result<()> {
     let mut item = tx.prepare_cached(&format!(
         "INSERT INTO item (id, project_id, position, kind, content_id, title, number, url, repo,
-                           state, is_draft_pr, is_archived, updated_at, synced_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, {NOW})"
+                           state, is_draft_pr, is_archived, updated_at, details, synced_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, {NOW})"
     ))?;
     let mut value = tx.prepare_cached(
         "INSERT INTO item_field_value (item_id, field_id, option_id) VALUES (?1, ?2, ?3)",
@@ -794,6 +798,11 @@ fn write_items(tx: &Transaction, meta: &ProjectMeta, items: &[Item]) -> Result<(
             is_draft,
             i.archived,
             i.updated_at,
+            match &i.content {
+                ItemContent::Issue { details, .. } | ItemContent::PullRequest { details, .. } =>
+                    serde_json::to_string(details).map_err(|e| Error::Cache(e.to_string()))?,
+                _ => "{}".to_owned(),
+            },
         ])?;
         // ponytail: single-select values only, the only kind the domain carries. Text,
         // number, date and iteration values come with the phase that shows them.
@@ -894,6 +903,7 @@ struct ItemRow {
     is_draft_pr: bool,
     archived: bool,
     updated_at: String,
+    details: String,
     single_selects: Vec<(FieldId, OptionId)>,
     assignees: Vec<User>,
     labels: Vec<Label>,
@@ -929,6 +939,8 @@ impl ItemRow {
                 },
                 assignees: self.assignees.clone(),
                 labels: self.labels.clone(),
+                details: serde_json::from_str(&self.details)
+                    .map_err(|e| Error::Cache(e.to_string()))?,
             },
             "PULL_REQUEST" => ItemContent::PullRequest {
                 id: content_id()?,
@@ -944,6 +956,8 @@ impl ItemRow {
                 is_draft: self.is_draft_pr,
                 assignees: self.assignees.clone(),
                 labels: self.labels.clone(),
+                details: serde_json::from_str(&self.details)
+                    .map_err(|e| Error::Cache(e.to_string()))?,
             },
             _ => ItemContent::Redacted,
         };
@@ -954,5 +968,32 @@ impl ItemRow {
             single_selects: self.single_selects,
             content,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn card_details_migration_preserves_existing_cache_data() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(MIGRATIONS[0]).unwrap();
+        conn.pragma_update(None, "user_version", 1).unwrap();
+        conn.execute(
+            "INSERT INTO kv (key, value) VALUES ('viewer_login', 'camille')",
+            [],
+        )
+        .unwrap();
+        migrate(&mut conn).unwrap();
+        let login: String = conn
+            .query_row("SELECT value FROM kv WHERE key = 'viewer_login'", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        assert_eq!(login, "camille");
+        conn.prepare("SELECT details FROM item").unwrap();
+        let details: crate::domain::CardDetails = serde_json::from_str("{}").unwrap();
+        assert_eq!(details, Default::default());
     }
 }

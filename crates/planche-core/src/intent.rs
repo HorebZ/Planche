@@ -538,6 +538,7 @@ mod tests {
                 state: IssueState::Open,
                 assignees: vec![],
                 labels: vec![],
+                details: Default::default(),
             },
             pending: false,
             updated_by_sync: false,

@@ -567,6 +567,7 @@ mod tests {
                 "state": "open",
                 "assignees": [],
                 "labels": [{ "name": "phase", "color": "1D76DB" }],
+                "details": planche_core::domain::CardDetails::default(),
                 "pending": false,
                 "updated_by_sync": false
             })

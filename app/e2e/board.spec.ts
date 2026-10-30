@@ -29,6 +29,45 @@ test("the board shows each column of the mock backend with its cards", async ({ 
   expect(errors).toEqual([]);
 });
 
+test("cards show PRs, both dependency directions and sub-issue progress without overflowing", async ({
+  page,
+}) => {
+  const errors = await open(page, "relations");
+  const card = page.locator('[data-item-id="PVTI_226"]');
+  await expect(
+    card.getByRole("img", { name: "Pull request #62222: Add linked pull requests (merged)" }),
+  ).toBeVisible();
+  await expect(card.getByRole("img", { name: "Blocked by 2 issues" })).toHaveText("Blocked by 2");
+  await expect(card.getByRole("img", { name: "Blocking 1 issue" })).toHaveText("Blocks 1");
+  await expect(card.getByRole("img", { name: "2 of 5 sub-issues completed" })).toHaveText("2/5");
+  await expect(card.getByText("Created Oct 2")).toBeVisible();
+  await expect(page.getByRole("img", { name: "3 linked pull requests" })).toHaveText("3 PRs");
+  await expect(page.getByRole("img", { name: "0 of 2 sub-issues completed" })).toHaveText("0/2");
+  const header = card.locator(":scope > div").first();
+  expect(await header.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await expect(card.locator('[data-slot="avatar"]')).toHaveText("CR");
+  const columns = page.locator('[data-slot="board-column"]');
+  const widths = await columns.evaluateAll((els) =>
+    els.map((el) => el.getBoundingClientRect().width),
+  );
+  expect(Math.max(...widths) - Math.min(...widths)).toBeLessThan(1);
+  expect(widths[0]).toBe(300);
+  await page.setViewportSize({ width: 1920, height: 1000 });
+  const board = page.locator('[data-slot="board"]');
+  await expect.poll(() => board.evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0);
+  expect(
+    await columns.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width)),
+  ).toEqual(widths);
+  await page.screenshot({ path: test.info().outputPath("relations.png"), animations: "disabled" });
+  await page.setViewportSize({ width: 980, height: 800 });
+  await expect.poll(() => board.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+  expect(
+    await columns.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width)),
+  ).toEqual(widths);
+  expect(await header.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+  expect(errors).toEqual([]);
+});
+
 test("5a: before the first sync, skeletons and the loading progress", async ({ page }) => {
   await open(page, "loading");
   await expect(page.locator('[data-slot="skeleton-column"]')).toHaveCount(5);

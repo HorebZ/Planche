@@ -88,7 +88,7 @@
   --spacing-control-lg: var(--pl-control-lg);
   --spacing-toolbar: var(--pl-toolbar);
   --spacing-sidebar: var(--pl-sidebar-w);
-  --spacing-column: var(--pl-column-w);
+  --spacing-column: 300px;
 
   --radius-xs: var(--pl-radius-xs);
   --radius-sm: var(--pl-radius-sm);

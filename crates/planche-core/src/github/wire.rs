@@ -198,6 +198,16 @@ pub(super) enum Content {
         repository: Repository,
         assignees: Nodes<User>,
         labels: Nodes<Label>,
+        #[serde(default)]
+        created_at: Option<String>,
+        #[serde(default)]
+        parent: Option<ParentIssue>,
+        #[serde(default)]
+        sub_issues_summary: Option<crate::domain::SubIssues>,
+        #[serde(default)]
+        issue_dependencies_summary: Option<DependenciesSummary>,
+        #[serde(default)]
+        closed_by_pull_requests_references: Option<LinkedPullRequests>,
     },
     PullRequest {
         id: String,
@@ -209,7 +219,37 @@ pub(super) enum Content {
         repository: Repository,
         assignees: Nodes<User>,
         labels: Nodes<Label>,
+        #[serde(default)]
+        created_at: Option<String>,
     },
+}
+
+#[derive(Deserialize)]
+pub(super) struct ParentIssue {
+    pub title: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct DependenciesSummary {
+    pub blocked_by: u32,
+    pub blocking: u32,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct LinkedPullRequests {
+    pub total_count: u32,
+    pub nodes: Vec<Option<LinkedPullRequest>>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct LinkedPullRequest {
+    pub number: u32,
+    pub title: String,
+    pub pr_state: PullRequestState,
+    pub is_draft: bool,
 }
 
 #[derive(Deserialize)]

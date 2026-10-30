@@ -95,13 +95,20 @@ fragment ProjectItemPage on ProjectV2ItemConnection {
         assignees(first: 10) { nodes { ...UserLite } }
       }
       ... on Issue {
-        id number title url issueState: state updatedAt
+        id number title url issueState: state updatedAt createdAt
+        parent { title }
+        subIssuesSummary { completed total }
+        issueDependenciesSummary { blockedBy blocking }
+        closedByPullRequestsReferences(first: 1, includeClosedPrs: true) {
+          totalCount
+          nodes { number title prState: state isDraft }
+        }
         repository { nameWithOwner }
         assignees(first: 10) { nodes { ...UserLite } }
         labels(first: 10) { nodes { name color } }
       }
       ... on PullRequest {
-        id number title url prState: state isDraft updatedAt
+        id number title url prState: state isDraft updatedAt createdAt
         repository { nameWithOwner }
         assignees(first: 10) { nodes { ...UserLite } }
         labels(first: 10) { nodes { name color } }

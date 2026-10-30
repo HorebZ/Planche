@@ -21,6 +21,13 @@ export function cardData(card: BoardCard): IssueCardData {
         title: card.title,
         labels: card.labels,
         assignees: card.assignees.map((u) => ({ login: u.login, avatarUrl: u.avatar_url })),
+        createdAt: card.details?.created_at ?? undefined,
+        parentTitle: card.details?.parent_title ?? undefined,
+        subIssues: card.details?.sub_issues ?? undefined,
+        blockedBy: card.details?.blocked_by,
+        blocking: card.details?.blocking,
+        pullRequestCount: card.details?.pull_request_count,
+        pullRequest: card.details?.pull_request ?? undefined,
       };
     case "pull_request":
       return {
@@ -31,6 +38,7 @@ export function cardData(card: BoardCard): IssueCardData {
         title: card.title,
         labels: card.labels,
         assignees: card.assignees.map((u) => ({ login: u.login, avatarUrl: u.avatar_url })),
+        createdAt: card.details?.created_at ?? undefined,
       };
     case "draft":
       return {

@@ -277,6 +277,7 @@ export const Board = memo(function Board({ board, onMove, onCreateDraft }: Board
       measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
       onDragStart={onDragStart}
       onDragMove={onDragMove}
+      onDragOver={onDragMove}
       onDragEnd={({ active }: DragEndEvent) => end(true, active.rect.current.translated)}
       onDragCancel={({ active }) => end(false, active.rect.current.translated)}
     >

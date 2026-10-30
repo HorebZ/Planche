@@ -182,6 +182,15 @@ export function BoardSection() {
                 priority="high"
                 createdAt="2026-10-13"
                 subIssues={{ completed: 2, total: 5 }}
+                pullRequestCount={1}
+                pullRequest={{
+                  number: 240,
+                  title: "Fix the column counter",
+                  state: "merged",
+                  is_draft: false,
+                }}
+                blockedBy={1}
+                blocking={2}
               />
             </State>
             <State label="hover">

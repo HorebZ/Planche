@@ -175,6 +175,33 @@ pub enum PullRequestState {
     Merged,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(default)]
+pub struct CardDetails {
+    pub created_at: Option<String>,
+    pub parent_title: Option<String>,
+    pub sub_issues: Option<SubIssues>,
+    pub blocked_by: u32,
+    pub blocking: u32,
+    pub pull_request_count: u32,
+    /// The linked PR when there is exactly one; otherwise the count is displayed.
+    pub pull_request: Option<LinkedPullRequest>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct SubIssues {
+    pub completed: u32,
+    pub total: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct LinkedPullRequest {
+    pub number: u32,
+    pub title: String,
+    pub state: PullRequestState,
+    pub is_draft: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ItemContent {
@@ -192,6 +219,8 @@ pub enum ItemContent {
         state: IssueState,
         assignees: Vec<User>,
         labels: Vec<Label>,
+        #[serde(default)]
+        details: Box<CardDetails>,
     },
     PullRequest {
         id: ContentId,
@@ -203,6 +232,8 @@ pub enum ItemContent {
         is_draft: bool,
         assignees: Vec<User>,
         labels: Vec<Label>,
+        #[serde(default)]
+        details: Box<CardDetails>,
     },
     /// Content the token cannot read, such as an issue from a private repo.
     Redacted,

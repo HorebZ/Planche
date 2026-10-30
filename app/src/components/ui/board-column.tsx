@@ -39,9 +39,11 @@ export function BoardColumn({
       )}
       {...props}
     >
-      <header className="flex h-[34px] items-center gap-[7px] pr-0.5 pl-1.5">
+      <header className="flex h-[34px] shrink-0 items-center gap-[7px] pr-0.5 pl-1.5">
         <StatusSquare status={status} />
-        <span className="font-medium text-base">{name ?? statusLabels[status]}</span>
+        <span className="min-w-0 truncate font-medium text-base">
+          {name ?? statusLabels[status]}
+        </span>
         <span
           data-slot="board-column-count"
           className="text-[12px] text-fg-3 tabular-nums"

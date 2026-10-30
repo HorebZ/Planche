@@ -5,9 +5,9 @@ use serde_json::json;
 
 use super::{GithubClient, decode, wire};
 use crate::domain::{
-    ContentId, Field, FieldId, IssueState, Item, ItemContent, ItemId, Label, OptionId,
-    OwnerProjects, ProjectId, ProjectList, ProjectMeta, ProjectSummary, PullRequestState,
-    SelectOption, User, UserId, View, ViewId, ViewLayout, Viewer,
+    CardDetails, ContentId, Field, FieldId, IssueState, Item, ItemContent, ItemId, Label,
+    LinkedPullRequest, OptionId, OwnerProjects, ProjectId, ProjectList, ProjectMeta,
+    ProjectSummary, PullRequestState, SelectOption, User, UserId, View, ViewId, ViewLayout, Viewer,
 };
 use crate::error::{Error, Result};
 use crate::intent::Operation;
@@ -423,6 +423,11 @@ fn content_from_wire(content: wire::Content) -> ItemContent {
             repository,
             assignees,
             labels,
+            created_at,
+            parent,
+            sub_issues_summary,
+            issue_dependencies_summary,
+            closed_by_pull_requests_references,
         } => ItemContent::Issue {
             id: ContentId(id),
             number,
@@ -435,6 +440,29 @@ fn content_from_wire(content: wire::Content) -> ItemContent {
             },
             assignees: users(assignees),
             labels: labels_from_wire(labels),
+            details: Box::new(CardDetails {
+                created_at,
+                parent_title: parent.map(|p| p.title),
+                sub_issues: sub_issues_summary.filter(|s| s.total > 0),
+                blocked_by: issue_dependencies_summary
+                    .as_ref()
+                    .map_or(0, |d| d.blocked_by),
+                blocking: issue_dependencies_summary
+                    .as_ref()
+                    .map_or(0, |d| d.blocking),
+                pull_request_count: closed_by_pull_requests_references
+                    .as_ref()
+                    .map_or(0, |p| p.total_count),
+                pull_request: closed_by_pull_requests_references
+                    .filter(|p| p.total_count == 1)
+                    .and_then(|p| p.nodes.into_iter().flatten().next())
+                    .map(|p| LinkedPullRequest {
+                        number: p.number,
+                        title: p.title,
+                        state: pr_state(p.pr_state),
+                        is_draft: p.is_draft,
+                    }),
+            }),
         },
         wire::Content::PullRequest {
             id,
@@ -446,21 +474,30 @@ fn content_from_wire(content: wire::Content) -> ItemContent {
             repository,
             assignees,
             labels,
+            created_at,
         } => ItemContent::PullRequest {
             id: ContentId(id),
             number,
             title,
             url,
             repo: repository.name_with_owner,
-            state: match pr_state {
-                wire::PullRequestState::Open => PullRequestState::Open,
-                wire::PullRequestState::Closed => PullRequestState::Closed,
-                wire::PullRequestState::Merged => PullRequestState::Merged,
-            },
+            state: self::pr_state(pr_state),
             is_draft,
             assignees: users(assignees),
             labels: labels_from_wire(labels),
+            details: Box::new(CardDetails {
+                created_at,
+                ..Default::default()
+            }),
         },
+    }
+}
+
+fn pr_state(state: wire::PullRequestState) -> PullRequestState {
+    match state {
+        wire::PullRequestState::Open => PullRequestState::Open,
+        wire::PullRequestState::Closed => PullRequestState::Closed,
+        wire::PullRequestState::Merged => PullRequestState::Merged,
     }
 }
 
