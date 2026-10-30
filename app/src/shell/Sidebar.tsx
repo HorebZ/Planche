@@ -30,6 +30,7 @@ type AppSidebarProps = {
   projectId: ProjectId | null;
   cardCount?: number;
   syncedAt: string | null;
+  error?: string | null;
   onSelect: (projectId: ProjectId) => void;
   onSearch: () => void;
 };
@@ -43,6 +44,7 @@ export function AppSidebar({
   projectId,
   cardCount,
   syncedAt,
+  error,
   onSelect,
   onSearch,
 }: AppSidebarProps) {
@@ -125,12 +127,15 @@ export function AppSidebar({
         </SidebarGroup>
       </div>
       <span className="flex-1" />
-      <SyncFooter syncedAt={syncedAt} />
+      <SyncFooter
+        syncedAt={syncedAt}
+        error={error}
+      />
     </Sidebar>
   );
 }
 
-function SyncFooter({ syncedAt }: { syncedAt: string | null }) {
+function SyncFooter({ syncedAt, error }: { syncedAt: string | null; error?: string | null }) {
   const status = useSyncStatus();
   const auth = useAuth();
   const queryClient = useQueryClient();
@@ -142,12 +147,13 @@ function SyncFooter({ syncedAt }: { syncedAt: string | null }) {
     useUi.getState().open(open ? { type: "settings" } : null);
   const showSettings = () => setSettingsOpen(true);
   const now = useNow(30_000);
-  const { tone, text } = footerText(status.data, syncedAt, now);
+  const { tone, text } = footerText(status.data, syncedAt, now, error);
   return (
     <>
       <SidebarFooter
         tone={tone}
         text={text}
+        title={text}
       >
         <Button
           variant="ghost"

@@ -1,9 +1,9 @@
-import { CloudCheck, CloudOff } from "lucide-react";
+import { Cloud, CloudCheck, CloudOff } from "lucide-react";
 import type { ComponentProps } from "react";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/cn";
 
-export type SyncIndicatorState = "idle" | "busy" | "offline";
+export type SyncIndicatorState = "idle" | "busy" | "offline" | "unknown";
 
 type SyncIndicatorProps = ComponentProps<"span"> & {
   state: SyncIndicatorState;
@@ -19,7 +19,7 @@ export function SyncIndicator({ state, label, className, ...props }: SyncIndicat
       data-state={state}
       role="status"
       className={cn(
-        "flex items-center gap-[5px] px-1.5 text-[11.5px]",
+        "flex min-w-0 max-w-[240px] items-center gap-[5px] px-1.5 text-[11.5px] [&_svg]:shrink-0",
         state === "offline" ? "font-medium text-danger" : "text-fg-3",
         state === "busy" && "gap-1.5",
         className,
@@ -33,13 +33,22 @@ export function SyncIndicator({ state, label, className, ...props }: SyncIndicat
         />
       ) : null}
       {state === "busy" ? <Spinner size={11} /> : null}
+      {state === "unknown" ? (
+        <Cloud
+          className="size-[15px]"
+          aria-hidden
+        />
+      ) : null}
       {state === "offline" ? (
         <CloudOff
           className="size-[15px]"
           aria-hidden
         />
       ) : null}
-      {label ?? (state === "offline" ? "Offline" : "Up to date")}
+      <span className="truncate">
+        {label ??
+          (state === "offline" ? "Offline" : state === "unknown" ? "Not synced yet" : "Up to date")}
+      </span>
     </span>
   );
 }

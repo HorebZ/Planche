@@ -20,11 +20,14 @@ import {
 } from "@/command/commands";
 import { ShortcutSheet } from "@/command/ShortcutSheet";
 import { Banner } from "@/components/ui/banner";
+import { BoardErrorCard } from "@/components/ui/board-states";
+import { Button } from "@/components/ui/button";
 import { IssueListGroup } from "@/components/ui/issue-list";
 import { defaultProjectTones } from "@/components/ui/sidebar";
 import { notify } from "@/components/ui/toast";
 import type { Card, Column, OptionId, ProjectId, User } from "@/ipc/bindings";
 import {
+  currentProjectQuery,
   errorMessage,
   useAuth,
   useBoard,
@@ -40,6 +43,7 @@ import { usePreferences } from "@/stores/preferences";
 import { useUi } from "@/stores/ui";
 import { OfflineBanner } from "./OfflineBanner";
 import { AppSidebar, signOut } from "./Sidebar";
+import { footerText } from "./syncText";
 import { type ProjectLayout, Toolbar } from "./Toolbar";
 
 /** The card's page on github.com. A draft has none, so its project's. */
@@ -75,10 +79,14 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
     : null;
 
   const syncNow = useCallback(() => {
+    if (refresh.isPending) {
+      return;
+    }
     refresh.mutate(projectId, {
       onError: (error) => notify(`Sync failed: ${errorMessage(error)}`, "error"),
+      onSuccess: () => void board.refetch(),
     });
-  }, [refresh, projectId]);
+  }, [refresh, projectId, board.refetch]);
   const goTo = (id: ProjectId) => {
     selectProject(id);
     openProject.mutate(id);
@@ -209,12 +217,40 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   const cards = data?.columns.reduce((sum, c) => sum + c.cards.length, 0);
   const syncing = status.data?.state.type === "syncing";
   const offline = status.data?.state.type === "offline";
+  // A later automatic sync also clears a failed manual refresh.
+  const refreshError =
+    refresh.variables === projectId && (status.data?.last_sync_at ?? 0) <= refresh.submittedAt
+      ? refresh.error
+      : null;
+  const failure = board.error ?? status.error ?? refreshError;
+  const error = failure ? errorMessage(failure) : null;
+  const feedback = footerText(status.data, data?.synced_at ?? null, Date.now(), error);
+  const failed = feedback.tone === "offline";
+  const retrying = board.isFetching || status.isFetching || refresh.isPending;
+  const retry = () => {
+    if (retrying) {
+      return;
+    }
+    if (board.error) {
+      void board.refetch();
+    } else {
+      syncNow();
+    }
+    if (status.error) {
+      void status.refetch();
+    }
+  };
+  const chooseProject = () => {
+    queryClient.setQueryData(currentProjectQuery.queryKey, null);
+    selectProject(null);
+  };
   return (
     <div className="flex h-screen overflow-hidden bg-bg-sunken">
       <AppSidebar
         projectId={projectId}
         cardCount={cards}
         syncedAt={data?.synced_at ?? null}
+        error={error}
         onSelect={goTo}
         onSearch={showPalette}
       />
@@ -227,27 +263,48 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
           board={data}
           project={project.data}
           status={status.data}
+          error={error}
           onSelectView={selectView}
           layout={layout}
           onLayoutChange={setLayout}
           onSearch={showPalette}
         />
         {syncing ? <SyncBar /> : null}
-        {offline ? (
+        {data && offline && !error ? (
           <OfflineBanner
             retryAt={status.data?.retry_at ?? null}
             onRetry={syncNow}
+            pending={refresh.isPending}
           />
         ) : null}
-        {data && board.error ? (
+        {data && failed && (!offline || error) ? (
           <Banner
             className="mx-3.5 mt-2.5"
             title="Could not refresh this project"
-            description={errorMessage(board.error)}
+            description={feedback.text}
+            meta="Showing saved data"
+            action={
+              <Button
+                size="sm"
+                disabled={retrying}
+                onClick={retry}
+              >
+                Retry now
+              </Button>
+            }
           />
         ) : null}
         <div className="min-h-0 flex-1">
-          {data == null ? (
+          {data == null && failed ? (
+            <div className="grid h-full place-items-center overflow-y-auto p-6">
+              <BoardErrorCard
+                message={feedback.text}
+                pending={retrying}
+                onRetry={retry}
+                onBack={chooseProject}
+              />
+            </div>
+          ) : data == null ? (
             <LoadingBoard />
           ) : cards === 0 && !drafting && layout === "board" ? (
             <EmptyBoard

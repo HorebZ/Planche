@@ -17,7 +17,11 @@ export function footerText(
   status: SyncStatus | undefined,
   syncedAt: string | null,
   now = Date.now(),
+  error?: string | null,
 ) {
+  if (error) {
+    return { tone: "offline", text: error } as const;
+  }
   const pending = status?.pending ?? 0;
   const changes = pending === 1 ? "1 change pending" : `${pending} changes pending`;
   switch (status?.state.type) {

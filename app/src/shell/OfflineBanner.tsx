@@ -9,9 +9,11 @@ import { keysFor } from "@/keyboard/shortcuts";
 export function OfflineBanner({
   retryAt,
   onRetry,
+  pending = false,
 }: {
   retryAt: number | null;
   onRetry: () => void;
+  pending?: boolean;
 }) {
   const seconds = useCountdown(retryAt);
   return (
@@ -25,6 +27,7 @@ export function OfflineBanner({
         <Button
           className="h-6 text-xs"
           onClick={onRetry}
+          disabled={pending}
         >
           Retry now
           <Kbd
