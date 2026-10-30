@@ -11,18 +11,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SettingsDialog } from "@/components/ui/settings";
-import { Sidebar, SidebarAccount, SidebarFooter, SidebarGroup } from "@/components/ui/sidebar";
+import {
+  defaultProjectTones,
+  Sidebar,
+  SidebarAccount,
+  SidebarFooter,
+  SidebarGroup,
+} from "@/components/ui/sidebar";
 import { SidebarProject } from "@/components/ui/sidebar-project";
-import type { StatusKey } from "@/components/ui/status";
 import { commands, type ProjectId, type SyncInterval } from "@/ipc/bindings";
 import { useAuth, useProjects, useSetSyncPrefs, useSyncPrefs, useSyncStatus } from "@/ipc/queries";
 import { keysFor, keysOf, shortcuts } from "@/keyboard/shortcuts";
 import { usePreferences } from "@/stores/preferences";
 import { useUi } from "@/stores/ui";
 import { footerText } from "./syncText";
-
-/** GitHub projects have no color, so each takes a status tone from its number. */
-const tones: StatusKey[] = ["done", "todo", "review", "doing", "backlog"];
 
 type AppSidebarProps = {
   projectId: ProjectId | null;
@@ -50,7 +52,7 @@ export function AppSidebar({
   const auth = useAuth();
   const projects = useProjects();
   const login = auth.data?.login ?? "";
-  const { hiddenProjects, setProjectHidden } = usePreferences();
+  const { hiddenProjects, setProjectHidden, projectColors, setProjectColor } = usePreferences();
   const [showHidden, setShowHidden] = useState(false);
   const hidden = hiddenProjects[login] ?? [];
   const all =
@@ -61,7 +63,11 @@ export function AppSidebar({
     <SidebarProject
       key={project.id}
       name={project.title}
-      tone={tones[project.number % tones.length]}
+      tone={
+        projectColors[login]?.[project.id] ??
+        defaultProjectTones[project.number % defaultProjectTones.length]
+      }
+      onToneChange={(tone) => setProjectColor(login, project.id, tone)}
       count={project.id === projectId ? cardCount : undefined}
       active={project.id === projectId}
       hidden={isHidden}

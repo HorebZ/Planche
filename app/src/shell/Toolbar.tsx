@@ -9,6 +9,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { type ProjectTone, projectTones } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SyncIndicator } from "@/components/ui/sync-indicator";
 import type { Board, ProjectMeta, SyncStatus, ViewId } from "@/ipc/bindings";
@@ -16,6 +17,7 @@ import { busyLabel } from "./syncText";
 
 export type ProjectLayout = "board" | "list";
 type ToolbarProps = {
+  tone: ProjectTone;
   board: Board | null | undefined;
   project: ProjectMeta | null | undefined;
   status: SyncStatus | undefined;
@@ -26,6 +28,7 @@ type ToolbarProps = {
 };
 
 export function Toolbar({
+  tone,
   board,
   project,
   status,
@@ -48,7 +51,8 @@ export function Toolbar({
           <>
             <span
               aria-hidden
-              className="size-2.5 rounded-[3px] bg-accent"
+              data-slot="project-color"
+              className={`size-2.5 rounded-[3px] ${projectTones[tone]}`}
             />
             <DropdownMenu>
               <DropdownMenuTrigger className="flex h-7 items-center gap-2 rounded-md px-0.5 font-medium outline-none hover:bg-hover focus-visible:shadow-ring">

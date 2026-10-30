@@ -21,6 +21,7 @@ import {
 import { ShortcutSheet } from "@/command/ShortcutSheet";
 import { Banner } from "@/components/ui/banner";
 import { IssueListGroup } from "@/components/ui/issue-list";
+import { defaultProjectTones } from "@/components/ui/sidebar";
 import { notify } from "@/components/ui/toast";
 import type { Card, Column, OptionId, ProjectId, User } from "@/ipc/bindings";
 import {
@@ -35,6 +36,7 @@ import {
 } from "@/ipc/queries";
 import { type Direction, navigate } from "@/keyboard/shortcuts";
 import { useShortcuts } from "@/keyboard/useShortcuts";
+import { usePreferences } from "@/stores/preferences";
 import { useUi } from "@/stores/ui";
 import { OfflineBanner } from "./OfflineBanner";
 import { AppSidebar, signOut } from "./Sidebar";
@@ -61,6 +63,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   const projects = useProjects();
   const status = useSyncStatus();
   const auth = useAuth();
+  const projectColor = usePreferences((s) => s.projectColors[auth.data?.login ?? ""]?.[projectId]);
   const openProject = useOpenProject();
   const refresh = useRefresh();
   const actions = useActions(projectId, viewId);
@@ -218,6 +221,10 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
       />
       <main className="relative my-2 mr-2 flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-bg shadow-panel">
         <Toolbar
+          tone={
+            projectColor ??
+            defaultProjectTones[(data?.project.number ?? 0) % defaultProjectTones.length]
+          }
           board={data}
           project={project.data}
           status={status.data}

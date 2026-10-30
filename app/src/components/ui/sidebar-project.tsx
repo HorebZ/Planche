@@ -15,9 +15,25 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Kbd } from "@/components/ui/kbd";
-import { SidebarItem } from "@/components/ui/sidebar";
-import type { StatusKey } from "@/components/ui/status";
+import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { type ProjectTone, projectTones, SidebarItem } from "@/components/ui/sidebar";
 import { commandFor, keysFor } from "@/keyboard/shortcuts";
+import { cn } from "@/lib/cn";
+
+const colors: { tone: ProjectTone; name: string }[] = [
+  { tone: "danger", name: "Red" },
+  { tone: "accent", name: "Orange" },
+  { tone: "doing", name: "Yellow" },
+  { tone: "lime", name: "Lime" },
+  { tone: "done", name: "Green" },
+  { tone: "teal", name: "Teal" },
+  { tone: "cyan", name: "Cyan" },
+  { tone: "blue", name: "Blue" },
+  { tone: "indigo", name: "Indigo" },
+  { tone: "review", name: "Purple" },
+  { tone: "pink", name: "Pink" },
+  { tone: "todo", name: "Gray" },
+];
 
 export function SidebarProject({
   name,
@@ -28,15 +44,17 @@ export function SidebarProject({
   onOpen,
   onOpenGitHub,
   onHide,
+  onToneChange,
 }: {
   name: string;
-  tone: StatusKey;
+  tone: ProjectTone;
   active: boolean;
   count?: number;
   hidden: boolean;
   onOpen: () => void;
   onOpenGitHub: () => void;
   onHide: () => void;
+  onToneChange: (tone: ProjectTone) => void;
 }) {
   return (
     <ContextMenu>
@@ -56,6 +74,47 @@ export function SidebarProject({
             }}
             className="pr-8 [&>span:last-child:not(:nth-child(2))]:group-hover:invisible"
           />
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={`Change color for ${name}`}
+                className="absolute top-0.5 left-[3px] size-6 rounded-sm"
+              />
+            </PopoverTrigger>
+            <PopoverContent
+              aria-label={`Color for ${name}`}
+              className="w-auto p-2"
+            >
+              <div className="grid grid-cols-4 gap-1">
+                {colors.map((color) => (
+                  <PopoverClose
+                    key={color.tone}
+                    asChild
+                  >
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={color.name}
+                      aria-pressed={(tone === "backlog" ? "todo" : tone) === color.tone}
+                      className={cn(
+                        "size-7 rounded-md p-1",
+                        (tone === "backlog" ? "todo" : tone) === color.tone &&
+                          "bg-active shadow-[inset_0_0_0_1px_var(--pl-border-strong)]",
+                      )}
+                      onClick={() => onToneChange(color.tone)}
+                    >
+                      <span
+                        aria-hidden
+                        className={`size-4 rounded-sm ${projectTones[color.tone]}`}
+                      />
+                    </Button>
+                  </PopoverClose>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
           {hidden ? (
             <Button
               variant="ghost"

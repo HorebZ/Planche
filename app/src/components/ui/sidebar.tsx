@@ -6,16 +6,38 @@ import { Spinner } from "@/components/ui/spinner";
 import type { StatusKey } from "@/components/ui/status";
 import { cn } from "@/lib/cn";
 
-const projectTones: Record<StatusKey, string> = {
-  backlog: "bg-fg-3",
-  draft: "bg-fg-3",
-  todo: "bg-status-todo",
-  doing: "bg-status-doing",
-  progress: "bg-status-doing",
-  review: "bg-status-review",
-  done: "bg-status-done",
-  cancelled: "bg-fg-3",
-  deleted: "bg-fg-3",
+export type ProjectTone =
+  | StatusKey
+  | "accent"
+  | "danger"
+  | "lime"
+  | "teal"
+  | "cyan"
+  | "blue"
+  | "indigo"
+  | "pink";
+
+/** GitHub projects have no color, so each takes a default tone from its number. */
+export const defaultProjectTones = ["done", "todo", "review", "doing", "backlog"] as const;
+
+export const projectTones: Record<ProjectTone, string> = {
+  accent: "bg-project-orange",
+  danger: "bg-project-red",
+  lime: "bg-project-lime",
+  teal: "bg-project-teal",
+  cyan: "bg-project-cyan",
+  blue: "bg-project-blue",
+  indigo: "bg-project-indigo",
+  pink: "bg-project-pink",
+  backlog: "bg-project-gray",
+  draft: "bg-project-gray",
+  todo: "bg-project-gray",
+  doing: "bg-project-yellow",
+  progress: "bg-project-yellow",
+  review: "bg-project-purple",
+  done: "bg-project-green",
+  cancelled: "bg-project-gray",
+  deleted: "bg-project-gray",
 };
 
 const rowClass =
@@ -125,7 +147,7 @@ export function SidebarGroupAction({ className, ...props }: ComponentProps<"butt
 type SidebarItemProps = ComponentProps<"button"> & {
   name: string;
   /** The colored square before the name. */
-  tone: StatusKey;
+  tone: ProjectTone;
   count?: number;
   active?: boolean;
 };
@@ -154,7 +176,8 @@ export function SidebarItem({
     >
       <span
         aria-hidden
-        className={cn("size-2.5 shrink-0 rounded-[3px]", active ? "bg-accent" : projectTones[tone])}
+        data-slot="project-color"
+        className={cn("size-2.5 shrink-0 rounded-[3px]", projectTones[tone])}
       />
       <span className="flex-1 truncate">{name}</span>
       {count != null ? <span className="text-[11.5px] text-fg-3 tabular-nums">{count}</span> : null}

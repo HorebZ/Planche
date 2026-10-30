@@ -49,6 +49,19 @@
   --color-status-doing: var(--pl-s-doing);
   --color-status-review: var(--pl-s-review);
   --color-status-done: var(--pl-s-done);
+  /* Project identifiers use a distinct palette, independent of semantic status colors. */
+  --color-project-red: crimson;
+  --color-project-orange: darkorange;
+  --color-project-yellow: gold;
+  --color-project-lime: yellowgreen;
+  --color-project-green: light-dark(forestgreen, limegreen);
+  --color-project-teal: light-dark(teal, turquoise);
+  --color-project-cyan: deepskyblue;
+  --color-project-blue: royalblue;
+  --color-project-indigo: light-dark(midnightblue, mediumpurple);
+  --color-project-purple: light-dark(darkorchid, orchid);
+  --color-project-pink: deeppink;
+  --color-project-gray: light-dark(slategray, silver);
 
   --font-sans: var(--pl-font);
   --font-mono: var(--pl-font-mono);

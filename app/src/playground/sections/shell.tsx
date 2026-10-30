@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { AccountBlock, AppIcon, Logotype, ScopeRow } from "@/components/ui/onboarding";
 import { SettingsDialog } from "@/components/ui/settings";
 import {
+  type ProjectTone,
   Sidebar,
   SidebarAccount,
   SidebarFooter,
@@ -32,6 +33,8 @@ const settings = (
 );
 
 export function ShellSection() {
+  const [designTone, setDesignTone] = useState<ProjectTone>("review");
+  const [hiddenTone, setHiddenTone] = useState<ProjectTone>("todo");
   return (
     <Section
       id="shell"
@@ -129,7 +132,8 @@ export function ShellSection() {
             <div className="w-sidebar">
               <SidebarProject
                 name="Design system"
-                tone="review"
+                tone={designTone}
+                onToneChange={setDesignTone}
                 active={false}
                 hidden={false}
                 onOpen={() => {}}
@@ -138,7 +142,8 @@ export function ShellSection() {
               />
               <SidebarProject
                 name="Hidden project"
-                tone="todo"
+                tone={hiddenTone}
+                onToneChange={setHiddenTone}
                 active={false}
                 hidden
                 onOpen={() => {}}
