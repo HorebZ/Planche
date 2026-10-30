@@ -1,7 +1,7 @@
 <h1 align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="design/brand/logotype/planche-lockup-paper.svg">
-    <img src="design/brand/logotype/planche-lockup-ink.svg" width="360" alt="Planche">
+    <source media="(prefers-color-scheme: dark)" srcset="app/src/assets/brand/planche-lockup-paper.svg">
+    <img src="app/src/assets/brand/planche-lockup-ink.svg" width="360" alt="Planche">
   </picture>
 </h1>
 
@@ -130,11 +130,11 @@ crates/
   planche-core/        Domain, GitHub client, cache and sync engine
   planche-cli/         Command-line client
 app/
+  src/assets/brand/    App icons and README logos
   src/components/ui/   UI components
   src/playground/      Component playground
   src/styles/          Design tokens and Tailwind theme
   e2e/                 Playwright tests
   src-tauri/           Tauri shell
-design/                Design handoff, the visual source of truth
 scripts/               GraphQL validation, schema update
 ```

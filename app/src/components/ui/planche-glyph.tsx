@@ -1,5 +1,5 @@
 // Planche — status / priority / progress glyphs. Reference implementation (port as-is).
-// Colours come from design/tokens/planche-tokens.css; never hardcode them.
+// Colours come from app/src/styles/tokens.css; never hardcode them.
 import type * as React from "react";
 
 export type Status = "draft" | "todo" | "progress" | "review" | "done" | "cancelled" | "deleted";
@@ -215,7 +215,6 @@ export function ProgressRing({ value, size = 12 }: { value: number; size?: numbe
   );
 }
 
-/** GitHub mapping, see design/SPEC.md § Statuts. */
 export const STATUS_ORDER: Status[] = ["draft", "todo", "progress", "review", "done", "cancelled"];
 export const STATUS_LABEL: Record<Status, string> = {
   draft: "Draft",

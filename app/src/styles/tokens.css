@@ -1,4 +1,4 @@
-/* Generated from design/tokens/planche-tokens.css. Run bun run sync:design to refresh. */
+/* Shared theme tokens; edit light and dark values here. */
 :root {
   color-scheme: light dark;
   --pl-bg: light-dark(#fcfbf9, #191817);

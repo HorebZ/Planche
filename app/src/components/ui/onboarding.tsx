@@ -1,12 +1,12 @@
 import { CircleCheck, CircleX } from "lucide-react";
 import type { ComponentProps } from "react";
+import icon from "@/assets/brand/planche-icon-flat.svg";
+import smallIcon from "@/assets/brand/planche-icon-small.svg";
 import { Avatar } from "@/components/ui/avatar";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/cn";
-import icon from "../../../../design/brand/icon/planche-icon-flat.svg";
-import smallIcon from "../../../../design/brand/icon/planche-icon-small.svg";
 
-/** The full-bleed app icon from design/brand/icon, as the onboarding shows it. */
+/** The full-bleed app icon shown during onboarding. */
 export function AppIcon({
   size = 64,
   className,
@@ -27,7 +27,7 @@ export function AppIcon({
   );
 }
 
-/** The "PLANCHE." wordmark from design/brand/logotype, inline so it takes the theme. */
+/** The "PLANCHE." wordmark, inline so it takes the theme. */
 export function Logotype({ className, ...props }: ComponentProps<"svg">) {
   return (
     <svg
