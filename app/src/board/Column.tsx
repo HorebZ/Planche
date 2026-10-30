@@ -10,7 +10,7 @@ import { Card } from "./Card";
 import { type DraftSubmit, NewDraft } from "./NewDraft";
 import { statusTone } from "./statusTone";
 
-const GAP = 5;
+const GAP = 8;
 
 /** Where a lifted card would land in this column. `index` counts the cards without it. */
 export type Landing = { index: number; height: number; fromHere: boolean };

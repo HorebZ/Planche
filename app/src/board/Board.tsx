@@ -45,7 +45,7 @@ type Drag = {
   keyboard: boolean;
 };
 
-const CARD_GAP = 6;
+const CARD_GAP = 8;
 
 /** The cards of a column, without the lifted one. */
 function others(board: BoardData, column: number, id: ItemId) {

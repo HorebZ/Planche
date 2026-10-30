@@ -42,13 +42,21 @@ for (const colorScheme of ["light", "dark"] as const) {
       const header = el.querySelector("header")?.getBoundingClientRect();
       const scroll = el.querySelector('[data-slot="column-scroll"]')?.getBoundingClientRect();
       const card = el.querySelector('[data-slot="issue-card"]')?.getBoundingClientRect();
-      if (!header || !scroll || !card) {
+      const secondCard = el
+        .querySelectorAll('[data-slot="issue-card"]')[1]
+        ?.getBoundingClientRect();
+      if (!header || !scroll || !card || !secondCard) {
         throw new Error("Missing column content");
       }
-      return { paintInset: card.top - scroll.top, headerGap: card.top - header.bottom };
+      return {
+        paintInset: card.top - scroll.top,
+        headerGap: card.top - header.bottom,
+        cardGap: secondCard.top - card.bottom,
+      };
     });
     expect(spacing.paintInset).toBeGreaterThanOrEqual(2);
-    expect(spacing.headerGap).toBe(6);
+    expect(spacing.headerGap).toBe(8);
+    expect(spacing.cardGap).toBe(8);
     await card.focus();
     await todo.screenshot({ path: test.info().outputPath(`column-header-${colorScheme}.png`) });
   });
