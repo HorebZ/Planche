@@ -20,6 +20,8 @@ import type {
 
 export type Scenario =
 	| "board"
+	| "locked"
+	| "unlock-cancelled"
 	| "six-statuses"
 	| "loading"
 	| "syncing"
@@ -225,8 +227,18 @@ export function installMockBackend(scenario: Scenario) {
 	let board = boardFor(scenario);
 	const changed = () => emit("board-changed", { project_id: PROJECT });
 	let dispatchSeq = 0;
+	let unlock: (() => void) | undefined;
 	const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
-		auth_status: () => auth,
+		auth_status: async () => {
+			if (scenario === "locked")
+				await new Promise<void>((resolve) => {
+					unlock = resolve;
+				});
+			if (scenario === "unlock-cancelled" && calls.auth_status === 1) {
+				throw { kind: "Auth", message: "Authentication cancelled. Try again when you're ready." } satisfies AppError;
+			}
+			return auth;
+		},
 		auth_set_token: async () => {
 			if (scenario === "checking") return new Promise(() => {});
 			await new Promise((resolve) => setTimeout(resolve, 600));
@@ -310,5 +322,5 @@ export function installMockBackend(scenario: Scenario) {
 		},
 		{ shouldMockEvents: true },
 	);
-	Object.assign(window, { __planche: { emit, calls } });
+	Object.assign(window, { __planche: { emit, calls, unlock: () => unlock?.() } });
 }

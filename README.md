@@ -71,6 +71,25 @@ cargo run -p planche-cli -- sync --watch @me/2 --interval 1m   # 1m, 5m, 15m or 
 
 `PLANCHE_TOKEN` overrides the stored token.
 
+The desktop window opens locked before accessing the token. On macOS builds signed
+with a provisioning profile that permits Keychain access, the token is stored in
+the Data Protection Keychain with user presence required: macOS offers Touch ID
+with the Mac password as a fallback. The first unlock migrates an existing token
+from the legacy Keychain; macOS may ask for the old item's password permission
+during this one-time migration. The token is then kept in memory for the session.
+Cancelling authentication keeps the window locked until you choose to retry.
+Background commands use only the unlocked session and never open the Keychain.
+Sync starts after authentication succeeds; waiting, refocusing the window, or
+reconnecting the network does not launch another authentication request.
+The protected token belongs to the signed app's access group. An unsigned CLI
+uses a separate legacy entry; after desktop migration, sign in again with
+`planche auth login` or use `PLANCHE_TOKEN` for CLI commands.
+
+Ad-hoc development builds cannot access the protected store and use the legacy
+Keychain instead. They make one read at startup, after the window is visible;
+rebuilding can cause macOS to ask for permission again because the binary's
+signature changes. `PLANCHE_TOKEN` bypasses Keychain authentication for development.
+
 The board lives in a SQLite cache at `~/Library/Application Support/dev.planche.app/cache.sqlite`. `PLANCHE_CACHE` overrides the path. `board` prints the cached board at once, then refreshes it from GitHub. A move shows at once and goes into a queue. When GitHub is unreachable, the move stays queued, and the next `sync` sends it.
 
 In debug builds, `PLANCHE_FAULT` injects failures: `fail_page_2`, `fail_mutations`, `hang_before_ack` and `ratelimit_low`.

@@ -1,5 +1,6 @@
 import { Settings } from "lucide-react";
 import { useState } from "react";
+import { AppLockContent } from "@/components/ui/app-lock";
 import { EmptyBoardCard, SkeletonColumn } from "@/components/ui/board-states";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,17 @@ export function ShellSection() {
 		<Section id="shell" title="Sidebar · Sync · Board states · Onboarding">
 			{() => (
 				<div className="flex flex-col gap-5">
+					<Row label="app lock">
+						{["locked", "unlocking", "cancelled"].map((state) => (
+							<State key={state} label={state} className="w-full rounded-xl bg-elevated p-5 shadow-panel">
+								<AppLockContent
+									pending={state === "unlocking"}
+									error={state === "cancelled" ? "Authentication cancelled. Try again when you're ready." : undefined}
+									onUnlock={() => {}}
+								/>
+							</State>
+						))}
+					</Row>
 					<Row label="sidebar">
 						<Sidebar className="h-[360px] rounded-lg">
 							<div className="flex flex-col gap-1.5">

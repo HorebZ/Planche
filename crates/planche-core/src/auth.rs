@@ -7,6 +7,8 @@ use crate::domain::{UserId, Viewer};
 use crate::error::{Error, Result};
 use crate::github::{GithubClient, ops};
 
+mod credentials;
+
 const KEYCHAIN_SERVICE: &str = "dev.planche.app";
 const KEYCHAIN_ACCOUNT: &str = "github-token";
 
@@ -24,7 +26,7 @@ pub fn load_token() -> Result<String> {
     {
         return Ok(token.trim().to_owned());
     }
-    cached(|| match entry()?.get_password() {
+    cached(|| match credentials::read() {
         Ok(token) => Ok(token),
         Err(keyring::Error::NoEntry) => Err(Error::NotSignedIn),
         Err(e) => Err(Error::Keychain(e.to_string())),
@@ -60,9 +62,7 @@ pub async fn login(token: &str) -> Result<Viewer> {
     if !missing.is_empty() {
         return Err(Error::MissingScopes(missing));
     }
-    entry()?
-        .set_password(token)
-        .map_err(|e| Error::Keychain(e.to_string()))?;
+    credentials::write(token).map_err(|e| Error::Keychain(e.to_string()))?;
     remember(Some(token.to_owned()));
     Ok(viewer)
 }
@@ -109,11 +109,9 @@ pub async fn set_token(token: &str) -> Result<AuthStatus> {
 
 /// Deletes the stored token. Deleting a missing token succeeds.
 pub fn sign_out() -> Result<()> {
+    credentials::delete().map_err(|e| Error::Keychain(e.to_string()))?;
     remember(None);
-    match entry()?.delete_credential() {
-        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
-        Err(e) => Err(Error::Keychain(e.to_string())),
-    }
+    Ok(())
 }
 
 /// Required scopes absent from an `x-oauth-scopes` header. A missing header means a
@@ -136,11 +134,6 @@ pub fn missing_scopes(header: Option<&str>) -> Result<Vec<String>> {
         .filter(|required| !covers(required))
         .map(|s| (*s).to_owned())
         .collect())
-}
-
-fn entry() -> Result<keyring::Entry> {
-    keyring::Entry::new(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT)
-        .map_err(|e| Error::Keychain(e.to_string()))
 }
 
 #[cfg(test)]

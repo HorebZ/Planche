@@ -148,7 +148,12 @@ export const assignableUsersQuery = (repo: string) =>
 export const projectQuery = (projectId: ProjectId) =>
 	queryOptions({ queryKey: ["project", projectId], queryFn: () => commands.getProject(projectId) });
 
-export const authQuery = queryOptions({ queryKey: ["auth"], queryFn: () => commands.authStatus() });
+export const authQuery = queryOptions({
+	queryKey: ["auth"],
+	queryFn: () => commands.authStatus(),
+	retryOnMount: false,
+	refetchOnReconnect: false,
+});
 export const projectsQuery = queryOptions({ queryKey: ["projects"], queryFn: () => commands.listProjects() });
 const cachedProjectsQuery = queryOptions({
 	queryKey: ["projects", "cached"],

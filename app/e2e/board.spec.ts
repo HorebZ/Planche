@@ -121,11 +121,13 @@ test("a refused token shows the error under the field", async ({ page }) => {
 test.describe("screenshots", () => {
 	test.skip(!process.env.SCREENSHOTS, "set SCREENSHOTS=1 to capture the window states");
 	for (const colorScheme of ["light", "dark"] as const) {
-		for (const scenario of ["board", "loading", "syncing", "empty", "offline", "valid"] as const) {
+		for (const scenario of ["board", "loading", "syncing", "empty", "offline", "valid", "locked"] as const) {
 			test(`${scenario} ${colorScheme}`, async ({ page }) => {
 				await page.emulateMedia({ colorScheme });
 				await open(page, scenario);
-				if (scenario === "valid") {
+				if (scenario === "locked") {
+					await page.getByRole("dialog", { name: "Unlock Planche" }).waitFor();
+				} else if (scenario === "valid") {
 					await page.setViewportSize({ width: 780, height: 540 });
 					await page.getByLabel("Personal access token").fill("ghp_7Hq2xxxxxxxxxxxxxxxxxxxxxxxx8f2c");
 					await page.keyboard.press("Enter");

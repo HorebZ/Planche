@@ -1,7 +1,8 @@
-import { QueryClientProvider } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { LockedApp } from "@/components/ui/app-lock";
 import { Toaster } from "@/components/ui/toast";
-import { listenToCore, queryClient, useAuth, useCurrentProject, useOpenProject } from "@/ipc/queries";
+import { authQuery, errorMessage, listenToCore, queryClient, useCurrentProject, useOpenProject } from "@/ipc/queries";
 import { Onboarding } from "@/onboarding/Onboarding";
 import { Shell } from "@/shell/Shell";
 import { usePreferences } from "@/stores/preferences";
@@ -29,7 +30,15 @@ export default function App() {
 }
 
 function Root() {
-	const auth = useAuth();
+	const [ready, setReady] = useState(false);
+	const auth = useQuery({ ...authQuery, enabled: ready });
+	useEffect(() => {
+		// Leave a painted lock screen behind the native macOS prompt, even in StrictMode.
+		let frame = requestAnimationFrame(() => {
+			frame = requestAnimationFrame(() => setReady(true));
+		});
+		return () => cancelAnimationFrame(frame);
+	}, []);
 	const current = useCurrentProject();
 	const picked = useUi((s) => s.projectId);
 	const projectId = picked ?? current.data ?? null;
@@ -38,10 +47,18 @@ function Root() {
 	// Starts the engine of the last project; Rust ignores a project already open.
 	const { mutate } = open;
 	useEffect(() => {
-		if (projectId && auth.data?.login) mutate(projectId);
-	}, [projectId, auth.data?.login, mutate]);
+		if (projectId && auth.isSuccess && !auth.isFetching && auth.data.login) mutate(projectId);
+	}, [projectId, auth.isSuccess, auth.isFetching, auth.data?.login, mutate]);
 
-	if (auth.isPending || current.isPending) return null;
+	if (auth.isPending || auth.isError || current.isPending) {
+		return (
+			<LockedApp
+				pending={auth.isPending || auth.isFetching || current.isPending}
+				error={auth.error ? errorMessage(auth.error) : undefined}
+				onUnlock={() => void auth.refetch()}
+			/>
+		);
+	}
 	if (!auth.data?.login || !projectId) return <Onboarding signedIn={Boolean(auth.data?.login)} />;
 	return <Shell projectId={projectId} />;
 }

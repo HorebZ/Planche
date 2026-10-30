@@ -88,6 +88,7 @@ pub struct Core {
     reader: Mutex<Cache>,
     /// The last list from GitHub, to find the owner of a project not cached yet.
     projects: Mutex<Option<ProjectList>>,
+    token: Mutex<Option<String>>,
     engine: tokio::sync::Mutex<Option<Engine>>,
 }
 
@@ -102,12 +103,19 @@ impl Core {
             started: Instant::now(),
             reader: Mutex::new(reader),
             projects: Mutex::default(),
+            token: Mutex::default(),
             engine: tokio::sync::Mutex::default(),
         }
     }
 
     fn cache(&self) -> std::sync::MutexGuard<'_, Cache> {
         self.reader.lock().expect("cache lock")
+    }
+
+    // Background commands must never open the keychain or wait on its prompt.
+    fn client(&self) -> Result<GithubClient> {
+        let token = self.token.lock().expect("token lock").clone();
+        Ok(GithubClient::new(token.ok_or(Error::NotSignedIn)?)?)
     }
 
     /// The board as displayed, or `None` before the project's first sync.
@@ -146,7 +154,7 @@ impl Core {
         if let Some(engine) = engine.as_ref().filter(|e| &e.project == project) {
             return Ok(engine.handle.clone());
         }
-        let client = GithubClient::new(auth::load_token()?)?;
+        let client = self.client()?;
         let (owner, number) = match self.owner_of(project) {
             Ok(found) => found,
             // Not cached and not listed yet: the app just started on a project never synced.
@@ -200,7 +208,9 @@ impl Core {
     }
 
     pub async fn stop(&self) {
-        *self.engine.lock().await = None;
+        let mut engine = self.engine.lock().await;
+        *self.token.lock().expect("token lock") = None;
+        *engine = None;
     }
 }
 
@@ -209,11 +219,18 @@ impl Core {
 #[tauri::command]
 #[specta::specta]
 pub async fn auth_status(core: State<'_, Core>) -> Result<AuthStatus> {
-    match auth::load_token() {
-        Ok(_) => {}
+    // A keychain prompt can wait for the user; keep the window's event loop free.
+    let token = tauri::async_runtime::spawn_blocking(auth::load_token)
+        .await
+        .map_err(|_| AppError {
+            kind: ErrorKind::Auth,
+            message: "Could not unlock the macOS Keychain. Try again.".into(),
+        })?;
+    let token = match token {
+        Ok(token) => token,
         Err(Error::NotSignedIn) => return Ok(AuthStatus::default()),
         Err(error) => return Err(error.into()),
-    }
+    };
     let cached = {
         let cache = core.cache();
         // Before phase 6 the cache kept no ID: those go to GitHub once.
@@ -229,10 +246,12 @@ pub async fn auth_status(core: State<'_, Core>) -> Result<AuthStatus> {
             })
     };
     if let Some(status) = cached {
+        *core.token.lock().expect("token lock") = Some(token);
         return Ok(status);
     }
     let status = auth::status().await?;
     remember_account(&core, &status)?;
+    *core.token.lock().expect("token lock") = Some(token);
     Ok(status)
 }
 
@@ -255,6 +274,7 @@ fn remember_account(core: &Core, status: &AuthStatus) -> Result<()> {
 pub async fn auth_set_token(core: State<'_, Core>, token: String) -> Result<AuthStatus> {
     let status = auth::set_token(&token).await?;
     remember_account(&core, &status)?;
+    *core.token.lock().expect("token lock") = Some(auth::load_token()?);
     Ok(status)
 }
 
@@ -270,7 +290,7 @@ pub async fn auth_sign_out(core: State<'_, Core>) -> Result<()> {
 #[tauri::command]
 #[specta::specta]
 pub async fn list_projects(core: State<'_, Core>) -> Result<ProjectList> {
-    let client = GithubClient::new(auth::load_token()?)?;
+    let client = core.client()?;
     match ops::list_projects(&client).await {
         Ok(list) => {
             *core.projects.lock().expect("projects lock") = Some(list.clone());
@@ -343,12 +363,12 @@ pub async fn dispatch_intent(core: State<'_, Core>, intent: Intent) -> Result<Di
 /// Who can be assigned in `repo`, an `owner/name`.
 #[tauri::command]
 #[specta::specta]
-pub async fn list_assignable_users(repo: String) -> Result<Vec<User>> {
+pub async fn list_assignable_users(core: State<'_, Core>, repo: String) -> Result<Vec<User>> {
     let (owner, name) = repo.split_once('/').ok_or_else(|| AppError {
         kind: ErrorKind::Invalid,
         message: format!("expected owner/name, got `{repo}`"),
     })?;
-    let client = GithubClient::new(auth::load_token()?)?;
+    let client = core.client()?;
     Ok(ops::assignable_users(&client, owner, name).await?)
 }
 
@@ -437,6 +457,34 @@ mod tests {
             .collect();
         cache.write_snapshot(&meta, &items, true).unwrap();
         (Core::new(cache), meta.id)
+    }
+
+    #[tokio::test]
+    async fn network_commands_require_an_unlocked_session() {
+        let (core, _) = core_with_fixtures("locked-session");
+        core.cache().set("account_login", "cached-account").unwrap();
+        core.cache().set("account_id", "U_cached").unwrap();
+        for _ in 0..3 {
+            assert!(matches!(
+                core.client(),
+                Err(AppError {
+                    kind: ErrorKind::Auth,
+                    ..
+                })
+            ));
+            assert!(core.engine().await.is_none());
+        }
+        *core.token.lock().unwrap() = Some("test-token".into());
+        assert!(core.client().is_ok());
+        core.stop().await;
+        assert!(matches!(
+            core.client(),
+            Err(AppError {
+                kind: ErrorKind::Auth,
+                ..
+            })
+        ));
+        assert!(core.engine().await.is_none());
     }
 
     #[test]

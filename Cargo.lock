@@ -3141,9 +3141,11 @@ dependencies = [
 name = "planche-core"
 version = "0.1.0"
 dependencies = [
+ "apple-native-keyring-store",
  "keyring",
  "reqwest",
  "rusqlite",
+ "security-framework",
  "serde",
  "serde_json",
  "specta",

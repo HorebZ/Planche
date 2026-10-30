@@ -1,7 +1,6 @@
 mod commands;
 mod events;
 
-use planche_core::auth;
 use planche_core::cache::Cache;
 use planche_core::sync::SyncCommand;
 use tauri::{LogicalSize, Manager, WindowEvent};
@@ -66,8 +65,7 @@ pub fn run() {
 
             // The onboarding is a small window; the board needs room.
             let window = app.get_webview_window("main").expect("main window");
-            let signed_in = auth::load_token().is_ok();
-            if signed_in {
+            if reopen.is_some() {
                 window.set_min_size(Some(LogicalSize::new(1100.0, 700.0)))?;
                 window.set_size(LogicalSize::new(1440.0, 900.0))?;
             } else {
@@ -77,15 +75,6 @@ pub fn run() {
             window.show()?;
             window.set_focus()?;
 
-            if let (true, Some(project)) = (signed_in, reopen) {
-                let app = app.handle().clone();
-                tauri::async_runtime::spawn(async move {
-                    let core = app.state::<Core>();
-                    if let Err(error) = core.open(&app, &project).await {
-                        eprintln!("could not reopen {project}: {}", error.message);
-                    }
-                });
-            }
             Ok(())
         })
         .on_window_event(|window, event| {

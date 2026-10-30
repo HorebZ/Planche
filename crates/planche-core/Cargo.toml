@@ -18,5 +18,9 @@ specta.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["sync", "time"] }
 
+[target.'cfg(target_os = "macos")'.dependencies]
+apple-native-keyring-store = { version = "1.0.2", features = ["protected"] }
+security-framework = "3.7"
+
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }
