@@ -55,6 +55,21 @@ Run these commands from `app/`.
 
 While `bun run dev` is running, http://localhost:1420/playground shows every UI component in every state, in light and dark mode. The playground is excluded from production builds.
 
+### Frontend code style
+
+`app/biome.json` defines the frontend convention; `.editorconfig` supplies matching editor defaults.
+
+- Indent with 2 spaces, use LF line endings, and wrap code at 100 columns where possible.
+- Use double quotes, semicolons, trailing commas in multiline structures, and parentheses around arrow parameters.
+- Put JSX attributes on separate lines when an element has multiple attributes.
+- Always use braces for conditions and loops, including early returns.
+- Separate logical steps with one blank line; keep related declarations together. Biome preserves these groups and collapses repeated blank lines.
+- Let Biome organize imports and check Tailwind class ordering.
+
+Run `bun run --cwd app format` to format the frontend. `bun run --cwd app lint` checks formatting and lint rules without changing files; it also runs as part of `bun run check`. The generated `app/src/ipc/bindings.ts` keeps the generator's formatting and is excluded from Biome.
+
+### Command-line client
+
 The command-line client runs from the root. It needs a classic personal access token with the `repo`, `read:org` and `project` scopes, stored in the macOS Keychain on sign-in.
 
 ```sh

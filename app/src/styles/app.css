@@ -3,141 +3,141 @@
 
 /* Only Planche tokens exist as utilities. Tailwind's default palette and scales are removed. */
 @theme {
-	--color-*: initial;
-	--text-*: initial;
-	--radius-*: initial;
-	--shadow-*: initial;
-	--font-*: initial;
-	--ease-*: initial;
-	--animate-*: initial;
+  --color-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --font-*: initial;
+  --ease-*: initial;
+  --animate-*: initial;
 }
 
 @theme inline {
-	/* The handoff's 4 px base. In rem it would follow the 13 px root font size and shrink every gap. */
-	--spacing: 4px;
-	--color-white: white;
-	--color-bg: var(--pl-bg);
-	--color-bg-sunken: var(--pl-bg-sunken);
-	--color-surface: var(--pl-surface);
-	--color-elevated: var(--pl-elevated);
-	--color-card: var(--pl-card);
-	--color-primary: var(--pl-primary);
-	--color-primary-fg: var(--pl-primary-fg);
-	--color-overlay: var(--pl-overlay);
-	--color-hover: var(--pl-hover);
-	--color-active: var(--pl-active);
-	--color-skeleton: var(--pl-skeleton);
-	--color-line: var(--pl-border);
-	--color-line-strong: var(--pl-border-strong);
-	--color-fg: var(--pl-fg);
-	--color-fg-2: var(--pl-fg-2);
-	--color-fg-3: var(--pl-fg-3);
-	--color-accent: var(--pl-accent);
-	--color-accent-fg: var(--pl-accent-fg);
-	--color-accent-soft: var(--pl-accent-soft);
-	--color-logo-ink: var(--pl-logo-ink);
-	--color-logo-dot: var(--pl-logo-dot);
-	--color-focus: var(--pl-focus);
-	--color-danger: var(--pl-danger);
-	--color-danger-soft: var(--pl-danger-soft);
-	--color-success: var(--pl-success);
-	--color-warning: var(--pl-warning);
-	--color-status-draft: var(--pl-s-draft);
-	--color-status-cancelled: var(--pl-s-cancelled);
-	--color-status-deleted: var(--pl-s-deleted);
-	--color-status-todo: var(--pl-s-todo);
-	--color-status-doing: var(--pl-s-doing);
-	--color-status-review: var(--pl-s-review);
-	--color-status-done: var(--pl-s-done);
+  /* The handoff's 4 px base. In rem it would follow the 13 px root font size and shrink every gap. */
+  --spacing: 4px;
+  --color-white: white;
+  --color-bg: var(--pl-bg);
+  --color-bg-sunken: var(--pl-bg-sunken);
+  --color-surface: var(--pl-surface);
+  --color-elevated: var(--pl-elevated);
+  --color-card: var(--pl-card);
+  --color-primary: var(--pl-primary);
+  --color-primary-fg: var(--pl-primary-fg);
+  --color-overlay: var(--pl-overlay);
+  --color-hover: var(--pl-hover);
+  --color-active: var(--pl-active);
+  --color-skeleton: var(--pl-skeleton);
+  --color-line: var(--pl-border);
+  --color-line-strong: var(--pl-border-strong);
+  --color-fg: var(--pl-fg);
+  --color-fg-2: var(--pl-fg-2);
+  --color-fg-3: var(--pl-fg-3);
+  --color-accent: var(--pl-accent);
+  --color-accent-fg: var(--pl-accent-fg);
+  --color-accent-soft: var(--pl-accent-soft);
+  --color-logo-ink: var(--pl-logo-ink);
+  --color-logo-dot: var(--pl-logo-dot);
+  --color-focus: var(--pl-focus);
+  --color-danger: var(--pl-danger);
+  --color-danger-soft: var(--pl-danger-soft);
+  --color-success: var(--pl-success);
+  --color-warning: var(--pl-warning);
+  --color-status-draft: var(--pl-s-draft);
+  --color-status-cancelled: var(--pl-s-cancelled);
+  --color-status-deleted: var(--pl-s-deleted);
+  --color-status-todo: var(--pl-s-todo);
+  --color-status-doing: var(--pl-s-doing);
+  --color-status-review: var(--pl-s-review);
+  --color-status-done: var(--pl-s-done);
 
-	--font-sans: var(--pl-font);
-	--font-mono: var(--pl-font-mono);
+  --font-sans: var(--pl-font);
+  --font-mono: var(--pl-font-mono);
 
-	--text-2xs: var(--pl-text-2xs);
-	--text-2xs--line-height: 14px;
-	--text-xs: var(--pl-text-xs);
-	--text-xs--line-height: 14px;
-	--text-sm: var(--pl-text-sm);
-	--text-sm--line-height: 16px;
-	--text-base: var(--pl-text-base);
-	--text-base--line-height: 18px;
-	--text-md: var(--pl-text-md);
-	--text-md--line-height: 18px;
-	--text-lg: var(--pl-text-lg);
-	--text-lg--line-height: 22px;
-	--text-xl: var(--pl-text-xl);
-	--text-xl--line-height: 26px;
-	--text-2xl: var(--pl-text-2xl);
-	--text-2xl--line-height: 30px;
+  --text-2xs: var(--pl-text-2xs);
+  --text-2xs--line-height: 14px;
+  --text-xs: var(--pl-text-xs);
+  --text-xs--line-height: 14px;
+  --text-sm: var(--pl-text-sm);
+  --text-sm--line-height: 16px;
+  --text-base: var(--pl-text-base);
+  --text-base--line-height: 18px;
+  --text-md: var(--pl-text-md);
+  --text-md--line-height: 18px;
+  --text-lg: var(--pl-text-lg);
+  --text-lg--line-height: 22px;
+  --text-xl: var(--pl-text-xl);
+  --text-xl--line-height: 26px;
+  --text-2xl: var(--pl-text-2xl);
+  --text-2xl--line-height: 30px;
 
-	--spacing-row: var(--pl-row);
-	--spacing-control: var(--pl-control);
-	--spacing-control-lg: var(--pl-control-lg);
-	--spacing-toolbar: var(--pl-toolbar);
-	--spacing-sidebar: var(--pl-sidebar-w);
-	--spacing-column: var(--pl-column-w);
+  --spacing-row: var(--pl-row);
+  --spacing-control: var(--pl-control);
+  --spacing-control-lg: var(--pl-control-lg);
+  --spacing-toolbar: var(--pl-toolbar);
+  --spacing-sidebar: var(--pl-sidebar-w);
+  --spacing-column: var(--pl-column-w);
 
-	--radius-xs: var(--pl-radius-xs);
-	--radius-sm: var(--pl-radius-sm);
-	--radius-md: var(--pl-radius-md);
-	--radius-lg: var(--pl-radius-lg);
-	--radius-xl: var(--pl-radius-xl);
-	--radius-window: var(--pl-radius-window);
-	--radius-full: calc(infinity * 1px);
+  --radius-xs: var(--pl-radius-xs);
+  --radius-sm: var(--pl-radius-sm);
+  --radius-md: var(--pl-radius-md);
+  --radius-lg: var(--pl-radius-lg);
+  --radius-xl: var(--pl-radius-xl);
+  --radius-window: var(--pl-radius-window);
+  --radius-full: calc(infinity * 1px);
 
-	--shadow-card: var(--pl-shadow-card);
-	--shadow-drag: var(--pl-shadow-drag);
-	--shadow-pop: var(--pl-shadow-pop);
-	--shadow-window: var(--pl-shadow-window);
-	--shadow-ring: var(--pl-shadow-ring);
-	--shadow-panel: var(--pl-shadow-panel);
-	--shadow-thumb: var(--pl-shadow-thumb);
+  --shadow-card: var(--pl-shadow-card);
+  --shadow-drag: var(--pl-shadow-drag);
+  --shadow-pop: var(--pl-shadow-pop);
+  --shadow-window: var(--pl-shadow-window);
+  --shadow-ring: var(--pl-shadow-ring);
+  --shadow-panel: var(--pl-shadow-panel);
+  --shadow-thumb: var(--pl-shadow-thumb);
 
-	--ease-pl: var(--pl-ease);
-	--ease-pl-out: var(--pl-ease-out);
-	--default-transition-duration: var(--pl-dur-fast);
-	--default-transition-timing-function: var(--pl-ease);
+  --ease-pl: var(--pl-ease);
+  --ease-pl-out: var(--pl-ease-out);
+  --default-transition-duration: var(--pl-dur-fast);
+  --default-transition-timing-function: var(--pl-ease);
 
-	--animate-pl-in: pl-in var(--pl-dur-base) var(--pl-ease);
-	--animate-pl-panel: pl-panel var(--pl-dur-slow) var(--pl-ease);
-	--animate-pl-spin: pl-spin 800ms linear infinite;
-	--animate-pl-shimmer: pl-shimmer 1.4s ease-in-out infinite;
-	--animate-pl-slide: pl-slide 1.4s var(--pl-ease) infinite;
+  --animate-pl-in: pl-in var(--pl-dur-base) var(--pl-ease);
+  --animate-pl-panel: pl-panel var(--pl-dur-slow) var(--pl-ease);
+  --animate-pl-spin: pl-spin 800ms linear infinite;
+  --animate-pl-shimmer: pl-shimmer 1.4s ease-in-out infinite;
+  --animate-pl-slide: pl-slide 1.4s var(--pl-ease) infinite;
 
-	@keyframes pl-in {
-		from {
-			opacity: 0;
-			transform: translateY(-4px) scale(0.98);
-		}
-	}
-	@keyframes pl-panel {
-		from {
-			opacity: 0;
-			transform: translateX(16px);
-		}
-	}
-	@keyframes pl-spin {
-		to {
-			transform: rotate(360deg);
-		}
-	}
-	@keyframes pl-shimmer {
-		0%,
-		100% {
-			opacity: 0.55;
-		}
-		50% {
-			opacity: 1;
-		}
-	}
-	@keyframes pl-slide {
-		from {
-			transform: translateX(-100%);
-		}
-		to {
-			transform: translateX(260%);
-		}
-	}
+  @keyframes pl-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.98);
+    }
+  }
+  @keyframes pl-panel {
+    from {
+      opacity: 0;
+      transform: translateX(16px);
+    }
+  }
+  @keyframes pl-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes pl-shimmer {
+    0%,
+    100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+  @keyframes pl-slide {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(260%);
+    }
+  }
 }
 
 /*
@@ -146,62 +146,62 @@
  * focus-visible:, active: and highlighted: utilities.
  */
 @custom-variant hover {
-	&:hover,
-	&[data-preview~="hover"] {
-		@slot;
-	}
+  &:hover,
+  &[data-preview~="hover"] {
+    @slot;
+  }
 }
 @custom-variant focus-visible {
-	&:focus-visible,
-	&[data-preview~="focus"] {
-		@slot;
-	}
+  &:focus-visible,
+  &[data-preview~="focus"] {
+    @slot;
+  }
 }
 @custom-variant focus-within {
-	&:focus-within,
-	&[data-preview~="focus"] {
-		@slot;
-	}
+  &:focus-within,
+  &[data-preview~="focus"] {
+    @slot;
+  }
 }
 @custom-variant active {
-	&:active,
-	&[data-preview~="active"] {
-		@slot;
-	}
+  &:active,
+  &[data-preview~="active"] {
+    @slot;
+  }
 }
 @custom-variant highlighted {
-	&[data-highlighted],
-	&[data-preview~="hover"] {
-		@slot;
-	}
+  &[data-highlighted],
+  &[data-preview~="hover"] {
+    @slot;
+  }
 }
 
 @layer base {
-	html,
-	body {
-		background: var(--pl-bg-sunken);
-		color: var(--pl-fg);
-		font-family: var(--pl-font);
-		font-size: var(--pl-text-base);
-		line-height: 18px;
-		letter-spacing: var(--pl-tracking);
-		-webkit-font-smoothing: antialiased;
-	}
-	:focus-visible {
-		outline: none;
-		box-shadow: var(--pl-shadow-ring);
-	}
-	button {
-		cursor: default;
-	}
+  html,
+  body {
+    background: var(--pl-bg-sunken);
+    color: var(--pl-fg);
+    font-family: var(--pl-font);
+    font-size: var(--pl-text-base);
+    line-height: 18px;
+    letter-spacing: var(--pl-tracking);
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--pl-shadow-ring);
+  }
+  button {
+    cursor: default;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-	*,
-	*::before,
-	*::after {
-		animation-duration: 0s;
-		transition-duration: 0s;
-		scroll-behavior: auto;
-	}
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0s;
+    transition-duration: 0s;
+    scroll-behavior: auto;
+  }
 }

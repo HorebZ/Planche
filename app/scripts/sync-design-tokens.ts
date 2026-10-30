@@ -1,19 +1,27 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
 // Keep subtree themes for the playground while taking every value from the handoff.
-const source = readFileSync(new URL("../../design/tokens/planche-tokens.css", import.meta.url), "utf8");
+const source = readFileSync(
+  new URL("../../design/tokens/planche-tokens.css", import.meta.url),
+  "utf8",
+);
 const declarations = (block: string) =>
-	new Map([...block.matchAll(/(--pl-[\w-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
+  new Map([...block.matchAll(/(--pl-[\w-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
 const light = declarations(source.match(/:root\s*\{([\s\S]*?)\}/)?.[1] ?? "");
 const dark = declarations(source.match(/\[data-theme="dark"\]\s*\{([\s\S]*?)\}/)?.[1] ?? "");
 const shadows = [...dark.keys()].filter((name) => name.startsWith("--pl-shadow-"));
 const lines = [...light].map(([name, value]) => {
-	const other = dark.get(name);
-	if (!other) return `\t${name}: ${value};`;
-	if (shadows.includes(name)) return `\t${name}-light: ${value};\n\t${name}-dark: ${other};`;
-	return `\t${name}: light-dark(${value}, ${other});`;
+  const other = dark.get(name);
+  if (!other) {
+    return `\t${name}: ${value};`;
+  }
+  if (shadows.includes(name)) {
+    return `\t${name}-light: ${value};\n\t${name}-dark: ${other};`;
+  }
+  return `\t${name}: light-dark(${value}, ${other});`;
 });
-const shadowRules = (theme: string) => shadows.map((name) => `\t${name}: var(${name}-${theme});`).join("\n");
+const shadowRules = (theme: string) =>
+  shadows.map((name) => `\t${name}: var(${name}-${theme});`).join("\n");
 const output = `/* Generated from design/tokens/planche-tokens.css. Run bun run sync:design to refresh. */
 :root {
 \tcolor-scheme: light dark;
@@ -50,14 +58,16 @@ ${shadowRules("dark")}
 `;
 const target = new URL("../src/styles/tokens.css", import.meta.url);
 if (process.argv.includes("--check")) {
-	// Formatting is checked separately by Biome.
-	const normalize = (css: string) =>
-		css
-			.replace(/(?<![\w-])\d*\.\d+/g, (value) => String(Number(value)))
-			.replace(/\s+/g, "")
-			.toLowerCase();
-	if (normalize(readFileSync(target, "utf8")) !== normalize(output)) {
-		console.error("Design tokens are stale. Run bun run sync:design.");
-		process.exit(1);
-	}
-} else writeFileSync(target, output);
+  // Formatting is checked separately by Biome.
+  const normalize = (css: string) =>
+    css
+      .replace(/(?<![\w-])\d*\.\d+/g, (value) => String(Number(value)))
+      .replace(/\s+/g, "")
+      .toLowerCase();
+  if (normalize(readFileSync(target, "utf8")) !== normalize(output)) {
+    console.error("Design tokens are stale. Run bun run sync:design.");
+    process.exit(1);
+  }
+} else {
+  writeFileSync(target, output);
+}

@@ -6,5 +6,5 @@ const PortalContainerContext = createContext<HTMLElement | null>(null);
 export const PortalContainerProvider = PortalContainerContext.Provider;
 
 export function usePortalContainer(): HTMLElement | undefined {
-	return useContext(PortalContainerContext) ?? undefined;
+  return useContext(PortalContainerContext) ?? undefined;
 }
