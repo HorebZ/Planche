@@ -1,6 +1,6 @@
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { EyeOff, Plus, Search, Settings } from "lucide-react";
+import { EyeOff, Search, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +21,7 @@ import {
 import { SidebarProject } from "@/components/ui/sidebar-project";
 import { commands, type ProjectId, type SyncInterval } from "@/ipc/bindings";
 import { useAuth, useProjects, useSetSyncPrefs, useSyncPrefs, useSyncStatus } from "@/ipc/queries";
-import { keysFor, keysOf, shortcuts } from "@/keyboard/shortcuts";
+import { keysOf, shortcuts } from "@/keyboard/shortcuts";
 import { usePreferences } from "@/stores/preferences";
 import { useUi } from "@/stores/ui";
 import { footerText } from "./syncText";
@@ -32,7 +32,6 @@ type AppSidebarProps = {
   syncedAt: string | null;
   onSelect: (projectId: ProjectId) => void;
   onSearch: () => void;
-  onNewIssue: () => void;
 };
 
 export async function signOut(queryClient: QueryClient) {
@@ -46,7 +45,6 @@ export function AppSidebar({
   syncedAt,
   onSelect,
   onSearch,
-  onNewIssue,
 }: AppSidebarProps) {
   const queryClient = useQueryClient();
   const auth = useAuth();
@@ -107,15 +105,6 @@ export function AppSidebar({
           className="size-7 text-fg-3"
         >
           <Search className="size-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={`New draft ${keysFor("issue.new").join("")}`}
-          onClick={onNewIssue}
-          className="size-7 bg-card text-fg-3 shadow-card"
-        >
-          <Plus className="size-4" />
         </Button>
       </div>
       <div className="flex min-h-0 flex-col gap-3.5 overflow-y-auto">

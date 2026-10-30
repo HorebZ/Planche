@@ -217,7 +217,6 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
         syncedAt={data?.synced_at ?? null}
         onSelect={goTo}
         onSearch={showPalette}
-        onNewIssue={newIssue}
       />
       <main className="relative my-2 mr-2 flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-bg shadow-panel">
         <Toolbar
