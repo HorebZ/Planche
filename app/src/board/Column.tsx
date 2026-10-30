@@ -81,7 +81,7 @@ export function Column({
     <BoardColumn
       ref={setNodeRef}
       data-column-index={index}
-      status={statusTone(column.color)}
+      status={statusTone(column.color, column.name)}
       name={column.name}
       count={column.cards.length}
       onAddDraft={() => useUi.getState().open({ type: "draft", column: column.option_id })}

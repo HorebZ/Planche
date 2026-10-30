@@ -16,6 +16,7 @@ const tones: Record<string, StatusKey> = {
 export function statusTone(color: string | null, name?: string): StatusKey {
   const key = name?.toLowerCase().replace(/[ _-]/g, "");
   const statuses: Record<string, StatusKey> = {
+    backlog: "backlog",
     draft: "draft",
     todo: "todo",
     inprogress: "progress",
