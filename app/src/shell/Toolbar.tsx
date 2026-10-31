@@ -1,6 +1,8 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Columns3, Link, List, Search } from "lucide-react";
+import { useMemo } from "react";
 import { statusTone } from "@/board/statusTone";
+import { BoardFilter, type BoardFilters } from "@/components/ui/board-filter";
 import { Button } from "@/components/ui/button";
 import { DisplayMenu, type DisplayProperty } from "@/components/ui/display-menu";
 import {
@@ -13,9 +15,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { type ProjectTone, projectTones } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatusFilter } from "@/components/ui/status-filter";
 import { SyncIndicator } from "@/components/ui/sync-indicator";
-import type { Board, ProjectMeta, SyncStatus, ViewId } from "@/ipc/bindings.types";
+import type { Board, ProjectMeta, SyncStatus, User, ViewId } from "@/ipc/bindings.types";
 import type { ProjectLayout } from "@/stores/preferences";
 import { busyLabel, footerText } from "./syncText";
 
@@ -31,8 +32,9 @@ type ToolbarProps = {
   onSearch: () => void;
   hiddenProperties?: DisplayProperty[];
   onPropertyChange: (property: DisplayProperty, visible: boolean) => void;
-  statuses: (string | null)[];
-  onStatusesChange: (statuses: (string | null)[]) => void;
+  filters: BoardFilters;
+  onFiltersChange: (filters: BoardFilters) => void;
+  viewer: User | null;
   filterOpen: boolean;
   onFilterOpenChange: (open: boolean) => void;
   onFilterClose: (event: Event) => void;
@@ -52,8 +54,9 @@ export function Toolbar({
   onSearch,
   hiddenProperties,
   onPropertyChange,
-  statuses,
-  onStatusesChange,
+  filters,
+  onFiltersChange,
+  viewer,
   filterOpen,
   onFilterOpenChange,
   onFilterClose,
@@ -67,6 +70,57 @@ export function Toolbar({
   const boardViews = project?.views.filter((v) => v.layout === "Board") ?? [];
   const currentView = project?.views.find((v) => v.number === board?.view?.number);
   const count = board?.columns.reduce((n, c) => n + c.cards.length, 0) ?? 0;
+
+  const filtering = Object.values(filters).some((values) => values.length);
+  const viewerId = viewer?.id;
+  const viewerLogin = viewer?.login;
+  const filterGroups = useMemo(() => {
+    const cards = board?.columns.flatMap((column) => column.cards) ?? [];
+    const assignees = new Map(
+      cards.flatMap((card) =>
+        "assignees" in card ? card.assignees.map((user) => [user.id, user.login] as const) : [],
+      ),
+    );
+
+    if (viewerId) {
+      assignees.set(viewerId, `Me (${viewerLogin})`);
+    }
+
+    const labels = [
+      ...new Set(
+        cards.flatMap((card) => ("labels" in card ? card.labels.map((label) => label.name) : [])),
+      ),
+    ].sort();
+    const repositories = [
+      ...new Set(cards.flatMap((card) => ("repo" in card ? [card.repo] : []))),
+    ].sort();
+
+    return [
+      {
+        key: "statuses",
+        name: "Status",
+        options:
+          board?.columns.map((column) => ({
+            id: column.option_id,
+            name: column.name,
+            status: statusTone(column.color, column.name),
+          })) ?? [],
+      },
+      {
+        key: "assignees",
+        name: "Assignee",
+        options: [...assignees]
+          .sort((left, right) => left[1].localeCompare(right[1]))
+          .map(([id, name]) => ({ id, name })),
+      },
+      { key: "labels", name: "Label", options: labels.map((name) => ({ id: name, name })) },
+      {
+        key: "repositories",
+        name: "Repository",
+        options: repositories.map((name) => ({ id: name, name })),
+      },
+    ] satisfies Parameters<typeof BoardFilter>[0]["groups"];
+  }, [board, viewerId, viewerLogin]);
 
   return (
     <header className="shrink-0">
@@ -147,7 +201,7 @@ export function Toolbar({
           <Link className="size-4" />
         </Button>
       </div>
-      <div className="flex h-[42px] items-center gap-1.5 pr-3 pl-4">
+      <div className="flex min-h-[42px] flex-wrap items-center gap-1.5 py-1.5 pr-3 pl-4">
         <fieldset
           aria-label="Project layout"
           className="flex gap-1.5"
@@ -171,35 +225,19 @@ export function Toolbar({
             </button>
           ))}
         </fieldset>
-        <StatusFilter
-          options={
-            board?.columns.map((column) => ({
-              id: column.option_id,
-              name: column.name,
-              status: statusTone(column.color, column.name),
-            })) ?? []
-          }
-          selected={statuses}
-          onChange={onStatusesChange}
+        <BoardFilter
+          groups={filterGroups}
+          selected={filters}
+          onChange={onFiltersChange}
           open={filterOpen}
           onOpenChange={onFilterOpenChange}
           onCloseAutoFocus={onFilterClose}
           disabled={!board || dragging}
         />
-        {statuses.length ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={dragging}
-            onClick={() => onStatusesChange([])}
-          >
-            Clear filters
-          </Button>
-        ) : null}
         <span className="flex-1" />
         {board ? (
           <span className="mr-2 text-[12px] text-fg-3 tabular-nums">
-            {statuses.length ? `${visibleCount}/${count}` : count} issues
+            {filtering ? `${visibleCount}/${count}` : count} issues
           </span>
         ) : null}
         <DisplayMenu

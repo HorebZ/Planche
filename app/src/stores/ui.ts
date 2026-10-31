@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { Rect } from "@/board/flip";
+import { type BoardFilters, emptyFilters } from "@/components/ui/board-filter";
 import type { Intent, ItemId, OptionId, ProjectId, ViewId } from "@/ipc/bindings.types";
 
 /** What sits over the board and takes the keyboard. `draft` is the new-draft field of a column. */
@@ -16,8 +17,8 @@ type UiState = {
   /** The project the user picked in this session. `null` falls back to the last opened one. */
   projectId: ProjectId | null;
   viewId: ViewId | null;
-  statusFilter: (OptionId | null)[];
-  setStatusFilter: (statuses: (OptionId | null)[]) => void;
+  filters: BoardFilters;
+  setFilters: (filters: BoardFilters) => void;
   /** The card the keyboard acts on. It holds the focus ring. */
   selectedId: ItemId | null;
   revealId: ItemId | null;
@@ -53,10 +54,10 @@ type UiState = {
 export const useUi = create<UiState>()((set, get) => ({
   projectId: null,
   viewId: null,
-  statusFilter: [],
-  setStatusFilter: (statusFilter) => {
+  filters: emptyFilters,
+  setFilters: (filters) => {
     if (!get().dragging) {
-      set({ statusFilter });
+      set({ filters });
     }
   },
   selectedId: null,
@@ -72,7 +73,7 @@ export const useUi = create<UiState>()((set, get) => ({
       projectId,
       overlay: null,
       viewId: null,
-      statusFilter: [],
+      filters: emptyFilters,
       selectedId: null,
       revealId: null,
       undo: null,
@@ -82,7 +83,7 @@ export const useUi = create<UiState>()((set, get) => ({
   selectView: (viewId) =>
     set((s) => ({
       viewId,
-      statusFilter: [],
+      filters: emptyFilters,
       revealId: null,
       overlay: null,
       undo: null,
@@ -107,7 +108,7 @@ export const useUi = create<UiState>()((set, get) => ({
   },
   invalidateUndo: () =>
     set((s) => ({
-      statusFilter: [],
+      filters: emptyFilters,
       revealId: null,
       overlay: null,
       undo: null,

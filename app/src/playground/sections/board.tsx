@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Avatar, AvatarStack } from "@/components/ui/avatar";
 import { BoardColumn } from "@/components/ui/board-column";
+import { BoardFilter, type BoardFilters, emptyFilters } from "@/components/ui/board-filter";
 import { NoFilterResults } from "@/components/ui/board-states";
 import { DisplayMenu, type DisplayProperty } from "@/components/ui/display-menu";
 import { DragBubble, DragHelpBar } from "@/components/ui/drag";
@@ -14,7 +15,6 @@ import { IssueListGroup } from "@/components/ui/issue-list";
 import { LabelChip } from "@/components/ui/label-chip";
 import { PriorityGlyph, ProgressRing } from "@/components/ui/planche-glyph";
 import { StatusChip, type StatusKey, StatusSquare, statusLabels } from "@/components/ui/status";
-import { StatusFilter } from "@/components/ui/status-filter";
 import { Row, Section, State } from "../kit";
 
 const portrait =
@@ -523,19 +523,44 @@ function DisplayPreview() {
 }
 
 function FilterPreview() {
-  const [selected, setSelected] = useState<(string | null)[]>(["todo"]);
+  const [selected, setSelected] = useState<BoardFilters>({
+    ...emptyFilters,
+    statuses: ["todo"],
+    assignees: ["me"],
+    labels: ["bug"],
+  });
 
   return (
     <div className="flex w-[300px] flex-col gap-2">
-      <StatusFilter
+      <BoardFilter
         selected={selected}
         onChange={setSelected}
-        options={[
-          { id: "todo", name: "Todo", status: "todo" },
-          { id: null, name: "No Status", status: "draft" },
+        groups={[
+          {
+            key: "statuses",
+            name: "Status",
+            options: [
+              { id: "todo", name: "Todo", status: "todo" },
+              { id: null, name: "No Status", status: "draft" },
+            ],
+          },
+          { key: "assignees", name: "Assignee", options: [{ id: "me", name: "Me (camille-r)" }] },
+          {
+            key: "labels",
+            name: "Label",
+            options: [
+              { id: "bug", name: "bug" },
+              { id: "feature", name: "feature" },
+            ],
+          },
+          {
+            key: "repositories",
+            name: "Repository",
+            options: [{ id: "planche/app", name: "planche/app" }],
+          },
         ]}
       />
-      <NoFilterResults onReset={() => setSelected([])} />
+      <NoFilterResults onReset={() => setSelected(emptyFilters)} />
     </div>
   );
 }
