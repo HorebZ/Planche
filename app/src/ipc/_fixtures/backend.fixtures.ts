@@ -14,7 +14,7 @@ import type {
   ProjectMeta,
   SyncPrefs,
 } from "../bindings.types";
-import { issueDescription } from "./description.fixtures";
+import { issueDescription, MARKDOWN_BODY } from "./description.fixtures";
 import {
   boardFor,
   mockupBoard,
@@ -172,7 +172,10 @@ export function installMockBackend(scenario: Scenario) {
       }
 
       const description = issueDescription({
-        body: `Description for ${args.content}\n\nDetails loaded on demand.`,
+        body:
+          scenario === "markdown"
+            ? MARKDOWN_BODY
+            : `Description for ${args.content}\n\nDetails loaded on demand.`,
       });
       descriptions.set(key, description);
 

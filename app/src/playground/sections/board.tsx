@@ -142,10 +142,11 @@ export function BoardSection() {
                 className="w-full rounded-xl bg-bg p-4"
               >
                 <IssueDescriptionContent
+                  onOpenLink={() => {}}
                   status={status}
                   body={
                     ["ready", "refreshing", "offline"].includes(status)
-                      ? "## A description\n\nRead as plain text.\n\n- Keep drafts\n- Restore focus"
+                      ? "# Release notes\n\nA **formatted** description with a [link](https://github.com/HorebZ/Planche).\n\n- Keep drafts\n- Restore focus\n\n```rust\nlet ready = true;\n```\n\n![Screenshot](https://example.com/blocked.png)"
                       : undefined
                   }
                   onRetry={() => {}}

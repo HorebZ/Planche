@@ -5,6 +5,7 @@ import { authStatus, user } from "./user.fixtures";
 
 export type Scenario =
   | "labels"
+  | "markdown"
   | "description-error"
   | "description-denied"
   | "description-loading"

@@ -607,6 +607,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
                 key={`${auth.data.id}:${card.id}`}
                 account={auth.data.id}
                 content={card.id}
+                sourceUrl={card.url}
                 offline={offline}
               />
             ) : null}

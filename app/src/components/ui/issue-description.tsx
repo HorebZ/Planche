@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Markdown } from "@/components/ui/markdown";
 
 export type DescriptionStatus =
   | "loading"
@@ -13,11 +14,15 @@ export function IssueDescriptionContent({
   status,
   message,
   onRetry,
+  sourceUrl,
+  onOpenLink,
 }: {
   body?: string;
   status: DescriptionStatus;
   message?: string;
   onRetry: () => void;
+  sourceUrl?: string;
+  onOpenLink: (url: string) => void;
 }) {
   const pending = status === "loading" || status === "refreshing";
 
@@ -58,9 +63,11 @@ export function IssueDescriptionContent({
         </div>
       ) : null}
       {body !== undefined && status !== "unavailable" ? (
-        <div className="whitespace-pre-wrap break-words text-fg-2 leading-relaxed">
-          {body || "No description provided."}
-        </div>
+        <Markdown
+          body={body || "No description provided."}
+          sourceUrl={sourceUrl}
+          onOpenLink={onOpenLink}
+        />
       ) : null}
     </section>
   );

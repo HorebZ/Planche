@@ -56,13 +56,15 @@ test("a description error retries without leaving the current issue", async ({ p
   );
 });
 
-test("offline descriptions show their saved state and render text only", async ({ page }) => {
+test("offline descriptions show their saved state and format the cached Markdown", async ({
+  page,
+}) => {
   await page.goto("/?mock=offline");
   await page.locator('[data-slot="issue-card"][data-item-id="PVTI_226"]').click();
 
   const description = page.getByRole("region", { name: "Description", exact: true });
 
   await expect(description).toContainText("Saved description · Offline");
-  await expect(description).toContainText("## Description");
+  await expect(description.getByRole("heading", { level: 4 })).toHaveText("Description");
   await expect(description.locator("img, script, a")).toHaveCount(0);
 });
