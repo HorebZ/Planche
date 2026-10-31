@@ -1,4 +1,5 @@
 import { Search } from "lucide-react";
+import { useId } from "react";
 import { Checkbox, CheckMark } from "@/components/ui/checkbox";
 import { Field, FieldMessage, Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -14,6 +15,29 @@ const intervals = [
   { value: "15", label: "15 min" },
   { value: "manual", label: "Manual" },
 ] as const;
+
+function TokenErrorPreview() {
+  const id = useId();
+  return (
+    <Field className="w-72">
+      <label htmlFor={id}>Personal access token</label>
+      <Input
+        id={id}
+        aria-describedby={`${id}-error`}
+        className="w-full"
+        invalid
+        mono
+        defaultValue="ghp_xxxx"
+      />
+      <FieldMessage
+        id={`${id}-error`}
+        role="alert"
+      >
+        Token rejected (401). Check that it hasn't expired.
+      </FieldMessage>
+    </Field>
+  );
+}
 
 function IntervalGroup({ preview, disabled }: { preview?: "hover" | "focus"; disabled?: boolean }) {
   return (
@@ -82,15 +106,7 @@ export function ControlsSection() {
               />
             </State>
             <State label="error">
-              <Field className="w-72">
-                <Input
-                  className="w-full"
-                  invalid
-                  mono
-                  defaultValue="ghp_xxxx"
-                />
-                <FieldMessage>Token rejected (401). Check that it hasn't expired.</FieldMessage>
-              </Field>
+              <TokenErrorPreview />
             </State>
             <State label="disabled">
               <Input

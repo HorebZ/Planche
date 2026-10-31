@@ -4,7 +4,13 @@ import { AppLockContent } from "@/components/ui/app-lock";
 import { BoardErrorCard, EmptyBoardCard, SkeletonColumn } from "@/components/ui/board-states";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AccountBlock, AppIcon, Logotype, ScopeRow } from "@/components/ui/onboarding";
+import {
+  AccountBlock,
+  AppIcon,
+  Logotype,
+  ProjectAccessState,
+  ScopeRow,
+} from "@/components/ui/onboarding";
 import { SettingsDialog } from "@/components/ui/settings";
 import {
   type ProjectTone,
@@ -288,6 +294,38 @@ export function ShellSection() {
                 </div>
               </State>
             </div>
+          </Row>
+          <Row label="project access">
+            {(["empty", "error", "sso"] as const).map((state) => (
+              <State
+                key={state}
+                label={state}
+                className="w-full"
+              >
+                <ProjectAccessState
+                  state={state}
+                  message={
+                    state === "error"
+                      ? "GitHub returned 403. Check your access and retry."
+                      : "acme-sso"
+                  }
+                  pending={false}
+                  onRetry={() => {}}
+                  onAuthorize={() => {}}
+                />
+              </State>
+            ))}
+            <State
+              label="retrying"
+              className="w-full"
+            >
+              <ProjectAccessState
+                state="empty"
+                pending
+                onRetry={() => {}}
+                onAuthorize={() => {}}
+              />
+            </State>
           </Row>
         </div>
       )}

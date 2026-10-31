@@ -37,6 +37,11 @@ export type Scenario =
   | "checking"
   | "valid"
   | "invalid"
+  | "projects-empty"
+  | "projects-error"
+  | "projects-sso"
+  | "projects-partial-sso"
+  | "valid-projects-error"
   | "big"
   | "rollback"
   | "sorted";
@@ -292,7 +297,11 @@ const signedIn: AuthStatus = {
 };
 const signedOut: AuthStatus = { id: null, login: null, avatar_url: null, missing_scopes: [] };
 const onboarding = (s: Scenario) =>
-  s === "onboarding" || s === "checking" || s === "valid" || s === "invalid";
+  s === "onboarding" ||
+  s === "checking" ||
+  s === "valid" ||
+  s === "invalid" ||
+  s === "valid-projects-error";
 
 /** Counts calls per command, for tests that check a refetch. */
 export const calls: Record<string, number> = {};
@@ -304,6 +313,15 @@ export function installMockBackend(scenario: Scenario) {
   let board = boardFor(scenario);
   let boardError = scenario === "board-error";
   let status = statusFor(scenario);
+  let projectError = scenario === "projects-error" || scenario === "valid-projects-error";
+  let projectList: ProjectList =
+    scenario === "projects-empty" || projectError
+      ? { owners: [], sso_blocked: [] }
+      : scenario === "projects-sso"
+        ? { owners: [], sso_blocked: ["acme-sso"] }
+        : scenario === "projects-partial-sso"
+          ? { ...projects, sso_blocked: ["acme-sso"] }
+          : projects;
   const changed = () => emit("board-changed", { project_id: PROJECT });
   let dispatchSeq = 0;
   let unlock: (() => void) | undefined;
@@ -322,12 +340,12 @@ export function installMockBackend(scenario: Scenario) {
       }
       return auth;
     },
-    auth_set_token: async () => {
+    auth_set_token: async (args) => {
       if (scenario === "checking") {
         return new Promise(() => {});
       }
       await new Promise((resolve) => setTimeout(resolve, 600));
-      if (scenario === "invalid") {
+      if (scenario === "invalid" && args.token === "ghp_wrong") {
         throw { kind: "Auth", message: "token rejected by GitHub (401)" } satisfies AppError;
       }
       auth = signedIn;
@@ -337,10 +355,16 @@ export function installMockBackend(scenario: Scenario) {
       auth = signedOut;
       return null;
     },
-    list_projects: () => projects,
-    cached_projects: () => projects,
+    list_projects: () => {
+      if (projectError) {
+        throw { kind: "GitHub", message: "Projects are inaccessible (403)" } satisfies AppError;
+      }
+      return projectList;
+    },
+    cached_projects: () => projectList,
     open_project: () => null,
-    current_project: () => (onboarding(scenario) ? null : PROJECT),
+    current_project: () =>
+      onboarding(scenario) || scenario.startsWith("projects-") ? null : PROJECT,
     get_project: (): ProjectMeta => ({
       id: PROJECT,
       number: 1,
@@ -448,6 +472,10 @@ export function installMockBackend(scenario: Scenario) {
       unlock: () => unlock?.(),
       setBoardError: (fail: boolean) => {
         boardError = fail;
+      },
+      restoreProjects: () => {
+        projectError = false;
+        projectList = projects;
       },
     },
   });

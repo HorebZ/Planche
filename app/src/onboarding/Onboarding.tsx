@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { ArrowUpRight, CircleCheck } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, FieldMessage, Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
@@ -10,13 +10,20 @@ import {
   AccountBlock,
   AppIcon,
   Logotype,
+  ProjectAccessState,
   ScopeRow,
   type ScopeState,
 } from "@/components/ui/onboarding";
 import { SidebarGroup, SidebarItem } from "@/components/ui/sidebar";
 import { Spinner } from "@/components/ui/spinner";
-import { type AuthStatus, commands, type ProjectId, type ProjectList } from "@/ipc/bindings";
-import { authQuery, currentProjectQuery, errorMessage, useProjects } from "@/ipc/queries";
+import { type AuthStatus, commands, type ProjectId } from "@/ipc/bindings";
+import {
+  authQuery,
+  currentProjectQuery,
+  errorMessage,
+  projectsQuery,
+  useProjects,
+} from "@/ipc/queries";
 import { useUi } from "@/stores/ui";
 import pkg from "../../package.json";
 
@@ -32,7 +39,7 @@ const scopes = [
 type Check =
   | { state: "idle" }
   | { state: "checking" }
-  | { state: "valid"; auth: AuthStatus; projects: ProjectList }
+  | { state: "valid"; auth: AuthStatus }
   | { state: "error"; message: string };
 
 /** The first launch: a token, then a project. The window grows to the board size at the end. */
@@ -54,7 +61,11 @@ export function Onboarding({ signedIn }: { signedIn: boolean }) {
         <span className="flex-1" />
         <span className="text-[11.5px] text-fg-3 tabular-nums">v{pkg.version} · macOS 15+</span>
       </aside>
-      {step === 1 ? <TokenStep onDone={() => setStep(2)} /> : <ProjectStep />}
+      {step === 1 ? (
+        <TokenStep onDone={() => setStep(2)} />
+      ) : (
+        <ProjectStep onBack={() => setStep(1)} />
+      )}
     </div>
   );
 }
@@ -76,6 +87,16 @@ function TokenStep({ onDone }: { onDone: () => void }) {
   const queryClient = useQueryClient();
   const [token, setToken] = useState("");
   const [check, setCheck] = useState<Check>({ state: "idle" });
+  const projects = useProjects(check.state === "valid");
+  const tokenInput = useRef<HTMLInputElement>(null);
+  const continueButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (check.state === "valid") {
+      continueButton.current?.focus();
+    } else if (check.state === "error") {
+      tokenInput.current?.focus();
+    }
+  }, [check.state]);
 
   async function verify(event: FormEvent) {
     event.preventDefault();
@@ -88,9 +109,10 @@ function TokenStep({ onDone }: { onDone: () => void }) {
     setCheck({ state: "checking" });
     try {
       const auth = await commands.authSetToken(token.trim());
-      const projects = await commands.listProjects();
+      await queryClient.cancelQueries({ queryKey: projectsQuery.queryKey });
+      queryClient.removeQueries({ queryKey: projectsQuery.queryKey });
       queryClient.setQueryData(authQuery.queryKey, auth);
-      setCheck({ state: "valid", auth, projects });
+      setCheck({ state: "valid", auth });
     } catch (error) {
       setCheck({ state: "error", message: errorMessage(error) });
     }
@@ -99,8 +121,9 @@ function TokenStep({ onDone }: { onDone: () => void }) {
   const scopeState: ScopeState = { idle: "idle", checking: "checking", valid: "ok", error: "idle" }[
     check.state
   ] as ScopeState;
-  const projectCount =
-    check.state === "valid" ? check.projects.owners.reduce((n, o) => n + o.projects.length, 0) : 0;
+  const projectCount = projects.isSuccess
+    ? projects.data?.owners.reduce((n, o) => n + o.projects.filter((p) => !p.closed).length, 0)
+    : undefined;
   return (
     <form
       className={panelClass}
@@ -122,6 +145,7 @@ function TokenStep({ onDone }: { onDone: () => void }) {
         </label>
         <Input
           id="token"
+          ref={tokenInput}
           type="password"
           mono
           autoFocus
@@ -131,6 +155,7 @@ function TokenStep({ onDone }: { onDone: () => void }) {
           className="h-[34px] w-full"
           value={token}
           invalid={check.state === "error"}
+          aria-describedby={check.state === "error" ? "token-error" : undefined}
           readOnly={check.state === "checking" || check.state === "valid"}
           onChange={(e) => {
             setToken(e.target.value);
@@ -138,9 +163,24 @@ function TokenStep({ onDone }: { onDone: () => void }) {
               setCheck({ state: "idle" });
             }
           }}
-          suffix={<TokenStatus check={check} />}
+          suffix={
+            <span
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              <TokenStatus check={check} />
+            </span>
+          }
         />
-        {check.state === "error" ? <FieldMessage>{check.message}</FieldMessage> : null}
+        {check.state === "error" ? (
+          <FieldMessage
+            id="token-error"
+            role="alert"
+          >
+            {check.message}
+          </FieldMessage>
+        ) : null}
         <button
           type="button"
           onClick={() => openUrl(TOKEN_URL)}
@@ -171,21 +211,13 @@ function TokenStep({ onDone }: { onDone: () => void }) {
           />
         ))}
       </div>
-      {check.state === "valid" && check.projects.sso_blocked.length > 0 ? (
-        <SsoNote orgs={check.projects.sso_blocked} />
-      ) : null}
       <span className="flex-1" />
       <Footer>
         <Button
           type="submit"
           variant={check.state === "valid" ? "primary" : "secondary"}
           disabled={check.state === "checking" || (check.state !== "valid" && !token.trim())}
-          autoFocus={check.state === "valid"}
-          ref={(button) => {
-            if (check.state === "valid") {
-              button?.focus();
-            }
-          }}
+          ref={continueButton}
         >
           Continue
           <Kbd variant={check.state === "valid" ? "onAccent" : "default"}>↵</Kbd>
@@ -219,35 +251,28 @@ function TokenStatus({ check }: { check: Check }) {
   return null;
 }
 
-function SsoNote({ orgs }: { orgs: string[] }) {
-  return (
-    <div
-      data-slot="sso-note"
-      className="flex flex-col gap-1 rounded-lg bg-bg-sunken px-3 py-2.5 text-xs"
-    >
-      <span className="font-semibold">SAML SSO blocks {orgs.join(", ")}</span>
-      <span className="text-fg-2">
-        Open github.com/settings/tokens, choose Configure SSO next to this token, and authorize each
-        organization. Their projects appear after that.
-      </span>
-    </div>
-  );
-}
-
-function ProjectStep() {
+function ProjectStep({ onBack }: { onBack: () => void }) {
   const queryClient = useQueryClient();
   const projects = useProjects();
   const selectProject = useUi((s) => s.selectProject);
   const [picked, setPicked] = useState<ProjectId | null>(null);
   const [opening, setOpening] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const available = projects.data?.owners.flatMap((o) => o.projects).filter((p) => !p.closed) ?? [];
+  const blocked = projects.data?.sso_blocked ?? [];
+  const retry = () => {
+    if (!projects.isFetching) {
+      void projects.refetch();
+    }
+  };
 
   async function open(event: FormEvent) {
     event.preventDefault();
-    if (!picked) {
+    if (opening || !picked || !available.some((p) => p.id === picked)) {
       return;
     }
     setOpening(true);
+    setError(null);
     try {
       await commands.openProject(picked);
       await growWindow();
@@ -271,7 +296,40 @@ function ProjectStep() {
         Planche opens this board first. You can switch projects from the sidebar at any time.
       </StepHeader>
       <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto">
-        {projects.isPending ? <Spinner /> : null}
+        {projects.isFetching ? (
+          <span
+            role="status"
+            className="flex items-center gap-2 text-fg-3"
+          >
+            <Spinner />
+            Loading projects…
+          </span>
+        ) : null}
+        {projects.error ? (
+          <ProjectAccessState
+            state="error"
+            message={errorMessage(projects.error)}
+            pending={projects.isFetching}
+            onRetry={retry}
+          />
+        ) : null}
+        {blocked.length > 0 ? (
+          <ProjectAccessState
+            state="sso"
+            message={blocked.join(", ")}
+            pending={projects.isFetching}
+            onRetry={retry}
+            onAuthorize={() => void openUrl("https://github.com/settings/tokens")}
+          />
+        ) : null}
+        {projects.isSuccess && available.length === 0 && blocked.length === 0 ? (
+          <ProjectAccessState
+            state="empty"
+            pending={projects.isFetching}
+            onRetry={retry}
+            onAuthorize={() => void openUrl("https://github.com/projects")}
+          />
+        ) : null}
         {projects.data?.owners.map((owner) => {
           const open = owner.projects.filter((p) => !p.closed);
           if (open.length === 0) {
@@ -296,13 +354,20 @@ function ProjectStep() {
             </SidebarGroup>
           );
         })}
-        {error ? <FieldMessage>{error}</FieldMessage> : null}
+        {error ? <FieldMessage role="alert">{error}</FieldMessage> : null}
       </div>
       <Footer>
         <Button
+          type="button"
+          disabled={opening}
+          onClick={onBack}
+        >
+          Back
+        </Button>
+        <Button
           type="submit"
           variant="primary"
-          disabled={!picked || opening}
+          disabled={!available.some((p) => p.id === picked) || opening}
         >
           {opening ? (
             <Spinner
