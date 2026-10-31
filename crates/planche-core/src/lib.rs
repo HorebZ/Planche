@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod board;
 pub mod cache;
+pub mod description;
 pub mod domain;
 pub mod error;
 pub mod github;

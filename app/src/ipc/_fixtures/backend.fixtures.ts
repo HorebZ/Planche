@@ -9,11 +9,12 @@ import type {
   AppError,
   Board,
   Intent,
+  IssueDescription,
   ProjectList,
   ProjectMeta,
   SyncPrefs,
 } from "../bindings.types";
-
+import { issueDescription } from "./description.fixtures";
 import {
   boardFor,
   mockupBoard,
@@ -55,6 +56,9 @@ export function installMockBackend(scenario: Scenario) {
   );
   const changed = () => emit("board-changed", { project_id: PROJECT });
   let dispatchSeq = 0;
+  const descriptions = new Map<string, IssueDescription>();
+  let descriptionError = scenario === "description-error";
+  let descriptionDenied = scenario === "description-denied";
   let unlock: (() => void) | undefined;
   const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
     auth_status: async () => {
@@ -142,6 +146,37 @@ export function installMockBackend(scenario: Scenario) {
       return board && args.viewId === "PVTV_2"
         ? { ...board, view: { number: 2, name: "Planning", manual_order: true } }
         : board;
+    },
+    cached_issue_description: (args) =>
+      scenario === "offline"
+        ? issueDescription()
+        : (descriptions.get(`${args.account}:${args.content}`) ?? null),
+    refresh_issue_description: async (args) => {
+      const key = `${args.account}:${args.content}`;
+
+      if (scenario === "description-loading") {
+        return new Promise(() => {});
+      }
+
+      if (scenario === "offline" || descriptionError) {
+        throw {
+          kind: scenario === "offline" ? "Network" : "GitHub",
+          message: "Description request failed",
+        } satisfies AppError;
+      }
+
+      if (descriptionDenied) {
+        descriptions.delete(key);
+
+        return null;
+      }
+
+      const description = issueDescription({
+        body: `Description for ${args.content}\n\nDetails loaded on demand.`,
+      });
+      descriptions.set(key, description);
+
+      return description;
     },
     // Queue locally before sending in the background.
     dispatch_intent: (args) => {
@@ -234,6 +269,12 @@ export function installMockBackend(scenario: Scenario) {
     emit,
     calls,
     getBoard: () => board,
+    restoreDescriptions: () => {
+      descriptionError = false;
+    },
+    denyDescriptions: () => {
+      descriptionDenied = true;
+    },
     unlock: () => unlock?.(),
     setBoardError: (fail: boolean) => {
       boardError = fail;

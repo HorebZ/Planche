@@ -6,7 +6,10 @@ use std::time::Instant;
 
 use planche_core::auth::{self, AuthStatus};
 use planche_core::cache::Cache;
-use planche_core::domain::{Board, ProjectId, ProjectList, ProjectMeta, User, UserId, ViewId};
+use planche_core::description::Descriptions;
+use planche_core::domain::{
+    Board, ContentId, IssueDescription, ProjectId, ProjectList, ProjectMeta, User, UserId, ViewId,
+};
 use planche_core::error::Error;
 use planche_core::github::{GithubClient, ops};
 use planche_core::intent::Intent;
@@ -90,6 +93,7 @@ pub struct Core {
     /// The last list from GitHub, to find the owner of a project not cached yet.
     projects: Mutex<Option<ProjectList>>,
     token: Mutex<Option<String>>,
+    descriptions: Descriptions,
     engine: tokio::sync::Mutex<Option<Engine>>,
 }
 
@@ -105,6 +109,7 @@ impl Core {
             reader: Mutex::new(reader),
             projects: Mutex::default(),
             token: Mutex::default(),
+            descriptions: Descriptions::default(),
             engine: tokio::sync::Mutex::default(),
         }
     }
@@ -221,6 +226,7 @@ impl Core {
         let mut engine = self.engine.lock().await;
 
         *self.token.lock().expect("token lock") = None;
+        self.descriptions.lock();
         *engine = None;
     }
 }
@@ -242,37 +248,27 @@ pub async fn auth_status(core: State<'_, Core>) -> Result<AuthStatus> {
         Err(Error::NotSignedIn) => return Ok(AuthStatus::default()),
         Err(error) => return Err(error.into()),
     };
-    let cached = {
-        let cache = core.cache();
-        // Before phase 6 the cache kept no ID: those go to GitHub once.
-        let id = cache.get("account_id")?.map(UserId);
-
-        cache
-            .get("account_login")?
-            .filter(|_| id.is_some())
-            .map(|login| AuthStatus {
-                id,
-                login: Some(login),
-                avatar_url: cache.get("account_avatar").ok().flatten(),
-                missing_scopes: Vec::new(),
-            })
-    };
+    let cached = auth::cached_status(&core.cache(), &token)?;
 
     if let Some(status) = cached {
         *core.token.lock().expect("token lock") = Some(token);
+        core.descriptions
+            .unlock(status.id.clone().ok_or(Error::NotSignedIn)?);
 
         return Ok(status);
     }
 
     let status = auth::status().await?;
 
-    remember_account(&core, &status)?;
+    remember_account(&core, &status, &token)?;
     *core.token.lock().expect("token lock") = Some(token);
+    core.descriptions
+        .unlock(status.id.clone().ok_or(Error::NotSignedIn)?);
 
     Ok(status)
 }
 
-fn remember_account(core: &Core, status: &AuthStatus) -> Result<()> {
+fn remember_account(core: &Core, status: &AuthStatus, token: &str) -> Result<()> {
     let cache = core.cache();
 
     if let Some(id) = &status.id {
@@ -287,6 +283,8 @@ fn remember_account(core: &Core, status: &AuthStatus) -> Result<()> {
         cache.set("account_avatar", avatar)?;
     }
 
+    auth::remember_status(&cache, token, status)?;
+
     Ok(())
 }
 
@@ -295,8 +293,11 @@ fn remember_account(core: &Core, status: &AuthStatus) -> Result<()> {
 pub async fn auth_set_token(core: State<'_, Core>, token: String) -> Result<AuthStatus> {
     let status = auth::set_token(&token).await?;
 
-    remember_account(&core, &status)?;
+    core.descriptions.lock();
+    remember_account(&core, &status, &token)?;
     *core.token.lock().expect("token lock") = Some(auth::load_token()?);
+    core.descriptions
+        .unlock(status.id.clone().ok_or(Error::NotSignedIn)?);
 
     Ok(status)
 }
@@ -371,6 +372,36 @@ pub async fn get_board(
     view_id: Option<ViewId>,
 ) -> Result<Option<Board>> {
     core.board(&project_id, view_id.as_ref())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn cached_issue_description(
+    core: State<'_, Core>,
+    account: UserId,
+    content: ContentId,
+) -> Result<Option<IssueDescription>> {
+    Ok(core.descriptions.cached(&core.reader, &account, &content)?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn refresh_issue_description(
+    core: State<'_, Core>,
+    account: UserId,
+    content: ContentId,
+) -> Result<Option<IssueDescription>> {
+    let client = core.client()?;
+
+    Ok(core
+        .descriptions
+        .refresh(
+            &core.reader,
+            &account,
+            &content,
+            ops::issue_description(&client, &account, &content),
+        )
+        .await?)
 }
 
 /// Accepted confirms the local enqueue commit, not synchronization with GitHub.

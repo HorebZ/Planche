@@ -90,3 +90,26 @@ fn unknown_field_value_typename_is_ignored() {
 
     assert!(!decoded.items[0].single_selects.is_empty());
 }
+#[test]
+fn description_checks_viewer_content_id_and_node_type() {
+    let decode = |viewer: &str, id: &str, kind: &str| {
+        let data = serde_json::from_value(serde_json::json!({"viewer": {"id": viewer}, "node": {"id": id, "__typename": kind, "body": "body"}})).unwrap();
+
+        super::description_from_wire(
+            data,
+            &crate::domain::UserId("viewer".into()),
+            &crate::domain::ContentId("issue".into()),
+        )
+    };
+
+    assert_eq!(
+        decode("viewer", "issue", "Issue").unwrap().as_deref(),
+        Some("body")
+    );
+    assert!(matches!(
+        decode("other", "issue", "Issue"),
+        Err(crate::Error::Unauthorized)
+    ));
+    assert!(decode("viewer", "wrong", "Issue").unwrap().is_none());
+    assert!(decode("viewer", "issue", "PullRequest").unwrap().is_none());
+}
