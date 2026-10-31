@@ -94,6 +94,7 @@ export function keysOf(key: string): string[] {
 /** The keys of the first shortcut that runs `command`. */
 export function keysFor(command: CommandId, scope?: Scope): string[] {
   const row = shortcuts.find((s) => s.command === command && (!scope || s.scope === scope));
+
   return row ? keysOf(row.key) : [];
 }
 
@@ -102,6 +103,7 @@ export function eventKey(event: KeyboardEvent): string {
   const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
   // A symbol such as `?` already says Shift.
   const shift = event.shiftKey && (key.length > 1 || /[a-z]/.test(key));
+
   return `${event.metaKey ? "Meta+" : ""}${shift ? "Shift+" : ""}${key}`;
 }
 
@@ -110,7 +112,9 @@ export function commandFor(event: KeyboardEvent, scope: Scope): CommandId | unde
   if (event.ctrlKey || event.altKey) {
     return undefined;
   }
+
   const key = eventKey(event);
+
   return shortcuts.find((s) => s.scope === scope && s.key === key)?.command;
 }
 
@@ -119,9 +123,11 @@ export function isTextField(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) {
     return false;
   }
+
   if (target.isContentEditable || target instanceof HTMLTextAreaElement) {
     return true;
   }
+
   return (
     target instanceof HTMLInputElement && !["checkbox", "radio", "button"].includes(target.type)
   );
@@ -140,24 +146,32 @@ export function navigate(
 ): ItemId | null {
   const columns = board.columns;
   const column = columns.findIndex((c) => c.cards.some((card) => card.item_id === selected));
+
   if (column < 0) {
     return columns.find((c) => c.cards.length > 0)?.cards[0].item_id ?? null;
   }
+
   const cards = columns[column].cards;
   const index = cards.findIndex((card) => card.item_id === selected);
+
   if (direction === "next") {
     return cards[Math.min(index + 1, cards.length - 1)].item_id;
   }
+
   if (direction === "prev") {
     return cards[Math.max(index - 1, 0)].item_id;
   }
+
   const step = direction === "right" ? 1 : -1;
+
   for (let c = column + step; c >= 0 && c < columns.length; c += step) {
     const target = columns[c].cards;
+
     if (target.length > 0) {
       return target[Math.min(index, target.length - 1)].item_id;
     }
   }
+
   return selected;
 }
 

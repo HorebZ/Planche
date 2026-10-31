@@ -35,6 +35,7 @@ Native macOS client for GitHub Projects v2. Tauri 2 shell, React webview, all lo
 - Never log the token. `PLANCHE_TOKEN` overrides the keychain for dev and tests.
 - Tauri stays on 2.x. Do not upgrade to the 3.0 alphas.
 - Write a comment only for a non-obvious why.
+- Group code by logical step, with a blank line between validation, preparation, side effects, and the result. In tests, separate setup, action, and assertions; keep related declarations and assertions together. Prefer descriptive names over single-letter locals outside short closures. Preserve this spacing when adding or editing code: Biome and rustfmt keep logical blank lines but do not insert them. `bun run format` fixes formatting; `bun run check` verifies it.
 
 ## Design
 

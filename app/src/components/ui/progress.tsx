@@ -9,6 +9,7 @@ export type ProgressProps = ComponentProps<"div"> & {
 export function Progress({ className, indeterminate, value, ...props }: ProgressProps) {
   const sliding = indeterminate ?? value == null;
   const clamped = Math.min(100, Math.max(0, value ?? 0));
+
   return (
     <div
       data-slot="progress"

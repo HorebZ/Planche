@@ -48,8 +48,10 @@ impl Cache {
         if let Some(path) = std::env::var_os("PLANCHE_CACHE").filter(|p| !p.is_empty()) {
             return Ok(path.into());
         }
+
         let home =
             std::env::var_os("HOME").ok_or_else(|| Error::Cache("HOME is not set".into()))?;
+
         Ok(PathBuf::from(home).join("Library/Application Support/dev.planche.app/cache.sqlite"))
     }
 
@@ -59,15 +61,19 @@ impl Cache {
 
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref();
+
         if let Some(dir) = path.parent() {
             std::fs::create_dir_all(dir).map_err(|e| Error::Cache(e.to_string()))?;
         }
+
         let mut conn = Connection::open(path)?;
+
         conn.busy_timeout(Duration::from_secs(5))?;
         conn.pragma_update_and_check(None, "journal_mode", "WAL", |_| Ok(()))?;
         conn.pragma_update(None, "synchronous", "NORMAL")?;
         conn.pragma_update(None, "foreign_keys", "ON")?;
         migrate(&mut conn)?;
+
         Ok(Self { conn })
     }
 
@@ -91,6 +97,7 @@ impl Cache {
             },
             owner => owner.to_owned(),
         };
+
         Ok(self
             .conn
             .query_row(
@@ -120,12 +127,14 @@ impl Cache {
         let Some((meta, items)) = self.snapshot(project)? else {
             return Ok(None);
         };
+
         let mut board = board::project(&meta, view, &items, &self.intents(project)?)?;
         let unacked: Vec<ItemId> = {
             let mut statement = self.conn.prepare_cached(
                 "SELECT DISTINCT item_id FROM pending_mutation
                  WHERE project_id = ?1 AND status IN ('pending', 'in_flight', 'unknown')",
             )?;
+
             statement
                 .query_map([project.as_str()], |r| r.get(0).map(ItemId))?
                 .collect::<rusqlite::Result<_>>()?
@@ -134,12 +143,15 @@ impl Cache {
             Some(json) => serde_json::from_str(&json).map_err(|e| Error::Cache(e.to_string()))?,
             None => Vec::new(),
         };
+
         for card in board.columns.iter_mut().flat_map(|c| &mut c.cards) {
             card.pending = unacked.contains(&card.item_id);
             card.updated_by_sync = changed.contains(&card.item_id);
         }
+
         board.pending_count = self.pending_count(project)?;
         board.synced_at = self.synced_at(project)?;
+
         Ok(Some(board))
     }
 
@@ -162,6 +174,7 @@ impl Cache {
              ORDER BY owner_kind = 'org', owner_login COLLATE NOCASE, number",
         )?;
         let mut owners: Vec<OwnerProjects> = Vec::new();
+
         for row in statement.query_map([], |r| {
             Ok((
                 r.get::<_, String>(1)?,
@@ -176,6 +189,7 @@ impl Cache {
             ))
         })? {
             let (login, is_org, project) = row?;
+
             match owners.last_mut() {
                 Some(owner) if owner.login == login => owner.projects.push(project),
                 _ => owners.push(OwnerProjects {
@@ -185,6 +199,7 @@ impl Cache {
                 }),
             }
         }
+
         Ok(ProjectList {
             owners,
             sso_blocked: Vec::new(),
@@ -196,6 +211,7 @@ impl Cache {
         let Some(meta) = self.meta(project)? else {
             return Ok(None);
         };
+
         Ok(Some((meta, self.items(project)?)))
     }
 
@@ -205,6 +221,7 @@ impl Cache {
             "SELECT intent FROM pending_mutation WHERE project_id = ?1 ORDER BY seq",
         )?;
         let rows = statement.query_map([project.as_str()], |r| r.get::<_, String>(0))?;
+
         rows.map(|json| decode_intent(&json?)).collect()
     }
 
@@ -224,10 +241,12 @@ impl Cache {
         let (project_id, item_id) = (intent.project_id(), intent.item_id());
         let tx = self.write()?;
         let mut intent = intent.clone();
+
         if let Intent::MoveCard { placement, .. } = &mut intent {
             const PENDING_MOVES: &str = "FROM pending_mutation
                 WHERE project_id = ?1 AND item_id = ?2 AND status = 'pending'
                 AND json_extract(intent, '$.type') = 'move_card'";
+
             let replaced: Option<String> = tx
                 .query_row(
                     &format!("SELECT intent {PENDING_MOVES} ORDER BY seq DESC LIMIT 1"),
@@ -235,6 +254,7 @@ impl Cache {
                     |r| r.get(0),
                 )
                 .optional()?;
+
             if let (Some(replaced), Placement::Keep) = (replaced, &placement)
                 && let Intent::MoveCard {
                     placement: previous,
@@ -243,11 +263,13 @@ impl Cache {
             {
                 *placement = previous;
             }
+
             tx.execute(
                 &format!("DELETE {PENDING_MOVES}"),
                 [project_id.as_str(), item_id.as_str()],
             )?;
         }
+
         tx.execute(
             &format!(
                 "INSERT INTO pending_mutation (project_id, item_id, intent, created_at)
@@ -259,8 +281,11 @@ impl Cache {
                 encode_intent(&intent)
             ],
         )?;
+
         let seq = tx.last_insert_rowid();
+
         tx.commit()?;
+
         Ok(seq)
     }
 
@@ -293,11 +318,13 @@ impl Cache {
             else {
                 return Ok(None);
             };
+
             let claimed = self.conn.execute(
                 "UPDATE pending_mutation SET status = 'in_flight', attempts = attempts + 1
                  WHERE seq = ?1 AND status = 'pending'",
                 [seq],
             )?;
+
             if claimed == 1 {
                 return Ok(Some(Mutation {
                     seq,
@@ -314,6 +341,7 @@ impl Cache {
              WHERE seq = ?1",
             [seq],
         )?;
+
         Ok(())
     }
 
@@ -323,6 +351,7 @@ impl Cache {
             "UPDATE pending_mutation SET status = 'pending', last_error = ?2 WHERE seq = ?1",
             params![seq, error],
         )?;
+
         Ok(())
     }
 
@@ -330,6 +359,7 @@ impl Cache {
     pub fn remove(&self, seq: i64) -> Result<()> {
         self.conn
             .execute("DELETE FROM pending_mutation WHERE seq = ?1", [seq])?;
+
         Ok(())
     }
 
@@ -349,6 +379,7 @@ impl Cache {
             .collect();
         let tx = self.write()?;
         let project = meta.id.as_str();
+
         // A project deleted and recreated under the same number has a new ID.
         tx.execute(
             "DELETE FROM project WHERE owner_login = ?1 COLLATE NOCASE AND number = ?2 AND id <> ?3",
@@ -375,6 +406,7 @@ impl Cache {
                 meta.updated_at,
             ],
         )?;
+
         // ponytail: delete and reinsert instead of a per-row upsert. Same end state, and the
         // cascades clear values, assignees and labels. Fine at 1000 items.
         for table in ["item", "view", "field"] {
@@ -383,11 +415,14 @@ impl Cache {
                 [project],
             )?;
         }
+
         write_meta(&tx, meta)?;
         write_items(&tx, meta, items)?;
+
         if viewer {
             set_kv(&tx, "viewer_login", &meta.owner)?;
         }
+
         // Our own acked moves come back in this snapshot. They are not news from the server.
         let acked: Vec<ItemId> = tx
             .prepare_cached(
@@ -405,6 +440,7 @@ impl Cache {
                 .map(|i| &i.id)
                 .collect()
         };
+
         set_kv(
             &tx,
             &changed_key(&meta.id),
@@ -412,6 +448,7 @@ impl Cache {
         )?;
         settle_acked(&tx, &meta.id, project_board(meta, None, items).ok())?;
         tx.commit()?;
+
         Ok(())
     }
 
@@ -425,6 +462,7 @@ impl Cache {
     /// The cached metadata of the project: fields, options and views.
     pub fn meta(&self, project: &ProjectId) -> Result<Option<ProjectMeta>> {
         let id = project.as_str();
+
         let Some(mut meta) = self
             .conn
             .query_row(
@@ -455,6 +493,7 @@ impl Cache {
             "SELECT o.field_id, o.id, o.name, o.color FROM field_option o
              JOIN field f ON f.id = o.field_id WHERE f.project_id = ?1 ORDER BY o.position",
         )?;
+
         for row in statement.query_map([id], |r| {
             Ok((
                 r.get::<_, String>(0)?,
@@ -466,17 +505,20 @@ impl Cache {
             ))
         })? {
             let (field, option) = row?;
+
             options.entry(field).or_default().push(option);
         }
 
         let mut statement = self.conn.prepare_cached(
             "SELECT id, name, data_type FROM field WHERE project_id = ?1 ORDER BY position",
         )?;
+
         meta.fields = statement
             .query_map([id], |r| {
                 let id: String = r.get(0)?;
                 let data_type: String = r.get(2)?;
                 let single_select = data_type == "SINGLE_SELECT";
+
                 Ok(Field {
                     options: single_select.then(|| options.remove(&id).unwrap_or_default()),
                     id: FieldId(id),
@@ -490,6 +532,7 @@ impl Cache {
             "SELECT id, number, name, layout, filter, column_field_id, manual_order FROM view
              WHERE project_id = ?1 ORDER BY rowid",
         )?;
+
         meta.views = statement
             .query_map([id], |r| {
                 let layout = match r.get::<_, String>(3)?.as_str() {
@@ -497,6 +540,7 @@ impl Cache {
                     "TABLE_LAYOUT" => ViewLayout::Table,
                     _ => ViewLayout::Roadmap,
                 };
+
                 Ok(View {
                     id: ViewId(r.get(0)?),
                     number: r.get(1)?,
@@ -508,6 +552,7 @@ impl Cache {
                 })
             })?
             .collect::<rusqlite::Result<_>>()?;
+
         Ok(Some(meta))
     }
 
@@ -550,10 +595,12 @@ impl Cache {
              JOIN item i ON i.id = v.item_id
              WHERE i.project_id = ?1 AND v.option_id IS NOT NULL ORDER BY v.rowid",
         )?;
+
         for row in
             statement.query_map([id], |r| Ok((r.get::<_, String>(0)?, r.get(1)?, r.get(2)?)))?
         {
             let (item, field, option) = row?;
+
             rows[index[&item]]
                 .single_selects
                 .push((FieldId(field), OptionId(option)));
@@ -564,6 +611,7 @@ impl Cache {
              JOIN item i ON i.id = a.item_id JOIN gh_user u ON u.id = a.user_id
              WHERE i.project_id = ?1 ORDER BY a.rowid",
         )?;
+
         for row in statement.query_map([id], |r| {
             Ok((
                 r.get::<_, String>(0)?,
@@ -575,6 +623,7 @@ impl Cache {
             ))
         })? {
             let (item, user) = row?;
+
             rows[index[&item]].assignees.push(user);
         }
 
@@ -582,6 +631,7 @@ impl Cache {
             "SELECT l.item_id, l.name, l.color FROM item_label l
              JOIN item i ON i.id = l.item_id WHERE i.project_id = ?1 ORDER BY l.rowid",
         )?;
+
         for row in statement.query_map([id], |r| {
             Ok((
                 r.get::<_, String>(0)?,
@@ -592,6 +642,7 @@ impl Cache {
             ))
         })? {
             let (item, label) = row?;
+
             rows[index[&item]].labels.push(label);
         }
 
@@ -602,18 +653,24 @@ impl Cache {
 fn migrate(conn: &mut Connection) -> Result<()> {
     let version = |conn: &Connection| -> Result<usize> {
         let version: u32 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
+
         Ok(version as usize)
     };
+
     if version(conn)? >= MIGRATIONS.len() {
         return Ok(());
     }
+
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+
     // Another process may have migrated while this one waited for the lock.
     for (sql, next) in MIGRATIONS.iter().zip(1u32..).skip(version(&tx)?) {
         tx.execute_batch(sql)?;
         tx.pragma_update(None, "user_version", next)?;
     }
+
     tx.commit()?;
+
     Ok(())
 }
 
@@ -628,6 +685,7 @@ fn set_kv(conn: &Connection, key: &str, value: &str) -> Result<()> {
          ON CONFLICT (key) DO UPDATE SET value = excluded.value",
         [key, value],
     )?;
+
     Ok(())
 }
 
@@ -639,6 +697,7 @@ fn write_meta(tx: &Transaction, meta: &ProjectMeta) -> Result<()> {
     let mut option = tx.prepare_cached(
         "INSERT INTO field_option (field_id, id, name, color, position) VALUES (?1, ?2, ?3, ?4, ?5)",
     )?;
+
     for (position, f) in (0u32..).zip(&meta.fields) {
         field.execute(params![
             f.id.as_str(),
@@ -647,6 +706,7 @@ fn write_meta(tx: &Transaction, meta: &ProjectMeta) -> Result<()> {
             f.data_type,
             position
         ])?;
+
         for (position, o) in (0u32..).zip(f.options.iter().flatten()) {
             option.execute(params![
                 f.id.as_str(),
@@ -657,10 +717,12 @@ fn write_meta(tx: &Transaction, meta: &ProjectMeta) -> Result<()> {
             ])?;
         }
     }
+
     let mut view = tx.prepare_cached(
         "INSERT INTO view (id, project_id, number, name, layout, filter, column_field_id, manual_order)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
     )?;
+
     for v in &meta.views {
         let layout = match v.layout {
             ViewLayout::Board => "BOARD_LAYOUT",
@@ -673,6 +735,7 @@ fn write_meta(tx: &Transaction, meta: &ProjectMeta) -> Result<()> {
             .as_ref()
             .filter(|id| meta.fields.iter().any(|f| &f.id == *id))
             .map(FieldId::as_str);
+
         view.execute(params![
             v.id.as_str(),
             project,
@@ -684,6 +747,7 @@ fn write_meta(tx: &Transaction, meta: &ProjectMeta) -> Result<()> {
             v.manual_order
         ])?;
     }
+
     Ok(())
 }
 
@@ -784,6 +848,7 @@ fn write_items(tx: &Transaction, meta: &ProjectMeta, items: &[Item]) -> Result<(
             ItemContent::Redacted => "",
             ref content => content.title(),
         };
+
         item.execute(params![
             id,
             meta.id.as_str(),
@@ -804,6 +869,7 @@ fn write_items(tx: &Transaction, meta: &ProjectMeta, items: &[Item]) -> Result<(
                 _ => "{}".to_owned(),
             },
         ])?;
+
         // ponytail: single-select values only, the only kind the domain carries. Text,
         // number, date and iteration values come with the phase that shows them.
         for (field, option) in &i.single_selects {
@@ -811,14 +877,17 @@ fn write_items(tx: &Transaction, meta: &ProjectMeta, items: &[Item]) -> Result<(
                 value.execute(params![id, field.as_str(), option.as_str()])?;
             }
         }
+
         for u in assignees {
             user.execute(params![u.id.as_str(), u.login, u.avatar_url])?;
             assignee.execute(params![id, u.id.as_str()])?;
         }
+
         for l in labels {
             label.execute(params![id, l.name, l.color])?;
         }
     }
+
     Ok(())
 }
 
@@ -847,9 +916,11 @@ fn settle_acked(tx: &Transaction, project: &ProjectId, server: Option<Board>) ->
                 .is_some_and(|board| intent::apply(board.clone(), intent) == *board)
         })
         .collect();
+
     for (k, ((seq, _, syncs), intent)) in acked.iter().zip(&intents).enumerate() {
         let settled = (k..intents.len())
             .any(|later| reflected[later] && intents[later].item_id() == intent.item_id());
+
         if settled || syncs + 1 >= ACKED_SYNCS {
             tx.execute("DELETE FROM pending_mutation WHERE seq = ?1", [seq])?;
         } else {
@@ -859,6 +930,7 @@ fn settle_acked(tx: &Transaction, project: &ProjectId, server: Option<Board>) ->
             )?;
         }
     }
+
     // A draft a dead process left in flight: done when the snapshot shows it, else sent again.
     let unknown: Vec<(i64, String)> = tx
         .prepare_cached(
@@ -866,11 +938,13 @@ fn settle_acked(tx: &Transaction, project: &ProjectId, server: Option<Board>) ->
         )?
         .query_map([project.as_str()], |r| Ok((r.get(0)?, r.get(1)?)))?
         .collect::<rusqlite::Result<_>>()?;
+
     for (seq, json) in unknown {
         let intent = decode_intent(&json)?;
         let created = server
             .as_ref()
             .is_some_and(|board| intent::apply(board.clone(), &intent) == *board);
+
         tx.execute(
             if created {
                 "DELETE FROM pending_mutation WHERE seq = ?1"
@@ -880,6 +954,7 @@ fn settle_acked(tx: &Transaction, project: &ProjectId, server: Option<Board>) ->
             [seq],
         )?;
     }
+
     Ok(())
 }
 
@@ -961,6 +1036,7 @@ impl ItemRow {
             },
             _ => ItemContent::Redacted,
         };
+
         Ok(Item {
             id: ItemId(self.id),
             archived: self.archived,
@@ -978,6 +1054,7 @@ mod tests {
     #[test]
     fn card_details_migration_preserves_existing_cache_data() {
         let mut conn = Connection::open_in_memory().unwrap();
+
         conn.execute_batch(MIGRATIONS[0]).unwrap();
         conn.pragma_update(None, "user_version", 1).unwrap();
         conn.execute(
@@ -986,14 +1063,19 @@ mod tests {
         )
         .unwrap();
         migrate(&mut conn).unwrap();
+
         let login: String = conn
             .query_row("SELECT value FROM kv WHERE key = 'viewer_login'", [], |r| {
                 r.get(0)
             })
             .unwrap();
+
         assert_eq!(login, "camille");
+
         conn.prepare("SELECT details FROM item").unwrap();
+
         let details: crate::domain::CardDetails = serde_json::from_str("{}").unwrap();
+
         assert_eq!(details, Default::default());
     }
 }

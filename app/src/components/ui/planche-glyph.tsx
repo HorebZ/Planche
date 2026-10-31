@@ -97,6 +97,7 @@ export function StatusGlyph({
       </>
     ),
   };
+
   return (
     <svg
       width={size}
@@ -114,6 +115,7 @@ export function StatusGlyph({
 
 export function PriorityGlyph({ priority, size = 14 }: { priority: Priority; size?: number }) {
   const lvl = { none: 0, low: 1, medium: 2, high: 3, urgent: 0 }[priority];
+
   return (
     <svg
       width={size}
@@ -185,6 +187,7 @@ export function PriorityGlyph({ priority, size = 14 }: { priority: Priority; siz
 export function ProgressRing({ value, size = 12 }: { value: number; size?: number }) {
   const C = 2 * Math.PI * 5;
   const p = Math.max(0, Math.min(1, value));
+
   return (
     <svg
       width={size}

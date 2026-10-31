@@ -54,6 +54,7 @@ pub fn project_board(meta: &ProjectMeta, view: Option<u32>, items: &[Item]) -> R
                 .iter_mut()
                 .find(|c| c.option_id.as_ref() == Some(option))
         });
+
         match column {
             Some(column) => column.cards.push(card),
             None => no_value.push(card),
@@ -102,9 +103,11 @@ fn pick_view(meta: &ProjectMeta, number: Option<u32>) -> Result<Option<&View>> {
                 .iter()
                 .find(|v| v.number == n)
                 .ok_or(Error::ViewNotFound(n))?;
+
             if view.layout != ViewLayout::Board {
                 return Err(Error::ViewNotBoard(n));
             }
+
             Ok(Some(view))
         }
         None => Ok(meta

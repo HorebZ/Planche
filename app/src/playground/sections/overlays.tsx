@@ -216,6 +216,7 @@ function ConfirmBody() {
 
 function PaletteBody({ preview = false }: { preview?: boolean }) {
   const query = preview ? "move" : "";
+
   return (
     <>
       <CommandInput

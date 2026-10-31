@@ -103,10 +103,12 @@ async fn main() -> ExitCode {
         Ok(()) => ExitCode::SUCCESS,
         Err(Failure::Usage(message)) => {
             eprintln!("error: {message}");
+
             ExitCode::from(2)
         }
         Err(Failure::Core(error)) => {
             eprintln!("error: {error}");
+
             ExitCode::from(exit_code(&error))
         }
         Err(Failure::Exit(code)) => ExitCode::from(code),
@@ -140,22 +142,28 @@ async fn run(command: Command) -> Result<(), Failure> {
         } => {
             let token = read_token()
                 .map_err(|e| Failure::Usage(format!("could not read the token: {e}")))?;
+
             if token.is_empty() {
                 return Err(Failure::Usage("no token given on stdin".into()));
             }
+
             let viewer = auth::login(&token).await?;
+
             println!("Signed in as {}", viewer.login);
         }
         Command::Projects { owner } => {
             let client = GithubClient::new(auth::load_token()?)?;
             let mut list = ops::list_projects(&client).await?;
+
             if let Some(owner) = owner {
                 let viewer_login = list.owners[0].login.clone();
                 let wanted = if owner == "@me" { viewer_login } else { owner };
+
                 list.owners
                     .retain(|o| o.login.eq_ignore_ascii_case(&wanted));
                 list.sso_blocked.retain(|o| o.eq_ignore_ascii_case(&wanted));
             }
+
             print_projects(&list);
         }
         Command::Board {
@@ -177,6 +185,7 @@ async fn run(command: Command) -> Result<(), Failure> {
             interval,
         } => sync_project(&project, watch, interval).await?,
     }
+
     Ok(())
 }
 
@@ -187,13 +196,16 @@ async fn board(project: &str, view: Option<u32>, json: bool, offline: bool) -> R
         Some(id) => cache.board(&id, view)?.map(|board| (id, board)),
         None => None,
     };
+
     if offline {
         let (id, board) = cached.ok_or_else(|| Error::NotCached {
             owner: owner.to_owned(),
             number,
         })?;
+
         return show_board(&cache, &id, &board, json, None);
     }
+
     if let (Some((id, board)), false) = (&cached, json) {
         show_board(&cache, id, board, false, None)?;
     }
@@ -202,13 +214,17 @@ async fn board(project: &str, view: Option<u32>, json: bool, offline: bool) -> R
         let client = GithubClient::new(auth::load_token()?)?;
         let sent = flush_known(&mut cache, &client, owner, number).await;
         let report = sync::full_sync(&mut cache, &client, owner, number, |_, _, _| {}).await?;
+
         Ok::<_, Error>((report.project, client.usage(), sent))
     }
     .await;
+
     match refreshed {
         Ok((id, usage, sent)) => {
             let board = cache.board(&id, view)?.expect("a synced project is cached");
+
             log_sent(&cache, &id, sent);
+
             match cached {
                 Some((_, before)) if !json && before == board => {
                     println!("Up to date with GitHub. {}", rate_limit(usage));
@@ -224,12 +240,15 @@ async fn board(project: &str, view: Option<u32>, json: bool, offline: bool) -> R
             let Some((id, board)) = cached else {
                 return Err(error.into());
             };
+
             if json {
                 show_board(&cache, &id, &board, true, None)?;
             }
+
             eprintln!("warning: showing the cached board, the refresh failed: {error}");
         }
     }
+
     Ok(())
 }
 
@@ -241,9 +260,11 @@ async fn flush_known(
     number: u32,
 ) -> Vec<Sent> {
     let mut sent = Vec::new();
+
     if let Ok(Some(id)) = cache.project_id(owner, number) {
         let _ = sync::flush(cache, client, &id, |s| sent.push(s)).await;
     }
+
     sent
 }
 
@@ -271,9 +292,11 @@ async fn move_card(
     let (placement, where_) = match after {
         Some(after) => {
             let anchor = intent::find_card(&board, after)?;
+
             if anchor.item_id == card.item_id {
                 return Err(Failure::Usage("a card cannot go after itself".into()));
             }
+
             (
                 Placement::After(anchor.item_id.clone()),
                 format!(", after \"{}\"", anchor.title()),
@@ -292,13 +315,16 @@ async fn move_card(
         Sent::Ok(m) | Sent::Failed(m, _) => m.seq == seq,
     });
     let mine = mine.map(|i| sent.remove(i));
+
     log_sent(&cache, &id, sent);
+
     match (mine, flushed) {
         (Some(Sent::Ok(_)), _) => {
             println!("Moved \"{}\" to {column_name}{where_}", card.title());
         }
         (Some(Sent::Failed(_, error)), _) => {
             eprintln!("mutation failed, rolled back: {error}");
+
             return Err(Failure::Exit(exit_code(&error)));
         }
         (None, Err(error)) => {
@@ -314,6 +340,7 @@ async fn move_card(
             println!("Queued \"{}\" to {column_name}{where_}", card.title());
         }
     }
+
     Ok(())
 }
 
@@ -328,12 +355,16 @@ async fn sync_project(
     // A second connection names the cards in the log. The engine owns the first.
     let reader = Cache::open_default()?;
     let mut config = SyncConfig::load(&cache, owner, number)?;
+
     if let Some(interval) = interval {
         config.interval = interval;
     }
+
     let engine = sync::spawn(cache, client, config, Arc::new(SystemClock));
     let mut events = engine.subscribe();
+
     engine.send(SyncCommand::Now).await;
+
     loop {
         let event = match events.recv().await {
             Ok(event) => event,
@@ -345,6 +376,7 @@ async fn sync_project(
             Some(id) => describe(&reader, id, intent),
             None => intent.item_id().to_string(),
         };
+
         match event {
             SyncEvent::Status(_) => {}
             SyncEvent::Synced { report, next_in } => {
@@ -353,14 +385,17 @@ async fn sync_project(
                     .remaining
                     .map_or("?".to_owned(), |r| r.to_string());
                 let next_in = next_in.map_or("manual".to_owned(), |d| format!("{}s", d.as_secs()));
+
                 println!(
                     "{} sync ok items={} cost={} remaining={remaining} next_in={next_in}",
                     clock(),
                     report.items,
                     report.cost,
                 );
+
                 for change in &report.changes {
                     let name = |c: &Option<String>| c.clone().unwrap_or_else(|| "(gone)".into());
+
                     println!(
                         "{} changed \"{}\": {} -> {}",
                         clock(),
@@ -369,6 +404,7 @@ async fn sync_project(
                         name(&change.to)
                     );
                 }
+
                 if !watch {
                     return Ok(());
                 }
@@ -379,6 +415,7 @@ async fn sync_project(
                     clock(),
                     retry_in.as_secs()
                 );
+
                 if !watch {
                     return Err(Failure::Exit(exit_code(&error)));
                 }
@@ -415,9 +452,11 @@ fn describe(cache: &Cache, project: &ProjectId, intent: &Intent) -> String {
     let Intent::MoveCard { item_id, to, .. } = intent else {
         return intent.item_id().to_string();
     };
+
     let Ok(Some(board)) = cache.board(project, None) else {
         return item_id.to_string();
     };
+
     let title = board
         .columns
         .iter()
@@ -432,6 +471,7 @@ fn describe(cache: &Cache, project: &ProjectId, intent: &Intent) -> String {
             .find(|c| c.option_id.as_ref() == Some(option))
             .map_or_else(|| option.to_string(), |c| c.name.clone()),
     };
+
     format!("{title} to {column}")
 }
 
@@ -441,6 +481,7 @@ fn clock() -> String {
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs();
+
     format!(
         "{:02}:{:02}:{:02}",
         secs / 3600 % 24,
@@ -453,8 +494,11 @@ fn read_token() -> std::io::Result<String> {
     if std::io::stdin().is_terminal() {
         return rpassword::prompt_password("GitHub token: ").map(|t| t.trim().to_owned());
     }
+
     let mut line = String::new();
+
     std::io::stdin().lock().read_line(&mut line)?;
+
     Ok(line.trim().to_owned())
 }
 
@@ -469,14 +513,18 @@ fn parse_project(project: &str) -> Result<(&str, u32), Failure> {
 fn print_projects(list: &ProjectList) {
     for owner in &list.owners {
         println!("{}", owner.login);
+
         if owner.projects.is_empty() {
             println!("  (no projects)");
         }
+
         for project in &owner.projects {
             let closed = if project.closed { "  (closed)" } else { "" };
+
             println!("  #{:<4} {}{closed}", project.number, project.title);
         }
     }
+
     if !list.sso_blocked.is_empty() {
         println!();
         println!(
@@ -499,6 +547,7 @@ fn show_board(
 ) -> Result<(), Failure> {
     let pending = cache.pending_count(project)?;
     let synced_at = cache.synced_at(project)?;
+
     if json {
         #[derive(Serialize)]
         struct Output<'a> {
@@ -509,33 +558,40 @@ fn show_board(
             #[serde(skip_serializing_if = "Option::is_none")]
             rate_limit: Option<RateUsage>,
         }
+
         let output = Output {
             board,
             pending,
             synced_at,
             rate_limit: usage,
         };
+
         println!(
             "{}",
             serde_json::to_string_pretty(&output).expect("board serializes")
         );
+
         return Ok(());
     }
+
     print_board(board);
     println!();
     println!(
         "pending={pending}, synced {}",
         synced_at.as_deref().unwrap_or("never")
     );
+
     if let Some(usage) = usage {
         println!("{}", rate_limit(usage));
     }
+
     Ok(())
 }
 
 fn rate_limit(usage: RateUsage) -> String {
     let remaining = usage.remaining.map_or("?".to_owned(), |r| r.to_string());
     let limit = usage.limit.map_or("?".to_owned(), |l| l.to_string());
+
     format!("rate limit {remaining}/{limit}, cost {}", usage.cost_total)
 }
 
@@ -543,13 +599,16 @@ fn print_board(board: &Board) {
     let view = board.view.as_ref().map_or(String::new(), |v| {
         format!(", view {} \"{}\"", v.number, v.name)
     });
+
     println!(
         "{}{view}, columns by {}",
         board.project.title, board.field.name
     );
+
     for column in &board.columns {
         println!();
         println!("{} ({})", column.name, column.cards.len());
+
         for card in &column.cards {
             let (reference, repo) = match &card.content {
                 ItemContent::Issue { number, repo, .. } => (format!("#{number}"), repo.as_str()),
@@ -564,6 +623,7 @@ fn print_board(board: &Board) {
             } else {
                 format!("  {repo}")
             };
+
             println!("  {reference:<7} {}{repo}", card.title());
         }
     }

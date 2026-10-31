@@ -10,9 +10,11 @@ function githubColor(color: string) {
   if (color.startsWith("#")) {
     return color;
   }
+
   if (/^[0-9a-f]{3,8}$/i.test(color)) {
     return `#${color}`;
   }
+
   return color;
 }
 

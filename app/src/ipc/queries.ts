@@ -21,21 +21,27 @@ type Gate = {
   tail: Promise<void>;
   wake: Set<() => void>;
 };
+
 const coordination = new WeakMap<
   QueryClient,
   { accountEpoch: number; gates: Map<ProjectId, Gate> }
 >();
+
 function state(client: QueryClient) {
   let value = coordination.get(client);
+
   if (!value) {
     value = { accountEpoch: 0, gates: new Map() };
     coordination.set(client, value);
   }
+
   return value;
 }
+
 function gateFor(client: QueryClient, projectId: ProjectId) {
   const gates = state(client).gates;
   let gate = gates.get(projectId);
+
   if (!gate) {
     gate = {
       preparation: 0,
@@ -46,22 +52,30 @@ function gateFor(client: QueryClient, projectId: ProjectId) {
     };
     gates.set(projectId, gate);
   }
+
   return gate;
 }
+
 export function boardAccountEpoch(client: QueryClient) {
   return state(client).accountEpoch;
 }
+
 export function reconcileBoard(client: QueryClient, projectId: ProjectId, epoch: number) {
   if (boardAccountEpoch(client) !== epoch) {
     return;
   }
+
   const gate = gateFor(client, projectId);
+
   gate.generation++;
+
   for (const wake of gate.wake) {
     wake();
   }
+
   void client.invalidateQueries({ queryKey: ["board", projectId] });
 }
+
 export function beginBoardWrite(
   client: QueryClient,
   projectId: ProjectId,
@@ -71,27 +85,35 @@ export function beginBoardWrite(
   const gate = gateFor(client, projectId);
   const token = {};
   let preparation = 0;
+
   gate.sending.add(token);
   gate.generation++;
+
   const release = () => {
     if (gate.sending.delete(token)) {
       reconcileBoard(client, projectId, accountEpoch);
     }
   };
+
   const prepared = gate.tail.then(async () => {
     // An old account's queued write must not cancel the new account's reads.
     if (boardAccountEpoch(client) !== accountEpoch) {
       throw new Error("Account changed before sending");
     }
+
     // Preserve optimism and keep cancellation out of the visible query error.
     await client.cancelQueries({ queryKey: ["board", projectId] }, { revert: false, silent: true });
+
     if (boardAccountEpoch(client) !== accountEpoch) {
       throw new Error("Account changed before sending");
     }
+
     preparation = ++gate.preparation;
     prepareAndSend();
   });
+
   gate.tail = prepared.catch(release);
+
   // Structural sharing can preserve a reference across separate optimistic writes.
   return {
     accountEpoch,
@@ -100,11 +122,14 @@ export function beginBoardWrite(
     ownsProjection: () => preparation > 0 && preparation === gate.preparation,
   };
 }
+
 function waitForBoard(gate: Gate, signal: AbortSignal): Promise<void> {
   signal.throwIfAborted();
+
   if (!gate.sending.size) {
     return Promise.resolve();
   }
+
   return new Promise((resolve, reject) => {
     const cleanup = () => {
       gate.wake.delete(wake);
@@ -118,6 +143,7 @@ function waitForBoard(gate: Gate, signal: AbortSignal): Promise<void> {
       cleanup();
       reject(signal.reason);
     };
+
     gate.wake.add(wake);
     signal.addEventListener("abort", abort, { once: true });
   });
@@ -131,27 +157,36 @@ export function createQueryClient() {
     },
   });
   let identity: string | null = null;
+
   client.getQueryCache().subscribe((event) => {
     if (event.query.queryKey.length !== 1 || event.query.queryKey[0] !== "auth") {
       return;
     }
+
     const next = client.getQueryData<AuthStatus>(["auth"])?.id ?? null;
+
     if (next === identity) {
       return;
     }
+
     identity = next;
+
     const current = state(client);
+
     current.accountEpoch++;
     void client.cancelQueries({ queryKey: ["board"] }, { revert: false, silent: true });
     client.removeQueries({ queryKey: ["board"] });
+
     for (const gate of current.gates.values()) {
       for (const wake of gate.wake) {
         wake();
       }
     }
+
     current.gates.clear();
     useUi.getState().invalidateUndo();
   });
+
   return client;
 }
 
@@ -163,22 +198,29 @@ export const boardQuery = (projectId: ProjectId, viewId: ViewId | null) =>
     queryFn: async ({ client, signal }) => {
       for (;;) {
         const gate = gateFor(client, projectId);
+
         await waitForBoard(gate, signal);
         signal.throwIfAborted();
+
         if (gate.sending.size) {
           continue;
         }
+
         const epoch = boardAccountEpoch(client);
         const generation = gate.generation;
+
         // A write can begin while getBoard is pending; discard that older result or error.
         try {
           const board = await commands.getBoard(projectId, viewId);
+
           signal.throwIfAborted();
+
           if (epoch === boardAccountEpoch(client) && generation === gate.generation) {
             return board;
           }
         } catch (error) {
           signal.throwIfAborted();
+
           if (epoch === boardAccountEpoch(client) && generation === gate.generation) {
             throw error;
           }
@@ -207,10 +249,12 @@ export const projectsQuery = queryOptions({
   queryKey: ["projects"],
   queryFn: () => commands.listProjects(),
 });
+
 const cachedProjectsQuery = queryOptions({
   queryKey: ["projects", "cached"],
   queryFn: () => commands.cachedProjects(),
 });
+
 export const currentProjectQuery = queryOptions({
   queryKey: ["current-project"],
   queryFn: () => commands.currentProject(),
@@ -241,6 +285,7 @@ export function useAuth() {
 export function useProjects(enabled = true) {
   const cached = useQuery({ ...cachedProjectsQuery, enabled });
   const listed = useQuery({ ...projectsQuery, enabled });
+
   return { ...listed, data: listed.data ?? cached.data };
 }
 
@@ -285,10 +330,12 @@ export function errorMessage(error: unknown) {
 function cardTitle(client: QueryClient, itemId: string) {
   for (const [, board] of client.getQueriesData<Board | null>({ queryKey: ["board"] })) {
     const card = board?.columns.flatMap((c) => c.cards).find((c) => c.item_id === itemId);
+
     if (card) {
       return card.kind === "redacted" ? "Redacted item" : card.title;
     }
   }
+
   return "the card";
 }
 
@@ -306,6 +353,7 @@ export async function listenToCore(client: QueryClient) {
       for (const projectId of deferred) {
         refresh(projectId);
       }
+
       deferred.clear();
     }
   });
@@ -325,15 +373,20 @@ export async function listenToCore(client: QueryClient) {
       // the board slides it from where it is now.
       const id = payload.intent.item_id;
       const from = cardRect(id);
+
       if (from) {
         useUi.getState().setReverting({ id, from });
       }
+
       const verb = verbs[payload.intent.type];
+
       notify(`Couldn't ${verb} "${cardTitle(client, payload.intent.item_id)}". Reverted.`, "error");
     }),
   ]);
+
   return () => {
     stopDrop();
+
     for (const stop of unlisten) {
       stop();
     }

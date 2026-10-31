@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "typecheck": "tsc --noEmit",
-    "format": "biome format --write",
+    "format": "biome check --write",
     "lint": "biome check",
     "check:design": "bun scripts/check-design.ts",
     "test": "vitest run",

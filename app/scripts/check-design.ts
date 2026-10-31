@@ -25,9 +25,11 @@ const tokensFile = join("src", "styles", "tokens.css");
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const path = join(dir, entry.name);
+
     if (entry.isDirectory()) {
       return sourceFiles(path);
     }
+
     return /\.(tsx?|css)$/.test(entry.name) && relative(".", path) !== tokensFile ? [path] : [];
   });
 }
@@ -45,8 +47,10 @@ export function findViolations(path: string, source: string): string[] {
 if (import.meta.main) {
   const files = process.argv.length > 2 ? process.argv.slice(2) : sourceFiles("src");
   const violations = files.flatMap((file) => findViolations(file, readFileSync(file, "utf8")));
+
   for (const violation of violations) {
     console.error(violation);
   }
+
   process.exit(violations.length > 0 ? 1 : 0);
 }

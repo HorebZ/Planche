@@ -71,12 +71,14 @@ export const Card = memo(function Card({
 }: CardProps) {
   const { setNodeRef, attributes, listeners } = useSortable({ id: card.item_id });
   const ref = useRef<HTMLDivElement | null>(null);
+
   // A selection made with the keyboard moves the focus here. An open overlay keeps it.
   useLayoutEffect(() => {
     if (selected && !useUi.getState().overlay && document.activeElement !== ref.current) {
       ref.current?.focus();
     }
   }, [selected]);
+
   return (
     <IssueCard
       {...cardData(card)}
@@ -89,6 +91,7 @@ export const Card = memo(function Card({
       {...listeners}
       onFocus={() => {
         useUi.getState().finishReveal(card.item_id);
+
         if (!selected) {
           useUi.getState().select(card.item_id);
         }

@@ -22,12 +22,14 @@ export function startFrames() {
   if (!enabled) {
     return;
   }
+
   let last = performance.now();
   const tick = (now: number) => {
     dragPerf.frames.push(now - last);
     last = now;
     raf = requestAnimationFrame(tick);
   };
+
   raf = requestAnimationFrame(tick);
 }
 
@@ -40,8 +42,10 @@ export function markDropFrame(droppedAt: number) {
   if (!enabled) {
     return;
   }
+
   requestAnimationFrame((now) => {
     const ms = now - droppedAt;
+
     dragPerf.drops.push(ms);
     commands.perfMark("drop-frame", ms).catch(() => {});
   });

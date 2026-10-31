@@ -33,6 +33,7 @@ const issueCardVariants = cva(
     defaultVariants: { dragState: "none" },
   },
 );
+
 type DragState = NonNullable<VariantProps<typeof issueCardVariants>["dragState"]>;
 type CardBase = {
   repo?: string;
@@ -101,6 +102,7 @@ export function IssueCard({
     : `${pullRequestCount} linked pull requests`;
   const blockedLabel = `Blocked by ${blockedBy} issue${blockedBy === 1 ? "" : "s"}`;
   const blockingLabel = `Blocking ${blocking} issue${blocking === 1 ? "" : "s"}`;
+
   return (
     <div
       data-slot="issue-card"

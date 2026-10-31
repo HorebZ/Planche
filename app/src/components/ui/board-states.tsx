@@ -79,6 +79,7 @@ export function SkeletonColumn({
       </div>
       {Array.from({ length: cards }, (_, i) => {
         const [first, second] = cardWidths[i % cardWidths.length];
+
         return (
           <div
             // biome-ignore lint/suspicious/noArrayIndexKey: placeholders have no identity

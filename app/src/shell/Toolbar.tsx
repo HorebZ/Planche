@@ -46,6 +46,7 @@ export function Toolbar({
   const boardViews = project?.views.filter((v) => v.layout === "Board") ?? [];
   const currentView = project?.views.find((v) => v.number === board?.view?.number);
   const count = board?.columns.reduce((n, c) => n + c.cards.length, 0) ?? 0;
+
   return (
     <header className="shrink-0">
       <div

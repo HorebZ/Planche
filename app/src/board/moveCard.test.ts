@@ -15,6 +15,7 @@ test("the fixture has cases", () => {
 
 test.each(cases.map((c) => [c.name, c] as const))("%s", (_, { board, intent, expected }) => {
   const once = applyIntent(board, intent);
+
   expect(once).toEqual(expected);
   expect(applyIntent(once, intent)).toEqual(expected);
 });

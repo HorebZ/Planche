@@ -6,6 +6,7 @@ type Theme = "light" | "dark";
 
 function ThemeScope({ theme, children }: { theme: Theme; children: ReactNode }) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
+
   return (
     <div
       ref={setContainer}

@@ -6,6 +6,7 @@ use serde_json::{Value, json};
 
 fn fixture_json(name: &str) -> Value {
     let path = format!("{}/../../fixtures/{name}", env!("CARGO_MANIFEST_DIR"));
+
     serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap()
 }
 
@@ -54,7 +55,9 @@ fn every_unarchived_item_of_both_pages_becomes_a_card_in_position_order() {
     let board = project_board(&meta(&fixture_json("project_meta.json")), None, &items).unwrap();
 
     assert_eq!(board.field.name, "Status");
+
     let total: usize = board.columns.iter().map(|c| c.cards.len()).sum();
+
     assert_eq!(total, items.iter().filter(|i| !i.archived).count());
 
     for column in &board.columns {
@@ -63,29 +66,35 @@ fn every_unarchived_item_of_both_pages_becomes_a_card_in_position_order() {
             .iter()
             .map(|card| items.iter().position(|i| i.id == card.item_id).unwrap())
             .collect();
+
         assert!(
             positions.is_sorted(),
             "{} is out of POSITION order",
             column.name
         );
     }
+
     let names: Vec<&str> = board.columns.iter().map(|c| c.name.as_str()).collect();
+
     assert_eq!(names, ["Todo", "In Progress", "Done"]);
 }
 
 #[test]
 fn an_item_without_status_falls_into_no_status_first() {
     let mut pages = pages();
+
     item_nodes(&mut pages[1])[0]["fieldValues"]["nodes"]
         .as_array_mut()
         .unwrap()
         .retain(|v| v["__typename"] != "ProjectV2ItemFieldSingleSelectValue");
+
     let board = project_board(
         &meta(&fixture_json("project_meta.json")),
         None,
         &items(&pages),
     )
     .unwrap();
+
     assert_eq!(board.columns[0].name, "No Status");
     assert_eq!(board.columns[0].option_id, None);
     assert_eq!(board.columns[0].cards.len(), 1);
@@ -95,8 +104,10 @@ fn an_item_without_status_falls_into_no_status_first() {
 fn a_redacted_item_becomes_the_redacted_card() {
     let mut pages = pages();
     let node = &mut item_nodes(&mut pages[0])[1];
+
     node["type"] = json!("REDACTED");
     node["content"] = Value::Null;
+
     let board = project_board(
         &meta(&fixture_json("project_meta.json")),
         None,
@@ -109,6 +120,7 @@ fn a_redacted_item_becomes_the_redacted_card() {
         .flat_map(|c| &c.cards)
         .filter(|c| c.content == ItemContent::Redacted)
         .collect();
+
     assert_eq!(redacted.len(), 1);
     assert_eq!(redacted[0].title(), "Redacted item");
 }
@@ -117,7 +129,9 @@ fn a_redacted_item_becomes_the_redacted_card() {
 fn an_archived_item_is_left_out() {
     let mut pages = pages();
     let node = &mut item_nodes(&mut pages[0])[0];
+
     node["isArchived"] = json!(true);
+
     let archived_id = node["id"].as_str().unwrap().to_owned();
     let board = project_board(
         &meta(&fixture_json("project_meta.json")),
@@ -125,6 +139,7 @@ fn an_archived_item_is_left_out() {
         &items(&pages),
     )
     .unwrap();
+
     assert!(
         board
             .columns
@@ -138,6 +153,7 @@ fn an_archived_item_is_left_out() {
 fn a_board_view_grouped_by_another_field_uses_its_options() {
     let mut meta_json = fixture_json("project_meta.json");
     let project = &mut meta_json["data"]["node"];
+
     project["fields"]["nodes"]
         .as_array_mut()
         .unwrap()
@@ -165,6 +181,7 @@ fn a_board_view_grouped_by_another_field_uses_its_options() {
         }));
 
     let mut pages = pages();
+
     item_nodes(&mut pages[0])[0]["fieldValues"]["nodes"]
         .as_array_mut()
         .unwrap()
@@ -173,11 +190,15 @@ fn a_board_view_grouped_by_another_field_uses_its_options() {
             "optionId": "p-high",
             "field": { "id": "PVTSSF_priority" }
         }));
+
     let items = items(&pages);
 
     let board = project_board(&meta(&meta_json), Some(9), &items).unwrap();
+
     assert_eq!(board.field.name, "Priority");
+
     let titles = titles(&board);
+
     assert_eq!(titles[0].0, "No Priority");
     assert_eq!(titles[0].1.len(), items.len() - 1);
     assert_eq!(titles[1].0, "High");
@@ -188,16 +209,19 @@ fn a_board_view_grouped_by_another_field_uses_its_options() {
 #[test]
 fn a_view_filter_does_not_change_the_cards() {
     let mut meta_json = fixture_json("project_meta.json");
+
     for view in meta_json["data"]["node"]["views"]["nodes"]
         .as_array_mut()
         .unwrap()
     {
         view["filter"] = json!("status:Done");
     }
+
     let items = items(&pages());
     let unfiltered =
         project_board(&meta(&fixture_json("project_meta.json")), None, &items).unwrap();
     let filtered = project_board(&meta(&meta_json), None, &items).unwrap();
+
     assert_eq!(titles(&filtered), titles(&unfiltered));
 }
 
@@ -210,6 +234,7 @@ fn a_table_view_is_not_a_board() {
         .find(|v| v.layout == planche_core::domain::ViewLayout::Table)
         .unwrap();
     let error = project_board(&meta, Some(table.number), &items(&pages())).unwrap_err();
+
     assert!(matches!(error, Error::ViewNotBoard(n) if n == table.number));
     assert_eq!(
         error.to_string(),
@@ -221,15 +246,19 @@ fn a_table_view_is_not_a_board() {
 fn a_view_sorted_by_a_field_has_no_manual_order() {
     let sorted = |count: u32| {
         let mut meta_json = fixture_json("project_meta.json");
+
         for view in meta_json["data"]["node"]["views"]["nodes"]
             .as_array_mut()
             .unwrap()
         {
             view["sortByFields"]["totalCount"] = json!(count);
         }
+
         let board = project_board(&meta(&meta_json), None, &items(&pages())).unwrap();
+
         board.view.unwrap().manual_order
     };
+
     assert!(sorted(0));
     assert!(!sorted(1));
 }

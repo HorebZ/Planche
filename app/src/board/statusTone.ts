@@ -26,5 +26,6 @@ export function statusTone(color: string | null, name?: string): StatusKey {
     canceled: "cancelled",
     deleted: "deleted",
   };
+
   return (key && statuses[key]) || (color && tones[color]) || "backlog";
 }

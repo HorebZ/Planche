@@ -91,6 +91,7 @@ export const useUi = create<UiState>()((set, get) => ({
     }),
   claimAction: () => {
     set((s) => ({ actionVersion: s.actionVersion + 1 }));
+
     return get().actionVersion;
   },
   invalidateUndo: () =>
@@ -103,24 +104,32 @@ export const useUi = create<UiState>()((set, get) => ({
     })),
   acceptUndo: (owner, undo) => {
     let accepted = false;
+
     set((s) => {
       if (s.actionVersion !== owner) {
         return s;
       }
+
       accepted = true;
+
       return { undo };
     });
+
     return accepted;
   },
   takeUndo: (expectedOwner) => {
     let taken: UiState["undo"] = null;
+
     set((s) => {
       if (!s.undo || (expectedOwner !== undefined && s.undo.owner !== expectedOwner)) {
         return s;
       }
+
       taken = s.undo;
+
       return { undo: null, actionVersion: s.actionVersion + 1 };
     });
+
     return taken;
   },
   setDragging: (dragging) => set({ dragging }),

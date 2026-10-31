@@ -63,10 +63,13 @@ const move = (
 function roundTrip(intent: Intent) {
   const before = board();
   const undo = inverse(before, intent);
+
   if (!undo) {
     throw new Error("no inverse");
   }
+
   expect(applyIntent(applyIntent(before, intent), undo)).toEqual(before);
+
   return undo;
 }
 
@@ -90,7 +93,9 @@ test("an assignment swaps add and remove, and skips what changed nothing", () =>
     add: [hor, lea],
     remove: [],
   };
+
   expect(roundTrip(intent)).toEqual({ ...intent, add: [], remove: [hor] });
+
   const noop: Intent = {
     ...base,
     type: "set_assignees",
@@ -98,11 +103,13 @@ test("an assignment swaps add and remove, and skips what changed nothing", () =>
     add: [],
     remove: [lea],
   };
+
   expect(inverse(board(), noop)).toBeNull();
 });
 
 test("an archive goes back as an unarchive that carries the card", () => {
   const undo = roundTrip({ ...base, type: "archive", item_id: "PVTI_10" });
+
   expect(undo).toMatchObject({ type: "unarchive", column: "todo", card: { item_id: "PVTI_10" } });
   expect(inverse(board(), undo)).toEqual({ ...base, type: "archive", item_id: "PVTI_10" });
 });
@@ -116,6 +123,7 @@ test("a new draft cannot be undone", () => {
     column: "todo",
     title: "Planche test draft",
   };
+
   expect(inverse(board(), create)).toBeNull();
 });
 

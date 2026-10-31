@@ -21,12 +21,15 @@ type ToastCardProps = ComponentProps<"div"> & {
 
 function ToastIcon({ tone }: { tone: ToastTone }) {
   const className = "size-4 shrink-0";
+
   if (tone === "success") {
     return <CircleCheck className={cn(className, "text-success")} />;
   }
+
   if (tone === "error") {
     return <CircleAlert className={cn(className, "text-danger")} />;
   }
+
   return <Info className={cn(className, "text-fg-2")} />;
 }
 

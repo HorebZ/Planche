@@ -458,6 +458,7 @@ function DragMock() {
 
 function DraftColumnPreview() {
   const [drafting, setDrafting] = useState(false);
+
   return (
     <BoardColumn
       status="backlog"

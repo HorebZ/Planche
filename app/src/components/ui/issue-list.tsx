@@ -29,29 +29,38 @@ export function IssueListGroup({
 }) {
   const [expanded, setExpanded] = useState(true);
   const groupRef = useRef<HTMLElement>(null);
+
   useLayoutEffect(() => {
     if (!revealId || !items.some((item) => item.id === revealId)) {
       return;
     }
+
     if (!expanded) {
       setExpanded(true);
+
       return;
     }
+
     const row = groupRef.current?.querySelector<HTMLElement>(
       `[data-item-id="${CSS.escape(revealId)}"]`,
     );
+
     row?.scrollIntoView({ block: "nearest" });
     row?.focus({ preventScroll: true });
+
     if (row) {
       onRevealed?.(revealId);
     }
   }, [revealId, expanded, items, onRevealed]);
+
   const drafting = Boolean(draft);
+
   useLayoutEffect(() => {
     if (drafting) {
       setExpanded(true);
     }
   }, [drafting]);
+
   return (
     <section
       ref={groupRef}
@@ -63,9 +72,11 @@ export function IssueListGroup({
           onClick={() => setExpanded(!expanded)}
           onKeyDown={(event) => {
             const command = commandFor(event.nativeEvent, "board");
+
             if (command !== "column.prev" && command !== "column.next") {
               return;
             }
+
             event.preventDefault();
             event.stopPropagation();
             setExpanded(command === "column.next");

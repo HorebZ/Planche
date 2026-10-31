@@ -32,12 +32,15 @@ export function StatusMenu({ board, card, onMove }: StatusMenuProps) {
     ...o,
     keys: keysFor(`status.${i + 1}` as CommandId).join("") || undefined,
   }));
+
   const pick = (id: string) => {
     useUi.getState().open(null);
+
     if (id !== current) {
       onMove(id);
     }
   };
+
   return (
     <Popover
       open={open}
@@ -57,9 +60,11 @@ export function StatusMenu({ board, card, onMove }: StatusMenuProps) {
           onKeyDown={(event) => {
             const command = commandFor(event.nativeEvent, "menu");
             const option = command && shown[Number(command.slice("status.".length)) - 1];
+
             if (!option) {
               return;
             }
+
             event.preventDefault();
             pick(option.id);
           }}

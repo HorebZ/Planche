@@ -107,15 +107,20 @@ pub async fn full_sync<R: Remote>(
     let (meta, mut page) = remote.board_page(owner, number).await?;
     let total = page.total_count;
     let pages = total.div_ceil(100).max(1);
+
     progress(1, pages, total);
+
     let mut items = std::mem::take(&mut page.items);
+
     for n in 2.. {
         let Some(cursor) = page.next_cursor.take() else {
             break;
         };
+
         if n == 2 && fault("fail_page_2") {
             return Err(Error::Network("PLANCHE_FAULT=fail_page_2".into()));
         }
+
         page = remote.items_page(&meta.id, &cursor).await?;
         items.append(&mut page.items);
         progress(n, pages, total);
@@ -124,9 +129,12 @@ pub async fn full_sync<R: Remote>(
     let before = cache
         .snapshot(&meta.id)?
         .and_then(|(meta, items)| project_board(&meta, None, &items).ok());
+
     cache.write_snapshot(&meta, &items, owner == "@me")?;
+
     let after = project_board(&meta, None, &items).ok();
     let usage = remote.usage();
+
     Ok(SyncReport {
         project: meta.id,
         items: items.len() as u32,
@@ -159,6 +167,7 @@ fn column_changes(before: &Board, after: &Board) -> Vec<CardChange> {
         .into_iter()
         .filter_map(|(id, (title, to))| {
             let from = before.remove(&id).map(|(_, from)| from);
+
             (from.as_ref() != Some(&to)).then_some(CardChange {
                 title,
                 from,
@@ -166,12 +175,14 @@ fn column_changes(before: &Board, after: &Board) -> Vec<CardChange> {
             })
         })
         .collect();
+
     changes.extend(before.into_values().map(|(title, from)| CardChange {
         title,
         from: Some(from),
         to: None,
     }));
     changes.sort_by(|a, b| a.title.cmp(&b.title));
+
     changes
 }
 
@@ -193,12 +204,15 @@ pub async fn flush<R: Remote>(
 ) -> Result<()> {
     while let Some(mutation) = cache.claim_next(project)? {
         let board = cache.board(project, None)?;
+
         match send(remote, &mutation.intent, board.as_ref()).await {
             Ok(created) => {
                 if fault("hang_before_ack") {
                     std::future::pending::<()>().await;
                 }
+
                 cache.ack(mutation.seq)?;
+
                 if let (
                     Some(item_id),
                     Intent::CreateDraft {
@@ -217,10 +231,12 @@ pub async fn flush<R: Remote>(
                         placement: Placement::Top,
                     })?;
                 }
+
                 sent(Sent::Ok(mutation));
             }
             Err(error) if error.is_transient() => {
                 cache.release(mutation.seq, &error.to_string())?;
+
                 return Err(error);
             }
             Err(error) => {
@@ -229,6 +245,7 @@ pub async fn flush<R: Remote>(
             }
         }
     }
+
     Ok(())
 }
 
@@ -245,12 +262,15 @@ async fn send<R: Remote>(
             message: "PLANCHE_FAULT=fail_mutations".into(),
         }]));
     }
+
     let board = board
         .ok_or_else(|| Error::Cache(format!("project {} is not cached", intent.project_id())))?;
     let mut created = None;
+
     for operation in to_operations(intent, board)? {
         created = created.or(remote.execute(&operation).await?);
     }
+
     Ok(created)
 }
 
@@ -318,10 +338,13 @@ pub fn next_interval(
     reset_in: Duration,
 ) -> Option<Duration> {
     let base = setting.duration()?;
+
     if remaining < LOW_REMAINING {
         return Some(base.max(reset_in));
     }
+
     let floor = (u64::from(cost) * 3600).div_ceil(u64::from(BUDGET_PER_HOUR));
+
     Some(base.max(Duration::from_secs(floor)))
 }
 
@@ -365,6 +388,7 @@ impl SyncPrefs {
 
     pub fn save(self, cache: &Cache) -> Result<()> {
         cache.set("sync_interval", self.interval.as_str())?;
+
         cache.set("sync_on_wake", if self.on_wake { "true" } else { "false" })
     }
 }
@@ -382,6 +406,7 @@ impl SyncConfig {
     /// The project with the stored `SyncPrefs`.
     pub fn load(cache: &Cache, owner: &str, number: u32) -> Result<Self> {
         let prefs = SyncPrefs::load(cache)?;
+
         Ok(Self {
             owner: owner.to_owned(),
             number,
@@ -503,7 +528,9 @@ pub fn spawn<R: Remote>(
         last_sync: None,
         last_success: None,
     };
+
     tokio::spawn(engine.run(receiver));
+
     SyncHandle {
         commands,
         events,
@@ -531,9 +558,12 @@ impl<R: Remote> Engine<R> {
         if let Err(error) = self.cache.reset_in_flight() {
             self.failed(error);
         }
+
         self.schedule();
         self.publish(SyncState::Idle, None);
+
         let mut last_tick = (self.clock.wall(), self.clock.mono());
+
         loop {
             tokio::select! {
                 command = commands.recv() => match command {
@@ -601,16 +631,20 @@ impl<R: Remote> Engine<R> {
     /// Flushes the queue, then fetches the project.
     async fn cycle(&mut self) {
         self.last_sync = Some(self.clock.mono());
+
         let syncing = |page, pages, items_total| SyncState::Syncing {
             page,
             pages,
             items_total,
         };
+
         self.publish(syncing(0, 0, 0), None);
+
         let result = match self.flush().await {
             Ok(_) => {
                 let (status, events) = (self.status.clone(), self.events.clone());
                 let base = self.status();
+
                 full_sync(
                     &mut self.cache,
                     &self.remote,
@@ -621,7 +655,9 @@ impl<R: Remote> Engine<R> {
                             state: syncing(page, pages, items_total),
                             ..base.clone()
                         };
+
                         *status.lock().expect("status lock") = next.clone();
+
                         let _ = events.send(SyncEvent::Status(next));
                     },
                 )
@@ -629,9 +665,11 @@ impl<R: Remote> Engine<R> {
             }
             Err(error) => Err(error),
         };
+
         match result {
             Ok(report) => {
                 self.failures = 0;
+
                 let remaining = if fault("ratelimit_low") {
                     1
                 } else {
@@ -646,6 +684,7 @@ impl<R: Remote> Engine<R> {
                     Duration::from_secs(at.into()).saturating_sub(now)
                 });
                 let next_in = next_interval(self.config.interval, report.cost, remaining, reset_in);
+
                 self.due_at = next_in.map(|d| self.clock.mono() + d);
                 self.last_success = Some(unix_ms(self.clock.wall()));
                 self.publish(SyncState::Idle, None);
@@ -663,10 +702,13 @@ impl<R: Remote> Engine<R> {
         else {
             return Ok(false);
         };
+
         let events = self.events.clone();
         let mut any = false;
+
         flush(&mut self.cache, &self.remote, &project, |sent| {
             any = true;
+
             let _ = events.send(match sent {
                 Sent::Ok(mutation) => SyncEvent::MutationOk(mutation),
                 Sent::Failed(mutation, error) => SyncEvent::MutationFailed {
@@ -676,12 +718,14 @@ impl<R: Remote> Engine<R> {
             });
         })
         .await?;
+
         Ok(any)
     }
 
     /// Retries with an exponential backoff from 2 s to 60 s, or after `retry-after`.
     fn failed(&mut self, error: Error) {
         self.failures += 1;
+
         let backoff = Duration::from_secs(1 << self.failures.min(6)).min(MAX_BACKOFF);
         let (retry_in, state) = match &error {
             Error::RateLimited { retry_after_secs } => (
@@ -696,6 +740,7 @@ impl<R: Remote> Engine<R> {
                 },
             ),
         };
+
         self.due_at = Some(self.clock.mono() + retry_in);
         self.publish(state, Some(self.clock.wall() + retry_in));
         self.emit(SyncEvent::SyncFailed {
@@ -714,6 +759,7 @@ impl<R: Remote> Engine<R> {
             state, retry_at, ..
         } = self.status();
         let retry_at = retry_at.map(|ms| UNIX_EPOCH + Duration::from_secs_f64(ms / 1000.0));
+
         self.publish(state, retry_at);
     }
 
@@ -732,6 +778,7 @@ impl<R: Remote> Engine<R> {
             retry_at: retry_at.map(unix_ms),
             pending,
         };
+
         *self.status.lock().expect("status lock") = status.clone();
         self.emit(SyncEvent::Status(status));
     }
@@ -809,6 +856,7 @@ mod tests {
                 secs(300),
             ),
         ];
+
         for (name, setting, cost, remaining, reset_in, expected) in cases {
             assert_eq!(
                 next_interval(setting, cost, remaining, reset_in),
@@ -823,6 +871,7 @@ mod tests {
         for value in ["1m", "5m", "15m", "manual"] {
             assert_eq!(value.parse::<SyncInterval>().unwrap().as_str(), value);
         }
+
         assert!("2m".parse::<SyncInterval>().is_err());
     }
 }

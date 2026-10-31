@@ -41,6 +41,7 @@ const settings = (
 export function ShellSection() {
   const [designTone, setDesignTone] = useState<ProjectTone>("review");
   const [hiddenTone, setHiddenTone] = useState<ProjectTone>("todo");
+
   return (
     <Section
       id="shell"
@@ -338,6 +339,7 @@ function SettingsPreview() {
   const [theme, setTheme] = useState<"system" | "light" | "dark">("system");
   const [interval, setInterval] = useState("five_minutes");
   const [wake, setWake] = useState(true);
+
   return (
     <>
       <Button onClick={() => setOpen(true)}>Open settings</Button>

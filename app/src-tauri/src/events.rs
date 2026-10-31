@@ -49,14 +49,17 @@ pub fn relay(app: AppHandle, project: ProjectId, mut events: Receiver<SyncEvent>
                         report.cost,
                         report.changes.len()
                     );
+
                     changed.emit(&app)
                 }
                 SyncEvent::SyncFailed { error, .. } => {
                     println!("sync failed: {error}");
+
                     Ok(())
                 }
                 SyncEvent::MutationOk(mutation) => {
                     println!("mutation ok: {}", mutation.intent.item_id());
+
                     changed.emit(&app)
                 }
                 SyncEvent::MutationFailed { mutation, error } => {
@@ -64,11 +67,13 @@ pub fn relay(app: AppHandle, project: ProjectId, mut events: Receiver<SyncEvent>
                         "mutation failed, rolled back: {} ({error})",
                         mutation.intent.item_id()
                     );
+
                     let _ = MutationFailed {
                         intent: mutation.intent,
                         message: error.to_string(),
                     }
                     .emit(&app);
+
                     changed.emit(&app)
                 }
             };

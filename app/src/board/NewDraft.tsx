@@ -25,32 +25,42 @@ export function NewDraft({
   const editor = overlay?.type === "draft" ? overlay.editor : "";
   const key = draftKey(auth.data?.id ?? "", projectId, column);
   const entry = useDrafts((s) => s.entries[key] ?? emptyDraft);
+
   const close = (focus: boolean) => {
     const state = useUi.getState();
+
     if (state.overlay?.type !== "draft" || state.overlay.editor !== editor) {
       return;
     }
+
     const target = state.selectedId
       ? document.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(state.selectedId)}"]`)
       : document.activeElement
           ?.closest('[data-slot="board-column"], [data-slot="issue-list-group"]')
           ?.querySelector<HTMLElement>('button[aria-label^="Add draft"]');
+
     state.open(null);
+
     if (focus) {
       target?.focus();
     }
   };
+
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
+
         if (!auth.data?.id) {
           return;
         }
+
         const ticket = useDrafts.getState().begin(key, editor);
+
         if (!ticket) {
           return;
         }
+
         void onSubmit(ticket.title, (result) => {
           if (useDrafts.getState().finish(ticket, result)) {
             close(true);
@@ -69,6 +79,7 @@ export function NewDraft({
           if (commandFor(event.nativeEvent, "dialog") !== "dialog.close") {
             return;
           }
+
           event.preventDefault();
           useDrafts.getState().edit(key, "");
           close(true);

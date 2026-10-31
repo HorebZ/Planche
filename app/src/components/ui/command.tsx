@@ -61,24 +61,33 @@ function CommandHighlight({ text, query }: { text: string; query: string }) {
   const hit = new Array<boolean>(text.length).fill(false);
   const lower = text.toLowerCase();
   let from = 0;
+
   for (const word of query.toLowerCase().split(/\s+/).filter(Boolean)) {
     const whole = lower.indexOf(word, from);
     const at = whole >= 0 ? [...word].map((_, i) => whole + i) : subsequence(lower, word, from);
+
     if (!at) {
       continue;
     }
+
     for (const i of at) {
       hit[i] = true;
     }
+
     from = (at.at(-1) ?? from) + 1;
   }
+
   const parts: ReactNode[] = [];
+
   for (let i = 0; i < text.length; ) {
     let j = i;
+
     while (j < text.length && hit[j] === hit[i]) {
       j++;
     }
+
     const part = text.slice(i, j);
+
     parts.push(
       hit[i] ? (
         <span
@@ -93,16 +102,19 @@ function CommandHighlight({ text, query }: { text: string; query: string }) {
     );
     i = j;
   }
+
   return parts;
 }
 
 function subsequence(text: string, word: string, from: number) {
   const at: number[] = [];
+
   for (let i = from; i < text.length && at.length < word.length; i++) {
     if (text[i] === word[at.length]) {
       at.push(i);
     }
   }
+
   return at.length === word.length ? at : null;
 }
 

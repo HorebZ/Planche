@@ -82,11 +82,13 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
     if (refresh.isPending) {
       return;
     }
+
     refresh.mutate(projectId, {
       onError: (error) => notify(`Sync failed: ${errorMessage(error)}`, "error"),
       onSuccess: () => void board.refetch(),
     });
   }, [refresh, projectId, board.refetch]);
+
   const goTo = (id: ProjectId) => {
     selectProject(id);
     openProject.mutate(id);
@@ -94,53 +96,71 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   const newDraft = (column: OptionId | null) => {
     show({ type: "draft", column });
   };
+
   const newIssue = () => {
     if (!data) {
       return;
     }
+
     const column = card ? data.columns[columnIndexOf(data, card)] : data.columns[0];
+
     newDraft(column?.option_id ?? null);
   };
+
   const step = (direction: Direction) => {
     if (!data) {
       return;
     }
+
     if (layout === "board") {
       return select(navigate(data, selectedId, direction));
     }
+
     const rows = [...document.querySelectorAll<HTMLElement>('[data-slot="issue-list-row"]')];
     const at = rows.findIndex((row) => row.dataset.itemId === selectedId);
+
     if (direction === "left" || direction === "right") {
       const group = rows[at]?.closest('[data-slot="issue-list-group"]');
       const header = group?.querySelector<HTMLButtonElement>("button[aria-expanded]");
+
       if (header && (header.getAttribute("aria-expanded") === "true") === (direction === "left")) {
         header.click();
         header.focus();
         select(null);
       }
+
       return;
     }
+
     const next =
       at < 0 ? 0 : Math.max(0, Math.min(rows.length - 1, at + (direction === "next" ? 1 : -1)));
+
     rows[next]?.focus();
   };
+
   const moveBy = (offset: number) => {
     if (!data || !card) {
       return;
     }
+
     const target = data.columns[columnIndexOf(data, card) + offset];
+
     if (target) {
       void actions.run(moveTo(data, card, target.option_id));
     }
   };
+
   const toggle = (user: User | null) => {
     if (!data || !card) {
       return;
     }
+
     if (!user) {
       return notify("Planche does not know your GitHub user yet. Sync, then try again.", "error");
     }
+
     const intent = toggleAssignee(data, card, user);
+
     if (intent) {
       void actions.run(intent);
     }
@@ -161,6 +181,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
     "card.github": () => card && data && void openUrl(urlOf(card, data.project.url)),
     "selection.clear": () => {
       select(null);
+
       if (document.activeElement instanceof HTMLElement) {
         document.activeElement.blur();
       }
@@ -173,6 +194,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
       if (!card || !data) {
         return;
       }
+
       navigator.clipboard.writeText(urlOf(card, data.project.url)).then(
         () => notify("Link copied", "success"),
         (error) => notify(`Couldn't copy the link: ${errorMessage(error)}`, "error"),
@@ -208,12 +230,15 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
           }),
     [data, run],
   );
+
   const openIssue = (id: string) => {
     const target = data?.columns.flatMap((c) => c.cards).find((c) => c.item_id === id);
+
     if (target && data) {
       void openUrl(urlOf(target, data.project.url));
     }
   };
+
   const cards = data?.columns.reduce((sum, c) => sum + c.cards.length, 0);
   const syncing = status.data?.state.type === "syncing";
   const offline = status.data?.state.type === "offline";
@@ -227,23 +252,28 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   const feedback = footerText(status.data, data?.synced_at ?? null, Date.now(), error);
   const failed = feedback.tone === "offline";
   const retrying = board.isFetching || status.isFetching || refresh.isPending;
+
   const retry = () => {
     if (retrying) {
       return;
     }
+
     if (board.error) {
       void board.refetch();
     } else {
       syncNow();
     }
+
     if (status.error) {
       void status.refetch();
     }
   };
+
   const chooseProject = () => {
     queryClient.setQueryData(currentProjectQuery.queryKey, null);
     selectProject(null);
   };
+
   return (
     <div className="flex h-screen overflow-hidden bg-bg-sunken">
       <AppSidebar

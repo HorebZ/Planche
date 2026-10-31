@@ -22,15 +22,18 @@ export const useDrafts = create<{
   edit: (key, title) =>
     set((s) => {
       const entry = s.entries[key] ?? emptyDraft;
+
       return {
         entries: { ...s.entries, [key]: { ...entry, title, revision: entry.revision + 1 } },
       };
     }),
   begin: (key, editor) => {
     const entry = get().entries[key] ?? emptyDraft;
+
     if (entry.ticket || !entry.title.trim()) {
       return null;
     }
+
     const ticket = {
       key,
       editor,
@@ -38,15 +41,20 @@ export const useDrafts = create<{
       title: entry.title.trim(),
       id: crypto.randomUUID(),
     };
+
     set((s) => ({ entries: { ...s.entries, [key]: { ...entry, ticket, message: "Saving…" } } }));
+
     return ticket;
   },
   finish: (ticket, result) => {
     const entry = get().entries[ticket.key];
+
     if (!entry || entry.ticket?.id !== ticket.id) {
       return false;
     }
+
     const clear = result.type === "accepted" && entry.revision === ticket.revision;
+
     set((s) => ({
       entries: {
         ...s.entries,
@@ -63,6 +71,7 @@ export const useDrafts = create<{
         },
       },
     }));
+
     return clear;
   },
 }));

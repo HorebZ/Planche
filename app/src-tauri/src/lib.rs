@@ -51,6 +51,7 @@ fn export_bindings(builder: &tauri_specta::Builder<tauri::Wry>) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = builder();
+
     #[cfg(debug_assertions)]
     export_bindings(&builder);
 
@@ -59,18 +60,22 @@ pub fn run() {
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {
             builder.mount_events(app);
+
             let core = Core::new(Cache::open_default()?);
             let reopen = core.current_project().map_err(|e| e.message)?;
+
             app.manage(core);
 
             // The onboarding is a small window; the board needs room.
             let window = app.get_webview_window("main").expect("main window");
+
             if reopen.is_some() {
                 window.set_min_size(Some(LogicalSize::new(1100.0, 700.0)))?;
                 window.set_size(LogicalSize::new(1440.0, 900.0))?;
             } else {
                 window.set_size(LogicalSize::new(780.0, 540.0))?;
             }
+
             window.center()?;
             window.show()?;
             window.set_focus()?;
@@ -80,6 +85,7 @@ pub fn run() {
         .on_window_event(|window, event| {
             if let WindowEvent::Focused(true) = event {
                 let app = window.app_handle().clone();
+
                 tauri::async_runtime::spawn(async move {
                     if let Some(engine) = app.state::<Core>().engine().await {
                         engine.send(SyncCommand::Focus).await;

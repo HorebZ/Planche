@@ -26,6 +26,7 @@ pub fn load_token() -> Result<String> {
     {
         return Ok(token.trim().to_owned());
     }
+
     cached(|| match credentials::read() {
         Ok(token) => Ok(token),
         Err(keyring::Error::NoEntry) => Err(Error::NotSignedIn),
@@ -37,11 +38,15 @@ pub fn load_token() -> Result<String> {
 /// is held during `read` so concurrent first calls share one keychain prompt.
 fn cached(read: impl FnOnce() -> Result<String>) -> Result<String> {
     let mut cache = TOKEN.lock().unwrap_or_else(PoisonError::into_inner);
+
     if let Some(token) = cache.as_ref() {
         return Ok(token.clone());
     }
+
     let token = read()?;
+
     *cache = Some(token.clone());
+
     Ok(token)
 }
 
@@ -55,15 +60,20 @@ pub async fn login(token: &str) -> Result<Viewer> {
     let token = token.trim();
     let client = GithubClient::new(token)?;
     let (viewer, scopes) = ops::viewer(&client).await?;
+
     if token.starts_with("github_pat_") {
         return Err(Error::ClassicTokenRequired);
     }
+
     let missing = missing_scopes(scopes.as_deref())?;
+
     if !missing.is_empty() {
         return Err(Error::MissingScopes(missing));
     }
+
     credentials::write(token).map_err(|e| Error::Keychain(e.to_string()))?;
     remember(Some(token.to_owned()));
+
     Ok(viewer)
 }
 
@@ -96,6 +106,7 @@ pub async fn status() -> Result<AuthStatus> {
         Err(e) => return Err(e),
     };
     let (viewer, scopes) = ops::viewer(&GithubClient::new(token)?).await?;
+
     Ok(AuthStatus::signed_in(
         viewer,
         missing_scopes(scopes.as_deref())?,
@@ -111,6 +122,7 @@ pub async fn set_token(token: &str) -> Result<AuthStatus> {
 pub fn sign_out() -> Result<()> {
     credentials::delete().map_err(|e| Error::Keychain(e.to_string()))?;
     remember(None);
+
     Ok(())
 }
 
@@ -129,6 +141,7 @@ pub fn missing_scopes(header: Option<&str>) -> Result<Vec<String>> {
             other => scope == other,
         })
     };
+
     Ok(REQUIRED_SCOPES
         .iter()
         .filter(|required| !covers(required))
@@ -154,13 +167,16 @@ mod tests {
     #[test]
     fn auth_token_cache_reads_once_until_cleared() {
         use std::cell::Cell;
+
         let reads = Cell::new(0);
         let read = |result: Result<String>| {
             reads.set(reads.get() + 1);
+
             result
         };
 
         remember(None);
+
         assert!(matches!(
             cached(|| read(Err(Error::NotSignedIn))),
             Err(Error::NotSignedIn)
@@ -170,10 +186,14 @@ mod tests {
         assert_eq!(reads.get(), 2);
 
         remember(Some("c".into()));
+
         assert_eq!(cached(|| read(Ok("d".into()))).unwrap(), "c");
+
         remember(None);
+
         assert_eq!(cached(|| read(Ok("e".into()))).unwrap(), "e");
         assert_eq!(reads.get(), 3);
+
         remember(None);
     }
 

@@ -66,7 +66,9 @@ While `bun run dev` is running, http://localhost:1420/playground shows every UI 
 - Separate logical steps with one blank line; keep related declarations together. Biome preserves these groups and collapses repeated blank lines.
 - Let Biome organize imports and check Tailwind class ordering.
 
-Run `bun run --cwd app format` to format the frontend. `bun run --cwd app lint` checks formatting and lint rules without changing files; it also runs as part of `bun run check`. The generated `app/src/ipc/bindings.ts` keeps the generator's formatting and is excluded from Biome.
+Run `bun run format` to format Rust and TypeScript across the repository with rustfmt and Biome. `bun run lint` checks the web code without changing files and runs as part of `bun run check`. The frontend-only commands are `bun run --cwd app format` and `bun run --cwd app lint`. The generated `app/src/ipc/bindings.ts` keeps the generator's formatting and is excluded from Biome.
+
+Separate logical steps with a blank line. In tests, keep setup, action, and assertions distinct, with related assertions together. Biome and rustfmt preserve these blank lines but do not insert them; maintain this spacing when adding or editing code.
 
 ### Command-line client
 

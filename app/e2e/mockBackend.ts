@@ -90,9 +90,11 @@ function card(
     updated_by_sync: false,
     details: { created_at: "2026-10-02T12:00:00Z" },
   };
+
   if (kind === "p") {
     return { ...common, kind: "pull_request", id: `PR_${number}`, state: "open", is_draft: false };
   }
+
   return { ...common, kind: "issue", id: `I_${number}`, state: kind === "d" ? "closed" : "open" };
 }
 
@@ -102,6 +104,7 @@ function column(id: string, name: string, color: string, cards: Card[]): Column 
 
 function mockupBoard(): Board {
   position = 0;
+
   return {
     project: {
       id: PROJECT,
@@ -162,7 +165,9 @@ function mockupBoard(): Board {
 /** 1000 cards over five columns, for the scroll budget. */
 function bigBoard(): Board {
   const board = mockupBoard();
+
   position = 0;
+
   for (const [index, col] of board.columns.entries()) {
     col.cards = Array.from({ length: 200 }, (_, i) =>
       card(
@@ -175,6 +180,7 @@ function bigBoard(): Board {
       ),
     );
   }
+
   return board;
 }
 
@@ -182,6 +188,7 @@ function boardFor(scenario: Scenario): Board | null {
   switch (scenario) {
     case "relations": {
       const board = mockupBoard();
+
       Object.assign(board.columns[0].cards[0], {
         details: { sub_issues: { completed: 0, total: 2 } },
       });
@@ -202,44 +209,62 @@ function boardFor(scenario: Scenario): Board | null {
           sub_issues: { completed: 2, total: 5 },
         },
       });
+
       return board;
     }
+
     case "six-statuses": {
       const board = mockupBoard();
+
       board.columns.push(column("cancelled", "Cancelled", "GRAY", []));
+
       return board;
     }
+
     case "loading":
     case "uncached-sync-error":
       return null;
     case "big":
       return bigBoard();
+
     case "empty": {
       const board = mockupBoard();
+
       for (const col of board.columns) {
         col.cards = [];
       }
+
       return board;
     }
+
     case "syncing": {
       const board = mockupBoard();
+
       board.columns[1].cards[1].updated_by_sync = true;
       board.columns[3].cards[0].updated_by_sync = true;
+
       return board;
     }
+
     case "sorted": {
       const board = mockupBoard();
+
       if (board.view) {
         board.view.manual_order = false;
       }
+
       return board;
     }
+
     case "offline": {
       const board = mockupBoard();
+
       board.columns[2].cards[0].pending = true;
       board.pending_count = 1;
+
       return board;
     }
+
     default:
       return mockupBoard();
   }
@@ -268,6 +293,7 @@ const projects: ProjectList = {
 
 function statusFor(scenario: Scenario): SyncStatus {
   const base = { last_sync_at: Date.now() - 150_000, retry_at: null, pending: 0 };
+
   switch (scenario) {
     case "loading":
       return {
@@ -308,6 +334,7 @@ export const calls: Record<string, number> = {};
 
 export function installMockBackend(scenario: Scenario) {
   mockWindows("main");
+
   let prefs: SyncPrefs = { interval: "five_minutes", on_wake: true };
   let auth = onboarding(scenario) ? signedOut : signedIn;
   let board = boardFor(scenario);
@@ -332,33 +359,41 @@ export function installMockBackend(scenario: Scenario) {
           unlock = resolve;
         });
       }
+
       if (scenario === "unlock-cancelled" && calls.auth_status === 1) {
         throw {
           kind: "Auth",
           message: "Authentication cancelled. Try again when you're ready.",
         } satisfies AppError;
       }
+
       return auth;
     },
     auth_set_token: async (args) => {
       if (scenario === "checking") {
         return new Promise(() => {});
       }
+
       await new Promise((resolve) => setTimeout(resolve, 600));
+
       if (scenario === "invalid" && args.token === "ghp_wrong") {
         throw { kind: "Auth", message: "token rejected by GitHub (401)" } satisfies AppError;
       }
+
       auth = signedIn;
+
       return auth;
     },
     auth_sign_out: () => {
       auth = signedOut;
+
       return null;
     },
     list_projects: () => {
       if (projectError) {
         throw { kind: "GitHub", message: "Projects are inaccessible (403)" } satisfies AppError;
       }
+
       return projectList;
     },
     cached_projects: () => projectList,
@@ -390,15 +425,18 @@ export function installMockBackend(scenario: Scenario) {
       if (boardError) {
         throw { kind: "Cache", message: "Could not read the local cache" } satisfies AppError;
       }
+
       return board;
     },
     // Queue locally before sending in the background.
     dispatch_intent: (args) => {
       const intent = args.intent as Intent;
       const before = board;
+
       if (!before) {
         throw new Error("mockBackend: no board to move a card on");
       }
+
       const pending = (b: Board, value: boolean): Board => ({
         ...b,
         columns: b.columns.map((c) => ({
@@ -408,7 +446,9 @@ export function installMockBackend(scenario: Scenario) {
           ),
         })),
       });
+
       board = pending(applyIntent(before, intent), true);
+
       if (scenario !== "offline") {
         setTimeout(
           async () => {
@@ -418,12 +458,14 @@ export function installMockBackend(scenario: Scenario) {
             } else {
               board = pending(board ?? before, false);
             }
+
             await changed();
             // A refused move fails at once, like PLANCHE_FAULT=fail_mutations; an accepted one takes a moment.
           },
           scenario === "rollback" ? 0 : 300,
         );
       }
+
       return { type: "accepted", seq: ++dispatchSeq };
     },
     list_assignable_users: () =>
@@ -432,6 +474,7 @@ export function installMockBackend(scenario: Scenario) {
       if (scenario === "refresh-error" && calls.refresh_project === 1) {
         throw { kind: "Network", message: "Could not start synchronization" } satisfies AppError;
       }
+
       if (
         ["sync-error", "rate-limited", "uncached-sync-error", "refresh-error"].includes(scenario)
       ) {
@@ -440,27 +483,34 @@ export function installMockBackend(scenario: Scenario) {
         await emit("sync-status", status);
         await changed();
       }
+
       return { project: PROJECT, items: 17, cost: 4, usage: {}, changes: [] };
     },
     sync_status: () => status,
     get_sync_prefs: () => prefs,
     set_sync_prefs: (args) => {
       prefs = args.prefs as SyncPrefs;
+
       return prefs;
     },
     perf_mark: () => null,
   };
+
   mockIPC(
     (cmd, args) => {
       calls[cmd] = (calls[cmd] ?? 0) + 1;
+
       // Window and opener plugin calls succeed without effect.
       if (cmd.startsWith("plugin:")) {
         return null;
       }
+
       const handler = handlers[cmd];
+
       if (!handler) {
         throw new Error(`mockBackend: no handler for ${cmd}`);
       }
+
       return handler((args ?? {}) as Record<string, unknown>);
     },
     { shouldMockEvents: true },

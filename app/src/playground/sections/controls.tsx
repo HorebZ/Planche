@@ -18,6 +18,7 @@ const intervals = [
 
 function TokenErrorPreview() {
   const id = useId();
+
   return (
     <Field className="w-72">
       <label htmlFor={id}>Personal access token</label>

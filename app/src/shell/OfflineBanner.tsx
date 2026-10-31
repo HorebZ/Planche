@@ -16,6 +16,7 @@ export function OfflineBanner({
   pending?: boolean;
 }) {
   const seconds = useCountdown(retryAt);
+
   return (
     <Banner
       className="mx-3.5 mt-2.5"
@@ -45,12 +46,16 @@ export function OfflineBanner({
 /** Whole seconds until `at`, ticking every second. */
 function useCountdown(at: number | null) {
   const [now, setNow] = useState(Date.now);
+
   useEffect(() => {
     if (at == null) {
       return;
     }
+
     const timer = setInterval(() => setNow(Date.now()), 1000);
+
     return () => clearInterval(timer);
   }, [at]);
+
   return at == null ? null : Math.max(0, Math.ceil((at - now) / 1000));
 }

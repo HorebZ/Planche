@@ -56,6 +56,7 @@ impl From<&Error> for AppError {
             Error::Cache(_) => ErrorKind::Cache,
             _ => ErrorKind::Invalid,
         };
+
         Self {
             kind,
             message: error.to_string(),
@@ -115,6 +116,7 @@ impl Core {
     // Background commands must never open the keychain or wait on its prompt.
     fn client(&self) -> Result<GithubClient> {
         let token = self.token.lock().expect("token lock").clone();
+
         Ok(GithubClient::new(token.ok_or(Error::NotSignedIn)?)?)
     }
 
@@ -128,6 +130,7 @@ impl Core {
                 .and_then(|meta| meta.views.into_iter().find(|v| &v.id == id))
                 .map(|v| v.number),
         };
+
         Ok(cache.board(project, number)?)
     }
 
@@ -151,9 +154,11 @@ impl Core {
     /// Starts the sync engine on `project`, unless it already runs there.
     pub async fn open(&self, app: &AppHandle, project: &ProjectId) -> Result<SyncHandle> {
         let mut engine = self.engine.lock().await;
+
         if let Some(engine) = engine.as_ref().filter(|e| &e.project == project) {
             return Ok(engine.handle.clone());
         }
+
         let client = self.client()?;
         let (owner, number) = match self.owner_of(project) {
             Ok(found) => found,
@@ -161,6 +166,7 @@ impl Core {
             Err(_) => {
                 *self.projects.lock().expect("projects lock") =
                     Some(ops::list_projects(&client).await?);
+
                 self.owner_of(project)?
             }
         };
@@ -171,6 +177,7 @@ impl Core {
             config,
             Arc::new(SystemClock),
         );
+
         events::relay(app.clone(), project.clone(), handle.subscribe());
         handle.send(SyncCommand::Now).await;
         self.cache().set("last_project", project.as_str())?;
@@ -179,6 +186,7 @@ impl Core {
             project: project.clone(),
             handle: handle.clone(),
         });
+
         Ok(handle)
     }
 
@@ -186,7 +194,9 @@ impl Core {
         if let Some(found) = self.cache().project_ref(project)? {
             return Ok(found);
         }
+
         let projects = self.projects.lock().expect("projects lock");
+
         projects
             .iter()
             .flat_map(|list| &list.owners)
@@ -209,6 +219,7 @@ impl Core {
 
     pub async fn stop(&self) {
         let mut engine = self.engine.lock().await;
+
         *self.token.lock().expect("token lock") = None;
         *engine = None;
     }
@@ -235,6 +246,7 @@ pub async fn auth_status(core: State<'_, Core>) -> Result<AuthStatus> {
         let cache = core.cache();
         // Before phase 6 the cache kept no ID: those go to GitHub once.
         let id = cache.get("account_id")?.map(UserId);
+
         cache
             .get("account_login")?
             .filter(|_| id.is_some())
@@ -245,27 +257,36 @@ pub async fn auth_status(core: State<'_, Core>) -> Result<AuthStatus> {
                 missing_scopes: Vec::new(),
             })
     };
+
     if let Some(status) = cached {
         *core.token.lock().expect("token lock") = Some(token);
+
         return Ok(status);
     }
+
     let status = auth::status().await?;
+
     remember_account(&core, &status)?;
     *core.token.lock().expect("token lock") = Some(token);
+
     Ok(status)
 }
 
 fn remember_account(core: &Core, status: &AuthStatus) -> Result<()> {
     let cache = core.cache();
+
     if let Some(id) = &status.id {
         cache.set("account_id", id.as_str())?;
     }
+
     if let Some(login) = &status.login {
         cache.set("account_login", login)?;
     }
+
     if let Some(avatar) = &status.avatar_url {
         cache.set("account_avatar", avatar)?;
     }
+
     Ok(())
 }
 
@@ -273,8 +294,10 @@ fn remember_account(core: &Core, status: &AuthStatus) -> Result<()> {
 #[specta::specta]
 pub async fn auth_set_token(core: State<'_, Core>, token: String) -> Result<AuthStatus> {
     let status = auth::set_token(&token).await?;
+
     remember_account(&core, &status)?;
     *core.token.lock().expect("token lock") = Some(auth::load_token()?);
+
     Ok(status)
 }
 
@@ -283,6 +306,7 @@ pub async fn auth_set_token(core: State<'_, Core>, token: String) -> Result<Auth
 pub async fn auth_sign_out(core: State<'_, Core>) -> Result<()> {
     core.stop().await;
     auth::sign_out()?;
+
     Ok(())
 }
 
@@ -291,9 +315,11 @@ pub async fn auth_sign_out(core: State<'_, Core>) -> Result<()> {
 #[specta::specta]
 pub async fn list_projects(core: State<'_, Core>) -> Result<ProjectList> {
     let client = core.client()?;
+
     match ops::list_projects(&client).await {
         Ok(list) => {
             *core.projects.lock().expect("projects lock") = Some(list.clone());
+
             Ok(list)
         }
         Err(Error::Network(_)) => Ok(core.cache().projects()?),
@@ -352,11 +378,13 @@ pub async fn get_board(
 #[specta::specta]
 pub async fn dispatch_intent(core: State<'_, Core>, intent: Intent) -> Result<DispatchOutcome> {
     let outcome = core.dispatch_intent(&intent);
+
     if matches!(outcome, DispatchOutcome::Accepted { .. })
         && let Some(engine) = core.engine().await
     {
         engine.send(SyncCommand::Flush).await;
     }
+
     Ok(outcome)
 }
 
@@ -369,6 +397,7 @@ pub async fn list_assignable_users(core: State<'_, Core>, repo: String) -> Resul
         message: format!("expected owner/name, got `{repo}`"),
     })?;
     let client = core.client()?;
+
     Ok(ops::assignable_users(&client, owner, name).await?)
 }
 
@@ -382,7 +411,9 @@ pub async fn refresh_project(
 ) -> Result<SyncReport> {
     let engine = core.open(&app, &project_id).await?;
     let mut events = engine.subscribe();
+
     engine.send(SyncCommand::Now).await;
+
     loop {
         match events.recv().await {
             Ok(SyncEvent::Synced { report, .. }) => return Ok(report),
@@ -418,9 +449,11 @@ pub async fn get_sync_prefs(core: State<'_, Core>) -> Result<SyncPrefs> {
 #[specta::specta]
 pub async fn set_sync_prefs(core: State<'_, Core>, prefs: SyncPrefs) -> Result<SyncPrefs> {
     prefs.save(&core.cache())?;
+
     if let Some(engine) = core.engine().await {
         engine.send(SyncCommand::Configure(prefs)).await;
     }
+
     Ok(prefs)
 }
 
@@ -443,6 +476,7 @@ mod tests {
 
     fn fixture(name: &str) -> String {
         let path = format!("{}/../../fixtures/{name}", env!("CARGO_MANIFEST_DIR"));
+
         std::fs::read_to_string(path).unwrap()
     }
 
@@ -455,15 +489,19 @@ mod tests {
             .iter()
             .flat_map(|page| decode_project_items(&fixture(page)).unwrap().items)
             .collect();
+
         cache.write_snapshot(&meta, &items, true).unwrap();
+
         (Core::new(cache), meta.id)
     }
 
     #[tokio::test]
     async fn network_commands_require_an_unlocked_session() {
         let (core, _) = core_with_fixtures("locked-session");
+
         core.cache().set("account_login", "cached-account").unwrap();
         core.cache().set("account_id", "U_cached").unwrap();
+
         for _ in 0..3 {
             assert!(matches!(
                 core.client(),
@@ -474,9 +512,13 @@ mod tests {
             ));
             assert!(core.engine().await.is_none());
         }
+
         *core.token.lock().unwrap() = Some("test-token".into());
+
         assert!(core.client().is_ok());
+
         core.stop().await;
+
         assert!(matches!(
             core.client(),
             Err(AppError {
@@ -497,13 +539,17 @@ mod tests {
             column: None,
             title: "Durable draft".into(),
         };
+
         let DispatchOutcome::Accepted { seq } = core.dispatch_intent(&intent) else {
             panic!("enqueue should commit");
         };
+
         let mut invalid = intent.clone();
+
         if let Intent::CreateDraft { project_id, .. } = &mut invalid {
             *project_id = ProjectId("PVT_missing".into());
         }
+
         assert!(matches!(
             core.dispatch_intent(&invalid),
             DispatchOutcome::Rejected {
@@ -513,15 +559,20 @@ mod tests {
                 }
             }
         ));
+
         drop(core);
+
         let path = std::env::temp_dir().join(format!(
             "planche-app-{}-receipt/cache.sqlite",
             std::process::id()
         ));
         let reopened = Cache::open(path).unwrap();
+
         assert_eq!(reopened.intents(&project).unwrap(), vec![intent.clone()]);
         assert!(reopened.intents(invalid.project_id()).unwrap().is_empty());
+
         let row = reopened.claim_next(&project).unwrap().unwrap();
+
         assert_eq!(row.seq, seq);
         assert_eq!(row.intent, intent);
         assert!(reopened.claim_next(&project).unwrap().is_none());
@@ -542,9 +593,11 @@ mod tests {
                     .iter()
                     .map(|card| card["number"].clone())
                     .collect();
+
                 json!([c["name"], numbers])
             })
             .collect();
+
         assert_eq!(
             json!(columns),
             json!([
@@ -582,12 +635,14 @@ mod tests {
         let meta = core.project(&project).unwrap().unwrap();
         let board_view = meta.views.iter().find(|v| v.number == 2).unwrap();
         let board = core.board(&project, Some(&board_view.id)).unwrap().unwrap();
+
         assert_eq!(board.view.unwrap().number, 2);
     }
 
     #[test]
     fn get_board_is_none_before_the_first_sync() {
         let (core, _) = core_with_fixtures("none");
+
         assert!(
             core.board(&ProjectId("PVT_unknown".into()), None)
                 .unwrap()

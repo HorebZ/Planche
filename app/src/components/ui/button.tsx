@@ -35,6 +35,7 @@ type ButtonProps = ComponentProps<"button"> &
 
 export function Button({ className, variant, size, asChild = false, ...props }: ButtonProps) {
   const Comp = asChild ? Slot.Root : "button";
+
   return (
     <Comp
       data-slot="button"

@@ -8,6 +8,7 @@ fn legacy() -> keyring::Result<keyring::Entry> {
 #[cfg(target_os = "macos")]
 fn protected() -> keyring::Result<keyring::Entry> {
     use apple_native_keyring_store::protected::{AccessPolicy, Cred};
+
     Cred::build(
         super::KEYCHAIN_SERVICE,
         super::KEYCHAIN_ACCOUNT,
@@ -37,6 +38,7 @@ pub(super) fn read() -> keyring::Result<String> {
             Err(error) => Err(error),
         },
     );
+
     #[cfg(not(target_os = "macos"))]
     legacy()?.get_password()
 }
@@ -51,7 +53,9 @@ fn read_with(
         Ok(token) => Ok(token),
         Err(keyring::Error::NoEntry) => {
             let token = read_legacy()?;
+
             migrate(&token)?;
+
             Ok(token)
         }
         Err(error) if missing_entitlement(&error) => read_legacy(),
@@ -67,6 +71,7 @@ pub(super) fn write(token: &str) -> keyring::Result<()> {
         Err(error) if missing_entitlement(&error) => {}
         Err(error) => return Err(error),
     }
+
     legacy()?.set_password(token)
 }
 
@@ -75,8 +80,10 @@ fn retire_legacy() -> keyring::Result<()> {
     if let Err(error) = remove_missing_ok(legacy()?.delete_credential()) {
         // Keep the old entry authoritative if migration could not remove it.
         remove_missing_ok(protected()?.delete_credential())?;
+
         return Err(error);
     }
+
     Ok(())
 }
 
@@ -87,6 +94,7 @@ pub(super) fn delete() -> keyring::Result<()> {
         Err(error) if missing_entitlement(&error) => {}
         Err(error) => return Err(error),
     }
+
     remove_missing_ok(legacy()?.delete_credential())
 }
 
@@ -108,9 +116,11 @@ mod tests {
     #[test]
     fn only_missing_entitlement_allows_legacy_fallback() {
         assert!(missing_entitlement(&platform_error(-34018)));
+
         for code in [-128, -25293, -25308, -25291] {
             assert!(!missing_entitlement(&platform_error(code)));
         }
+
         assert!(!missing_entitlement(&keyring::Error::NoEntry));
     }
 
@@ -151,7 +161,9 @@ mod tests {
     #[test]
     fn migration_must_succeed_before_releasing_the_token() {
         use std::cell::Cell;
+
         let migrated = Cell::new(false);
+
         assert_eq!(
             read_with(
                 || Err(keyring::Error::NoEntry),

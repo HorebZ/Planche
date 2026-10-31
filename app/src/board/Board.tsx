@@ -56,9 +56,11 @@ function others(board: BoardData, column: number, id: ItemId) {
 const collision: CollisionDetection = (args) => {
   const hits = pointerWithin(args);
   const card = hits.find((hit) => !String(hit.id).startsWith("column:"));
+
   if (card) {
     return [card];
   }
+
   return hits.length > 0 ? hits : closestCenter(args);
 };
 
@@ -76,6 +78,7 @@ type BoardProps = {
 /** The board: one column per option, each scrolling on its own. Cards move by drag or keyboard. */
 export const Board = memo(function Board({ board, onMove, onCreateDraft }: BoardProps) {
   usePaintedMark();
+
   const setDragging = useUi((s) => s.setDragging);
   const [drag, setDragState] = useState<Drag | null>(null);
   const dragRef = useRef<Drag | null>(null);
@@ -84,19 +87,24 @@ export const Board = memo(function Board({ board, onMove, onCreateDraft }: Board
     setDragState(next);
   }, []);
   const boardRef = useRef(board);
+
   boardRef.current = board;
+
   const manualOrder = board.view?.manual_order ?? true;
 
   // Arrows move the landing spot itself, then the overlay follows it.
   const coordinateGetter = useCallback<KeyboardCoordinateGetter>(
     (event, { currentCoordinates }) => {
       const current = dragRef.current;
+
       if (!current) {
         return undefined;
       }
+
       const b = boardRef.current;
       let { column, index } = current.to;
       const size = (c: number) => others(b, c, current.id).length;
+
       switch (commandFor(event, "drag")) {
         case "drag.right":
           column = Math.min(column + 1, b.columns.length - 1);
@@ -110,17 +118,21 @@ export const Board = memo(function Board({ board, onMove, onCreateDraft }: Board
           if (manualOrder) {
             index = Math.min(index + 1, size(column));
           }
+
           break;
         case "drag.up":
           if (manualOrder) {
             index = Math.max(index - 1, 0);
           }
+
           break;
         default:
           return undefined;
       }
+
       event.preventDefault();
       setDrag({ ...current, to: { column, index } });
+
       return slotCoordinates(b, current.id, { column, index }) ?? currentCoordinates;
     },
     [manualOrder, setDrag],
@@ -140,12 +152,15 @@ export const Board = memo(function Board({ board, onMove, onCreateDraft }: Board
 
   const locate = useCallback((id: ItemId): Spot | null => {
     const b = boardRef.current;
+
     for (const [column, c] of b.columns.entries()) {
       const index = c.cards.findIndex((card) => card.item_id === id);
+
       if (index >= 0) {
         return { column, index };
       }
     }
+
     return null;
   }, []);
 
@@ -153,11 +168,14 @@ export const Board = memo(function Board({ board, onMove, onCreateDraft }: Board
     ({ active, activatorEvent }: DragStartEvent) => {
       const id = String(active.id);
       const from = locate(id);
+
       if (!from) {
         return;
       }
+
       const card = boardRef.current.columns[from.column].cards[from.index];
       const height = active.rect.current.initial?.height ?? 86;
+
       setDrag({
         id,
         card,
@@ -175,32 +193,41 @@ export const Board = memo(function Board({ board, onMove, onCreateDraft }: Board
   const onDragMove = useCallback(
     ({ active, over, activatorEvent, delta }: DragMoveEvent) => {
       const current = dragRef.current;
+
       if (!current || current.keyboard || !over) {
         return;
       }
+
       const b = boardRef.current;
       const overId = String(over.id);
       let to: Spot;
+
       if (overId.startsWith("column:")) {
         const column = Number(overId.slice("column:".length));
+
         to = { column, index: others(b, column, current.id).length };
       } else {
         const spot = locate(overId);
+
         if (!spot || overId === current.id) {
           return;
         }
+
         const index = others(b, spot.column, current.id).findIndex((c) => c.item_id === overId);
         const pointerY =
           activatorEvent instanceof PointerEvent || activatorEvent instanceof MouseEvent
             ? activatorEvent.clientY + delta.y
             : (active.rect.current.translated?.top ?? 0);
         const below = pointerY > over.rect.top + over.rect.height / 2;
+
         to = { column: spot.column, index: below ? index + 1 : index };
       }
+
       // A sorted view keeps each column's order: only the column changes.
       if (!manualOrder) {
         to = to.column === current.from.column ? current.from : { column: to.column, index: 0 };
       }
+
       if (to.column !== current.to.column || to.index !== current.to.index) {
         setDrag({ ...current, to });
       }
@@ -214,18 +241,24 @@ export const Board = memo(function Board({ board, onMove, onCreateDraft }: Board
   const end = useCallback(
     async (drop: boolean, released: Rect | null) => {
       const current = dragRef.current;
+
       if (current && released) {
         settle.current = { id: current.id, from: released };
       }
+
       setDrag(null);
       stopFrames();
+
       if (!drop || !current) {
         return setDragging(false);
       }
+
       const intent = intentFor(boardRef.current, current, manualOrder);
+
       if (!intent) {
         return setDragging(false);
       }
+
       droppedAt.current = performance.now();
       // Board changes held during the drag apply once Rust has the move queued.
       await onMove(intent);
@@ -239,6 +272,7 @@ export const Board = memo(function Board({ board, onMove, onCreateDraft }: Board
     if (droppedAt.current == null) {
       return;
     }
+
     markDropFrame(droppedAt.current);
     droppedAt.current = null;
   }, [board]);
@@ -249,7 +283,9 @@ export const Board = memo(function Board({ board, onMove, onCreateDraft }: Board
     if (drag || !settle.current) {
       return;
     }
+
     const { id, from } = settle.current;
+
     settle.current = null;
     flip(id, from, true);
   }, [drag, board]);
@@ -257,6 +293,7 @@ export const Board = memo(function Board({ board, onMove, onCreateDraft }: Board
   // A failed move: once the board puts the card back, it slides from where it was dropped.
   const reverting = useUi((s) => s.reverting);
   const setReverting = useUi((s) => s.setReverting);
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs on each new board until the card has moved back
   useLayoutEffect(() => {
     if (reverting && flip(reverting.id, reverting.from)) {
@@ -329,10 +366,13 @@ export const Board = memo(function Board({ board, onMove, onCreateDraft }: Board
 /** The move a drop asks for, or `null` when the card lands where it was. */
 function intentFor(board: BoardData, drag: Drag, manualOrder: boolean): Intent | null {
   const sameColumn = drag.to.column === drag.from.column;
+
   if (sameColumn && (!manualOrder || drag.to.index === drag.from.index)) {
     return null;
   }
+
   const before = others(board, drag.to.column, drag.id)[drag.to.index - 1];
+
   return {
     type: "move_card",
     project_id: board.project.id,
@@ -350,17 +390,22 @@ function slotCoordinates(board: BoardData, id: ItemId, spot: Spot) {
   const element = at
     ? document.querySelector(`[data-item-id="${at.item_id}"]`)
     : document.querySelector(`[data-column-index="${spot.column}"]`);
+
   if (!element) {
     return undefined;
   }
+
   const rect = element.getBoundingClientRect();
+
   if (at) {
     return { x: rect.left, y: rect.top };
   }
+
   // The end of the column: under its last card, or under its header when it has none.
   const last = cards.at(-1);
   const lastRect =
     last && document.querySelector(`[data-item-id="${last.item_id}"]`)?.getBoundingClientRect();
+
   return { x: rect.left + 5, y: lastRect ? lastRect.bottom + CARD_GAP : rect.top + 38 };
 }
 
@@ -368,10 +413,12 @@ function slotCoordinates(board: BoardData, id: ItemId, spot: Spot) {
  * bundle built with VITE_PERF=1. */
 function usePaintedMark() {
   const sent = useRef(false);
+
   useEffect(() => {
     if (!(import.meta.env.DEV || import.meta.env.VITE_PERF) || sent.current) {
       return;
     }
+
     sent.current = true;
     requestAnimationFrame(() => {
       commands.perfMark("board-painted", performance.now()).catch(() => {});

@@ -22,17 +22,21 @@ const scopes: Record<Scope, string> = {
 /** One row per command and scope, with every key that runs it. */
 function rows(scope: Scope) {
   const byCommand = new Map<string, { label: string; keys: string[][] }>();
+
   for (const s of shortcuts.filter((s) => s.scope === scope)) {
     const row = byCommand.get(s.command) ?? { label: s.label, keys: [] };
+
     row.keys.push(keysOf(s.key));
     byCommand.set(s.command, row);
   }
+
   return [...byCommand.values()];
 }
 
 /** `?`: every shortcut of the table, by scope. */
 export function ShortcutSheet() {
   const open = useUi((s) => s.overlay?.type === "help");
+
   return (
     <Dialog
       open={open}

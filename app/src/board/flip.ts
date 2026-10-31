@@ -9,6 +9,7 @@ function cardElement(id: ItemId) {
 /** Where the card is on screen now, before the board moves it. */
 export function cardRect(id: ItemId): Rect | null {
   const rect = cardElement(id)?.getBoundingClientRect();
+
   return rect ? { left: rect.left, top: rect.top } : null;
 }
 
@@ -18,17 +19,22 @@ export function cardRect(id: ItemId): Rect | null {
  */
 export function flip(id: ItemId, from: Rect, lifted = false) {
   const element = cardElement(id);
+
   if (!element) {
     return false;
   }
+
   const to = element.getBoundingClientRect();
   const dx = from.left - to.left;
   const dy = from.top - to.top;
+
   if (Math.abs(dx) < 1 && Math.abs(dy) < 1) {
     return false;
   }
+
   const style = getComputedStyle(document.documentElement);
   const duration = Number.parseFloat(style.getPropertyValue("--pl-dur-slow"));
+
   element.animate(
     [
       {
@@ -42,5 +48,6 @@ export function flip(id: ItemId, from: Rect, lifted = false) {
       easing: style.getPropertyValue("--pl-ease") || "ease-out",
     },
   );
+
   return true;
 }

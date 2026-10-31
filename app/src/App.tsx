@@ -17,8 +17,10 @@ import { useUi } from "@/stores/ui";
 
 export default function App() {
   const theme = usePreferences((s) => s.theme);
+
   useEffect(() => {
     document.documentElement.classList.remove("light", "dark");
+
     if (theme === "system") {
       delete document.documentElement.dataset.theme;
     } else {
@@ -27,10 +29,12 @@ export default function App() {
   }, [theme]);
   useEffect(() => {
     const stop = listenToCore(queryClient);
+
     return () => {
       stop.then((unlisten) => unlisten());
     };
   }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <Root />
@@ -42,13 +46,16 @@ export default function App() {
 function Root() {
   const [ready, setReady] = useState(false);
   const auth = useQuery({ ...authQuery, enabled: ready });
+
   useEffect(() => {
     // Leave a painted lock screen behind the native macOS prompt, even in StrictMode.
     let frame = requestAnimationFrame(() => {
       frame = requestAnimationFrame(() => setReady(true));
     });
+
     return () => cancelAnimationFrame(frame);
   }, []);
+
   const current = useCurrentProject();
   const picked = useUi((s) => s.projectId);
   const projectId = picked ?? current.data ?? null;
@@ -56,6 +63,7 @@ function Root() {
 
   // Starts the engine of the last project; Rust ignores a project already open.
   const { mutate } = open;
+
   useEffect(() => {
     if (projectId && auth.isSuccess && !auth.isFetching && auth.data.login) {
       mutate(projectId);
@@ -71,8 +79,10 @@ function Root() {
       />
     );
   }
+
   if (!auth.data?.login || !projectId) {
     return <Onboarding signedIn={Boolean(auth.data?.login)} />;
   }
+
   return <Shell projectId={projectId} />;
 }

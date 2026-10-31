@@ -30,13 +30,17 @@ function initials(name: string) {
     .split(/[\s._-]+/)
     .filter(Boolean);
   const first = parts[0];
+
   if (!first) {
     return "";
   }
+
   const second = parts[1];
+
   if (!second) {
     return first.slice(0, 2).toUpperCase();
   }
+
   return (first[0] + second[0]).toUpperCase();
 }
 

@@ -45,6 +45,7 @@ type Check =
 /** The first launch: a token, then a project. The window grows to the board size at the end. */
 export function Onboarding({ signedIn }: { signedIn: boolean }) {
   const [step, setStep] = useState<1 | 2>(signedIn ? 2 : 1);
+
   return (
     <div className="grid h-screen grid-cols-[270px_minmax(0,1fr)] bg-bg-sunken">
       <aside
@@ -90,6 +91,7 @@ function TokenStep({ onDone }: { onDone: () => void }) {
   const projects = useProjects(check.state === "valid");
   const tokenInput = useRef<HTMLInputElement>(null);
   const continueButton = useRef<HTMLButtonElement>(null);
+
   useEffect(() => {
     if (check.state === "valid") {
       continueButton.current?.focus();
@@ -100,15 +102,20 @@ function TokenStep({ onDone }: { onDone: () => void }) {
 
   async function verify(event: FormEvent) {
     event.preventDefault();
+
     if (check.state === "valid") {
       return onDone();
     }
+
     if (!token.trim() || check.state === "checking") {
       return;
     }
+
     setCheck({ state: "checking" });
+
     try {
       const auth = await commands.authSetToken(token.trim());
+
       await queryClient.cancelQueries({ queryKey: projectsQuery.queryKey });
       queryClient.removeQueries({ queryKey: projectsQuery.queryKey });
       queryClient.setQueryData(authQuery.queryKey, auth);
@@ -124,6 +131,7 @@ function TokenStep({ onDone }: { onDone: () => void }) {
   const projectCount = projects.isSuccess
     ? projects.data?.owners.reduce((n, o) => n + o.projects.filter((p) => !p.closed).length, 0)
     : undefined;
+
   return (
     <form
       className={panelClass}
@@ -159,6 +167,7 @@ function TokenStep({ onDone }: { onDone: () => void }) {
           readOnly={check.state === "checking" || check.state === "valid"}
           onChange={(e) => {
             setToken(e.target.value);
+
             if (check.state === "error") {
               setCheck({ state: "idle" });
             }
@@ -236,6 +245,7 @@ function TokenStatus({ check }: { check: Check }) {
       </span>
     );
   }
+
   if (check.state === "valid") {
     return (
       <span className="flex items-center gap-1 font-medium text-success text-xs">
@@ -248,6 +258,7 @@ function TokenStatus({ check }: { check: Check }) {
       </span>
     );
   }
+
   return null;
 }
 
@@ -268,11 +279,14 @@ function ProjectStep({ onBack }: { onBack: () => void }) {
 
   async function open(event: FormEvent) {
     event.preventDefault();
+
     if (opening || !picked || !available.some((p) => p.id === picked)) {
       return;
     }
+
     setOpening(true);
     setError(null);
+
     try {
       await commands.openProject(picked);
       await growWindow();
@@ -332,9 +346,11 @@ function ProjectStep({ onBack }: { onBack: () => void }) {
         ) : null}
         {projects.data?.owners.map((owner) => {
           const open = owner.projects.filter((p) => !p.closed);
+
           if (open.length === 0) {
             return null;
           }
+
           return (
             <SidebarGroup
               key={owner.login}
@@ -402,6 +418,7 @@ function Footer({ children }: { children: React.ReactNode }) {
 /** From the 780×540 onboarding to the 1440×900 board window. */
 async function growWindow() {
   const window = getCurrentWindow();
+
   await window.setMinSize(new LogicalSize(1100, 700));
   await window.setSize(new LogicalSize(1440, 900));
   await window.center();

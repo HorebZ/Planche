@@ -4,9 +4,12 @@ import { commandFor, keysOf, navigate, shortcuts } from "./shortcuts";
 
 test("no two shortcuts share a key in one scope", () => {
   const seen = new Map<string, string>();
+
   for (const { key, scope, command } of shortcuts) {
     const id = `${scope} ${key}`;
+
     expect(seen.get(id), `${id} runs ${seen.get(id)} and ${command}`).toBeUndefined();
+
     seen.set(id, command);
   }
 });
@@ -14,6 +17,7 @@ test("no two shortcuts share a key in one scope", () => {
 test("events resolve to the command of their scope", () => {
   const key = (init: Partial<KeyboardEvent>) =>
     ({ metaKey: false, shiftKey: false, ...init }) as KeyboardEvent;
+
   expect(commandFor(key({ key: "j" }), "board")).toBe("card.next");
   expect(commandFor(key({ key: "J", shiftKey: true }), "board")).toBeUndefined();
   expect(commandFor(key({ key: "ArrowRight", shiftKey: true }), "board")).toBe("card.moveNext");

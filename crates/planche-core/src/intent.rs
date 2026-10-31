@@ -151,6 +151,7 @@ pub fn apply(mut board: Board, intent: &Intent) -> Board {
     if *intent.project_id() != board.project.id {
         return board;
     }
+
     match intent {
         Intent::MoveCard {
             item_id,
@@ -162,15 +163,18 @@ pub fn apply(mut board: Board, intent: &Intent) -> Board {
             let Some(from) = column_of_card(&board, item_id) else {
                 return board;
             };
+
             // Another field than the columns' leaves the card in its column.
             let option = if *field_id == board.field.id {
                 to.clone()
             } else {
                 board.columns[from].option_id.clone()
             };
+
             if option.is_some() && column_of(&board, option.as_ref()).is_none() {
                 return board;
             }
+
             let order = order(&board);
             let old_rank = order
                 .iter()
@@ -186,6 +190,7 @@ pub fn apply(mut board: Board, intent: &Intent) -> Board {
                     .position(|id| id == anchor)
                     .map_or(old_rank, |i| i + 1),
             };
+
             insert(board, card, option.as_ref(), order, rank)
         }
         Intent::SetAssignees {
@@ -207,19 +212,24 @@ pub fn apply(mut board: Board, intent: &Intent) -> Board {
                 ) => assignees,
                 _ => return board,
             };
+
             assignees.retain(|u| !remove.iter().any(|r| r.id == u.id));
+
             for user in add {
                 if !assignees.iter().any(|u| u.id == user.id) {
                     assignees.push(user.clone());
                 }
             }
+
             board
         }
         Intent::Archive { item_id, .. } => {
             let order = order_without(order(&board), item_id);
+
             if take(&mut board, item_id).is_none() {
                 return board;
             }
+
             finish(board, order)
         }
         Intent::Unarchive {
@@ -231,8 +241,10 @@ pub fn apply(mut board: Board, intent: &Intent) -> Board {
             if column_of_card(&board, item_id).is_some() {
                 return board;
             }
+
             let order = order(&board);
             let rank = card.position as usize;
+
             insert(board, card.clone(), column.as_ref(), order, rank)
         }
         Intent::CreateDraft {
@@ -247,9 +259,11 @@ pub fn apply(mut board: Board, intent: &Intent) -> Board {
                 board.columns.iter().flat_map(|c| &c.cards).any(
                     |c| matches!(&c.content, ItemContent::Draft { title: t, .. } if t == title),
                 );
+
             if exists {
                 return board;
             }
+
             let card = Card {
                 item_id: item_id.clone(),
                 position: 0,
@@ -262,6 +276,7 @@ pub fn apply(mut board: Board, intent: &Intent) -> Board {
                 updated_by_sync: false,
             };
             let order = order(&board);
+
             insert(board, card, column.as_ref(), order, 0)
         }
     }
@@ -284,12 +299,15 @@ fn column_of_card(board: &Board, item_id: &ItemId) -> Option<usize> {
 /// The board's cards in project order.
 fn order(board: &Board) -> Vec<ItemId> {
     let mut cards: Vec<&Card> = board.columns.iter().flat_map(|c| &c.cards).collect();
+
     cards.sort_by_key(|c| c.position);
+
     cards.into_iter().map(|c| c.item_id.clone()).collect()
 }
 
 fn order_without(mut order: Vec<ItemId>, item_id: &ItemId) -> Vec<ItemId> {
     order.retain(|id| id != item_id);
+
     order
 }
 
@@ -298,6 +316,7 @@ fn take(board: &mut Board, item_id: &ItemId) -> Option<Card> {
     let column = column_of_card(board, item_id)?;
     let cards = &mut board.columns[column].cards;
     let index = cards.iter().position(|c| &c.item_id == item_id)?;
+
     Some(cards.remove(index))
 }
 
@@ -323,27 +342,34 @@ fn insert(
                     cards: Vec::new(),
                 },
             );
+
             0
         }
     };
+
     order.insert(rank.min(order.len()), card.item_id.clone());
     board.columns[to].cards.push(card);
+
     finish(board, order)
 }
 
 /// Ranks every card by `order`, and sorts each column by rank.
 fn finish(mut board: Board, order: Vec<ItemId>) -> Board {
     let ranks: HashMap<ItemId, u32> = order.into_iter().zip(0..).collect();
+
     for column in &mut board.columns {
         for card in &mut column.cards {
             card.position = ranks[&card.item_id];
         }
+
         column.cards.sort_by_key(|c| c.position);
     }
+
     // `project_board` shows "No <field>" only when it holds a card.
     board
         .columns
         .retain(|c| c.option_id.is_some() || !c.cards.is_empty());
+
     board
 }
 
@@ -376,6 +402,7 @@ pub fn to_operations(intent: &Intent, board: &Board) -> Result<Vec<Operation>> {
                 Placement::Top => None,
                 Placement::After(id) => Some(id.clone()),
             };
+
             vec![
                 set,
                 Operation::MoveItemPosition {
@@ -398,6 +425,7 @@ pub fn to_operations(intent: &Intent, board: &Board) -> Result<Vec<Operation>> {
                 .flat_map(|c| &c.cards)
                 .find(|c| &c.item_id == item_id)
                 .ok_or_else(|| Error::CardNotFound(item_id.to_string()))?;
+
             match &card.content {
                 ItemContent::Draft { id, assignees, .. } => vec![Operation::SetDraftAssignees {
                     draft_issue_id: id.clone(),
@@ -405,18 +433,21 @@ pub fn to_operations(intent: &Intent, board: &Board) -> Result<Vec<Operation>> {
                 }],
                 ItemContent::Issue { id, .. } | ItemContent::PullRequest { id, .. } => {
                     let mut operations = Vec::new();
+
                     if !add.is_empty() {
                         operations.push(Operation::AddAssignees {
                             assignable_id: id.clone(),
                             assignee_ids: ids(add),
                         });
                     }
+
                     if !remove.is_empty() {
                         operations.push(Operation::RemoveAssignees {
                             assignable_id: id.clone(),
                             assignee_ids: ids(remove),
                         });
                     }
+
                     operations
                 }
                 ItemContent::Redacted => return Err(Error::CardNotFound(item_id.to_string())),
@@ -450,11 +481,14 @@ pub fn to_operations(intent: &Intent, board: &Board) -> Result<Vec<Operation>> {
 /// Matching ignores case.
 pub fn find_card<'a>(board: &'a Board, query: &str) -> Result<&'a Card> {
     let cards = || board.columns.iter().flat_map(|c| &c.cards);
+
     if let Some(card) = cards().find(|c| c.item_id.as_str() == query) {
         return Ok(card);
     }
+
     let by_reference = query.rsplit_once('#').and_then(|(repo, number)| {
         let number: u32 = number.parse().ok()?;
+
         Some(
             cards()
                 .filter(|c| matches_reference(&c.content, repo, number))
@@ -463,10 +497,12 @@ pub fn find_card<'a>(board: &'a Board, query: &str) -> Result<&'a Card> {
     });
     let matches = by_reference.unwrap_or_else(|| {
         let prefix = query.to_lowercase();
+
         cards()
             .filter(|c| c.title().to_lowercase().starts_with(&prefix))
             .collect()
     });
+
     match matches.as_slice() {
         [] => Err(Error::CardNotFound(query.to_owned())),
         [card] => Ok(card),
@@ -494,7 +530,9 @@ fn matches_reference(content: &ItemContent, repo: &str, number: u32) -> bool {
     else {
         return false;
     };
+
     let name = name_with_owner.rsplit('/').next().unwrap_or_default();
+
     *n == number
         && (repo.is_empty()
             || repo.eq_ignore_ascii_case(name_with_owner)
@@ -504,10 +542,13 @@ fn matches_reference(content: &ItemContent, repo: &str, number: u32) -> bool {
 /// Finds a column by option name, ignoring case. `none` and "No <field>" give `Ok(None)`.
 pub fn find_column<'a>(board: &'a Board, name: &str) -> Result<Option<&'a Column>> {
     let no_value = format!("No {}", board.field.name);
+
     if name.eq_ignore_ascii_case("none") || name.eq_ignore_ascii_case(&no_value) {
         return Ok(None);
     }
+
     let options = || board.columns.iter().filter(|c| c.option_id.is_some());
+
     options()
         .find(|c| c.name.eq_ignore_ascii_case(name))
         .map(Some)
@@ -616,9 +657,12 @@ mod tests {
         );
         let cases: Vec<MoveCase> =
             serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+
         assert!(cases.len() >= 10);
+
         for case in cases {
             let once = apply(case.board, &case.intent);
+
             assert_eq!(once, case.expected, "{}", case.name);
             assert_eq!(
                 apply(once, &case.intent),
@@ -636,6 +680,7 @@ mod tests {
             Placement::After(ItemId("PVTI_2".into())),
         ))
         .unwrap();
+
         assert_eq!(
             json,
             serde_json::json!({
@@ -673,6 +718,7 @@ mod tests {
     #[test]
     fn move_to_the_top_positions_without_after_id() {
         let operations = to_operations(&move_11(Some("done"), Placement::Top), &board()).unwrap();
+
         assert_eq!(operations.len(), 2);
         assert_eq!(
             operations[1],
@@ -691,6 +737,7 @@ mod tests {
             &board(),
         )
         .unwrap();
+
         assert_eq!(operations.len(), 2);
         assert_eq!(
             operations[1],
@@ -713,9 +760,11 @@ mod tests {
     /// The fixture board with project positions 0, 1, 2 in Todo.
     fn ranked() -> Board {
         let mut board = board();
+
         for (rank, card) in (0..).zip(&mut board.columns[0].cards) {
             card.position = rank;
         }
+
         board
     }
 
@@ -735,6 +784,7 @@ mod tests {
             .flat_map(|c| &c.cards)
             .find(|c| c.item_id.as_str() == item)
             .unwrap();
+
         match &card.content {
             ItemContent::Issue { assignees, .. } | ItemContent::Draft { assignees, .. } => {
                 assignees.iter().map(|u| u.login.clone()).collect()
@@ -746,12 +796,16 @@ mod tests {
     #[test]
     fn set_assignees_on_an_issue_adds_and_removes_on_its_content() {
         let mut board = board();
+
         let ItemContent::Issue { assignees, .. } = &mut board.columns[0].cards[1].content else {
             unreachable!()
         };
+
         assignees.push(user("lea"));
+
         let intent = set_assignees("PVTI_11", &["horebz"], &["lea"]);
         let once = apply(board.clone(), &intent);
+
         assert_eq!(logins(&once, "PVTI_11"), ["horebz"]);
         assert_eq!(apply(once.clone(), &intent), once);
         assert_eq!(
@@ -779,6 +833,7 @@ mod tests {
     #[test]
     fn set_assignees_on_a_draft_sends_its_whole_list() {
         let mut board = board();
+
         board.columns[1].cards.push(Card {
             item_id: ItemId("PVTI_d".into()),
             position: 3,
@@ -790,8 +845,10 @@ mod tests {
             pending: false,
             updated_by_sync: false,
         });
+
         let intent = set_assignees("PVTI_d", &["horebz"], &[]);
         let shown = apply(board, &intent);
+
         assert_eq!(logins(&shown, "PVTI_d"), ["lea", "horebz"]);
         assert_eq!(
             to_operations(&intent, &shown).unwrap(),
@@ -811,8 +868,10 @@ mod tests {
             item_id: card.item_id.clone(),
         };
         let archived = apply(board.clone(), &archive);
+
         assert_eq!(archived.columns[0].cards.len(), 2);
         assert_eq!(apply(archived.clone(), &archive), archived);
+
         let unarchive = Intent::Unarchive {
             project_id: ProjectId("PVT_1".into()),
             item_id: card.item_id.clone(),
@@ -820,6 +879,7 @@ mod tests {
             card,
         };
         let back = apply(archived, &unarchive);
+
         assert_eq!(back, board);
         assert_eq!(apply(back.clone(), &unarchive), back);
         assert_eq!(
@@ -842,12 +902,16 @@ mod tests {
         };
         let shown = apply(ranked(), &create);
         let column = &shown.columns[1];
+
         assert_eq!(column.cards[0].item_id.as_str(), "draft:1");
         assert_eq!(column.cards[0].position, 0);
         assert_eq!(shown.columns[0].cards[0].position, 1);
+
         // The snapshot with the real item, under another ID, reflects the intent.
         let mut synced = shown.clone();
+
         synced.columns[1].cards[0].item_id = ItemId("PVTI_new".into());
+
         assert_eq!(apply(synced.clone(), &create), synced);
         assert_eq!(
             to_operations(&create, &shown).unwrap(),
@@ -862,6 +926,7 @@ mod tests {
     fn move_card_reads_the_board_field_and_project() {
         let board = board();
         let done = find_column(&board, "done").unwrap();
+
         assert_eq!(
             Intent::move_card(&board, &ItemId("PVTI_11".into()), done, Placement::Keep),
             move_11(Some("done"), Placement::Keep)
@@ -871,6 +936,7 @@ mod tests {
     #[test]
     fn unknown_column_lists_the_valid_names() {
         let error = find_column(&board(), "Doing").unwrap_err();
+
         assert_eq!(
             error.to_string(),
             "no column `Doing`, expected one of: Todo, In Progress, Done, none"
@@ -880,6 +946,7 @@ mod tests {
     #[test]
     fn column_names_ignore_case_and_none_is_no_status() {
         let board = board();
+
         assert_eq!(
             find_column(&board, "in progress").unwrap().unwrap().name,
             "In Progress"
@@ -898,6 +965,7 @@ mod tests {
                 .as_str()
                 .to_owned()
         };
+
         assert_eq!(id("#10"), "PVTI_10");
         assert_eq!(id("planche#11"), "PVTI_11");
         assert_eq!(id("HorebZ/Other#11"), "PVTI_x11");
@@ -909,6 +977,7 @@ mod tests {
     fn an_ambiguous_card_lists_the_candidate_item_ids() {
         let board = board();
         let error = find_card(&board, "Phase 7").unwrap_err();
+
         assert_eq!(
             error.to_string(),
             "`Phase 7` matches several cards, pass one of these item IDs instead:\n  \

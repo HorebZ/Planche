@@ -37,6 +37,7 @@ impl GithubClient {
             .timeout(Duration::from_secs(15))
             .build()
             .map_err(|e| Error::Network(e.to_string()))?;
+
         Ok(Self {
             http,
             token: token.into(),
@@ -59,11 +60,13 @@ impl GithubClient {
         );
         let (headers, body) = self.send(request).await?;
         let (data, rate_limit) = decode::<T>(&body)?;
+
         self.record(
             rate_limit,
             header_u32(&headers, "x-ratelimit-limit"),
             header_u32(&headers, "x-ratelimit-reset"),
         );
+
         Ok(Reply {
             data,
             scopes: header_str(&headers, "x-oauth-scopes").map(str::to_owned),
@@ -74,6 +77,7 @@ impl GithubClient {
     pub(crate) async fn rest_get<T: DeserializeOwned>(&self, path: &str) -> Result<T> {
         let request = self.http.get(format!("{REST_ENDPOINT}{path}"));
         let (_, body) = self.send(request).await?;
+
         serde_json::from_str(&body).map_err(|e| Error::Decode(e.to_string()))
     }
 
@@ -85,28 +89,36 @@ impl GithubClient {
             .map_err(network_error)?;
         let status = response.status();
         let headers = response.headers().clone();
+
         if status == StatusCode::UNAUTHORIZED {
             return Err(Error::Unauthorized);
         }
+
         if let Some(retry_after_secs) = rate_limited(status, &headers) {
             return Err(Error::RateLimited { retry_after_secs });
         }
+
         if !status.is_success() {
             return Err(Error::Http(status.as_u16()));
         }
+
         let body = response.text().await.map_err(network_error)?;
+
         Ok((headers, body))
     }
 
     fn record(&self, rate_limit: Option<RateLimit>, limit: Option<u32>, reset_at: Option<u32>) {
         let mut usage = self.usage.lock().unwrap();
+
         if let Some(rate_limit) = rate_limit {
             usage.cost_total += rate_limit.cost.unwrap_or(0);
             usage.remaining = Some(rate_limit.remaining);
         }
+
         if limit.is_some() {
             usage.limit = limit;
         }
+
         if reset_at.is_some() {
             usage.reset_at = reset_at;
         }
@@ -129,9 +141,11 @@ pub(crate) struct RateLimit {
 pub(crate) fn decode<T: DeserializeOwned>(body: &str) -> Result<(T, Option<RateLimit>)> {
     let envelope: Envelope =
         serde_json::from_str(body).map_err(|e| Error::Decode(e.to_string()))?;
+
     if let Some(errors) = envelope.errors.filter(|e| !e.is_empty()) {
         return Err(Error::GitHub(errors));
     }
+
     let data = envelope
         .data
         .ok_or_else(|| Error::Decode("response has no data".into()))?;
@@ -139,6 +153,7 @@ pub(crate) fn decode<T: DeserializeOwned>(body: &str) -> Result<(T, Option<RateL
         .get("rateLimit")
         .and_then(|r| RateLimit::deserialize(r).ok());
     let data = T::deserialize(data).map_err(|e| Error::Decode(e.to_string()))?;
+
     Ok((data, rate_limit))
 }
 
@@ -154,14 +169,18 @@ fn rate_limited(status: StatusCode, headers: &HeaderMap) -> Option<u64> {
     if status != StatusCode::FORBIDDEN && status != StatusCode::TOO_MANY_REQUESTS {
         return None;
     }
+
     if let Some(secs) = header_u32(headers, "retry-after") {
         return Some(secs.into());
     }
+
     if header_u32(headers, "x-ratelimit-remaining") != Some(0) {
         return None;
     }
+
     let reset = header_u32(headers, "x-ratelimit-reset").map(u64::from)?;
     let now = SystemTime::now().duration_since(UNIX_EPOCH).ok()?.as_secs();
+
     Some(reset.saturating_sub(now))
 }
 

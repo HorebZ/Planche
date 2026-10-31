@@ -19,12 +19,14 @@ function repoOf(board: Board, card: Card) {
   if ("repo" in card) {
     return card.repo;
   }
+
   // ponytail: the first repo on the board. A project that spans repos may offer the wrong people.
   for (const c of board.columns.flatMap((column) => column.cards)) {
     if ("repo" in c) {
       return c.repo;
     }
   }
+
   return null;
 }
 
@@ -37,6 +39,7 @@ export function AssigneePicker({ board, card, viewer, onToggle }: AssigneePicker
   const listed = useQuery({ ...assignableUsersQuery(repo ?? ""), enabled: open && repo != null });
   const users = repo ? listed.data : viewer ? [viewer] : [];
   const assigned = card.kind === "redacted" ? [] : card.assignees;
+
   return (
     <Popover
       open={open}
@@ -60,7 +63,9 @@ export function AssigneePicker({ board, card, viewer, onToggle }: AssigneePicker
           status={listed.isError ? errorMessage(listed.error) : undefined}
           onPick={(id) => {
             const user = users?.find((u) => u.id === id);
+
             useUi.getState().open(null);
+
             if (user) {
               onToggle(user);
             }

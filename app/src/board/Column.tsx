@@ -42,14 +42,18 @@ export function Column({
   const { setNodeRef } = useDroppable({ id: `column:${index}` });
   const rows = useMemo<Row[]>(() => {
     const cards: Row[] = column.cards.map((card) => ({ kind: "card", card }));
+
     if (!landing) {
       return cards;
     }
+
     // Count the landing index among the cards without the lifted one, which stays as a ghost.
     const others = column.cards.filter((c) => c.item_id !== activeId);
     const before = others[landing.index];
     const at = before ? column.cards.indexOf(before) : column.cards.length;
+
     cards.splice(at, 0, { kind: "placeholder", height: landing.height });
+
     return cards;
   }, [column.cards, landing, activeId]);
   const virtualizer = useVirtualizer({
@@ -60,6 +64,7 @@ export function Column({
     overscan: 3,
     getItemKey: (i) => {
       const row = rows[i];
+
       return row.kind === "card" ? row.card.item_id : "placeholder";
     },
   });
@@ -68,15 +73,19 @@ export function Column({
   const drafting = useUi((s) =>
     s.overlay?.type === "draft" && s.overlay.column === column.option_id ? s.overlay.editor : null,
   );
+
   // A selection out of view mounts its card first, so the card can take the focus.
   useEffect(() => {
     const id = revealId ?? selectedId;
     const at = rows.findIndex((row) => row.kind === "card" && row.card.item_id === id);
+
     if (at >= 0) {
       virtualizer.scrollToIndex(at, { align: "auto" });
     }
   }, [selectedId, rows, virtualizer, revealId]);
+
   const incoming = landing != null && !landing.fromHere;
+
   return (
     <BoardColumn
       ref={setNodeRef}
@@ -112,6 +121,7 @@ export function Column({
           >
             {virtualizer.getVirtualItems().map((item) => {
               const row = rows[item.index];
+
               return (
                 <div
                   key={item.key}

@@ -1,9 +1,15 @@
 root = true
 
-[app/**.{js,jsx,ts,tsx,json,jsonc,css,html}]
+[*]
 charset = utf-8
-indent_style = space
-indent_size = 2
 end_of_line = lf
 insert_final_newline = true
 trim_trailing_whitespace = true
+
+[*.{js,jsx,ts,tsx,json,jsonc,css,html}]
+indent_style = space
+indent_size = 2
+
+[*.rs]
+indent_style = space
+indent_size = 4

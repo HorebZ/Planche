@@ -38,6 +38,7 @@ test("the footer says how fresh the board is, or why it is not", () => {
 
 test("the toolbar counts items while loading and pages while syncing", () => {
   const syncing = status({ type: "syncing", page: 3, pages: 5, items_total: 480 });
+
   expect(busyLabel(syncing, true)).toBe("Loading 480 items…");
   expect(busyLabel(syncing, false)).toBe("Syncing 3 of 5…");
   expect(busyLabel(status({ type: "syncing", page: 1, pages: 1, items_total: 9 }), false)).toBe(

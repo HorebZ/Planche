@@ -35,13 +35,16 @@ export function CommandPalette({ board, card, commands }: CommandPaletteProps) {
   const open = useUi((s) => s.overlay?.type === "palette");
   const [query, setQuery] = useState("");
   const [withContext, setWithContext] = useState(true);
+
   useEffect(() => {
     if (!open) {
       return;
     }
+
     setQuery("");
     setWithContext(true);
   }, [open]);
+
   const target = withContext ? card : null;
   const ref = target ? cardRef(target) : "";
   const shown = commands.filter((c) => c.group === "commands" || target);
@@ -60,8 +63,10 @@ export function CommandPalette({ board, card, commands }: CommandPaletteProps) {
       contentProps={{
         onCloseAutoFocus: (event) => {
           event.preventDefault();
+
           // The overlay that follows, such as the assignee picker, takes the focus instead.
           const { overlay, selectedId } = useUi.getState();
+
           if (!overlay && selectedId) {
             focusCard(selectedId);
           }
@@ -72,7 +77,9 @@ export function CommandPalette({ board, card, commands }: CommandPaletteProps) {
           if (query) {
             return;
           }
+
           const command = commandFor(event.nativeEvent, "palette");
+
           if (command === "palette.clearContext" && target) {
             event.preventDefault();
             setWithContext(false);
@@ -194,6 +201,7 @@ function PaletteRow({
   onRun: (command: PaletteCommand) => void;
 }) {
   const Icon = command.icon;
+
   return (
     <CommandItem
       value={command.value}
@@ -230,6 +238,7 @@ function CardRow({
   const title = card.kind === "redacted" ? "Redacted item" : card.title;
   const where =
     "number" in card ? `${card.repo.slice(card.repo.indexOf("/") + 1)} #${card.number}` : "draft";
+
   return (
     <CommandItem
       value={`${title} ${where} ${card.item_id}`}

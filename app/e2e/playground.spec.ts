@@ -5,10 +5,13 @@ type Theme = "light" | "dark";
 for (const theme of ["light", "dark"] as const) {
   test(`stacked notifications stay readable without hovering in ${theme}`, async ({ page }) => {
     const panel = scope(page, "overlays", theme);
+
     await panel.getByRole("button", { name: "Show toast", exact: true }).click();
     await panel.getByRole("button", { name: "Show toast", exact: true }).click();
     await page.mouse.move(0, 0);
+
     const notifications = panel.locator("[data-sonner-toast]");
+
     await expect(notifications).toHaveCount(2);
     await expect
       .poll(() =>
@@ -16,7 +19,9 @@ for (const theme of ["light", "dark"] as const) {
           if (nodes.length !== 2) {
             return false;
           }
+
           const [a, b] = nodes.map((node) => node.getBoundingClientRect());
+
           return a.bottom <= b.top || b.bottom <= a.top;
         }),
       )
@@ -29,9 +34,11 @@ const scope = (page: Page, section: string, theme: Theme) =>
 
 test.beforeEach(async ({ page }) => {
   const errors: string[] = [];
+
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
   await page.goto("/playground");
+
   await expect(page.getByRole("heading", { name: "Planche playground" })).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -46,24 +53,34 @@ test("each theme scope resolves its own token values", async ({ page }) => {
 test("dark metadata has at least 4.5:1 contrast on every base surface", async ({ page }) => {
   const contrasts = await scope(page, "buttons", "dark").evaluate((panel) => {
     const probe = document.createElement("span");
+
     probe.style.color = "var(--pl-fg-3)";
     panel.append(probe);
+
     const luminance = (color: string) => {
       const [r, g, b] = (color.match(/[\d.]+/g) ?? []).map((value) => {
         const channel = Number(value) / 255;
+
         return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
       });
+
       return 0.2126 * r + 0.7152 * g + 0.0722 * b;
     };
+
     const foreground = luminance(getComputedStyle(probe).color);
     const results = ["bg-sunken", "bg", "column", "surface", "card", "elevated"].map((name) => {
       probe.style.backgroundColor = `var(--pl-${name})`;
+
       const background = luminance(getComputedStyle(probe).backgroundColor);
+
       return { name, ratio: (foreground + 0.05) / (background + 0.05) };
     });
+
     probe.remove();
+
     return results;
   });
+
   for (const { name, ratio } of contrasts) {
     expect(ratio, name).toBeGreaterThanOrEqual(4.5);
   }
@@ -72,6 +89,7 @@ test("dark metadata has at least 4.5:1 contrast on every base surface", async ({
 test("shadows switch with the theme scope", async ({ page }) => {
   const secondary = (theme: Theme) =>
     scope(page, "buttons", theme).getByRole("button", { name: "Secondary" }).first();
+
   await expect(secondary("light")).toHaveCSS("box-shadow", /rgba\(28, 25, 20, 0\.06\)/);
   await expect(secondary("dark")).toHaveCSS("box-shadow", /rgba\(255, 255, 255, 0\.04\)/);
 });
@@ -79,25 +97,34 @@ test("shadows switch with the theme scope", async ({ page }) => {
 test("portalled overlays take the theme of their panel", async ({ page }) => {
   const menu = (theme: Theme) =>
     scope(page, "overlays", theme).locator('[data-slot="dropdown-menu-content"]').first();
+
   await expect(menu("light")).toHaveCSS("background-color", "rgb(255, 255, 255)");
   await expect(menu("dark")).toHaveCSS("background-color", "rgb(36, 36, 37)");
+
   const tooltip = scope(page, "overlays", "dark").locator('[data-slot="tooltip-content"]').first();
+
   await expect(tooltip).toHaveCSS("background-color", "rgb(237, 237, 238)");
 });
 
 test("a live dialog opened from the dark panel is dark", async ({ page }) => {
   const dark = scope(page, "overlays", "dark");
+
   await dark.getByRole("button", { name: "Open dialog" }).click();
+
   const dialog = dark.locator('[data-slot="dialog-content"]').filter({ visible: true });
+
   await expect(dialog).toHaveCount(1);
   await expect(dialog).toHaveCSS("background-color", "rgb(36, 36, 37)");
+
   await page.keyboard.press("Escape");
+
   await expect(dialog).toHaveCount(0);
 });
 
 test("cards resolve the card token per theme", async ({ page }) => {
   const card = (theme: Theme) =>
     scope(page, "board", theme).locator('[data-slot="issue-card"]').first();
+
   await expect(card("light")).toHaveCSS("background-color", "rgb(255, 255, 255)");
   await expect(card("dark")).toHaveCSS("background-color", "rgb(26, 26, 27)");
   await expect(
@@ -110,7 +137,9 @@ test("a drop target column counts the hovering card, the origin keeps its own", 
 }) => {
   const board = scope(page, "board", "light");
   const targets = board.locator('[data-slot="board-column"][data-drop-target]');
+
   await expect(targets).toHaveCount(2);
+
   for (const target of await targets.all()) {
     await expect(target.locator('[data-slot="board-column-count"]')).toHaveText("4");
     await expect(target.locator('[data-slot="board-column-count"]')).toHaveCSS(
@@ -118,14 +147,17 @@ test("a drop target column counts the hovering card, the origin keeps its own", 
       "rgb(113, 108, 99)",
     );
   }
+
   const origin = board.locator(
     '[data-slot="board-column"]:has([data-slot="issue-card"][data-drag-state="ghost"])',
   );
+
   await expect(origin.locator('[data-slot="board-column-count"]')).toHaveText("6");
 });
 
 test("data-preview forces hover and focus styles", async ({ page }) => {
   const ghost = scope(page, "buttons", "light").getByRole("button", { name: "Filter" });
+
   await expect(ghost.nth(0)).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   await expect(ghost.nth(1)).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   await expect(ghost.nth(2)).not.toHaveCSS("box-shadow", "none");

@@ -34,6 +34,7 @@ export function SettingsDialog({
   shortcuts,
 }: SettingsProps) {
   const [section, setSection] = useState<"general" | "shortcuts">("general");
+
   return (
     <Dialog
       open={open}

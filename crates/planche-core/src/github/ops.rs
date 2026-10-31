@@ -27,6 +27,7 @@ pub async fn viewer(client: &GithubClient) -> Result<(Viewer, Option<String>)> {
         name: v.name,
         avatar_url: v.avatar_url,
     };
+
     Ok((viewer, reply.scopes))
 }
 
@@ -36,17 +37,22 @@ pub async fn viewer(client: &GithubClient) -> Result<(Viewer, Option<String>)> {
 /// that REST returns, and their projects would silently disappear.
 pub async fn viewer_organizations(client: &GithubClient) -> Result<Vec<String>> {
     const PER_PAGE: usize = 100;
+
     let mut logins = Vec::new();
+
     for page in 1.. {
         let orgs: Vec<wire::Organization> = client
             .rest_get(&format!("/user/orgs?per_page={PER_PAGE}&page={page}"))
             .await?;
         let last = orgs.len() < PER_PAGE;
+
         logins.extend(orgs.into_iter().map(|o| o.login));
+
         if last {
             break;
         }
     }
+
     Ok(logins)
 }
 
@@ -55,6 +61,7 @@ pub async fn viewer_organizations(client: &GithubClient) -> Result<Vec<String>> 
 pub async fn list_projects(client: &GithubClient) -> Result<ProjectList> {
     let (viewer, _) = viewer(client).await?;
     let mut orgs = viewer_organizations(client).await?;
+
     orgs.sort_by_key(|login| login.to_lowercase());
 
     let mut owners = vec![OwnerProjects {
@@ -63,6 +70,7 @@ pub async fn list_projects(client: &GithubClient) -> Result<ProjectList> {
         is_org: false,
     }];
     let mut sso_blocked = Vec::new();
+
     for login in orgs {
         match owner_projects(client, &login, true).await {
             Ok(projects) => owners.push(OwnerProjects {
@@ -76,6 +84,7 @@ pub async fn list_projects(client: &GithubClient) -> Result<ProjectList> {
             Err(error) => return Err(error),
         }
     }
+
     Ok(ProjectList {
         owners,
         sso_blocked,
@@ -89,6 +98,7 @@ async fn owner_projects(
 ) -> Result<Vec<ProjectSummary>> {
     let mut projects = Vec::new();
     let mut after: Option<String> = None;
+
     loop {
         let reply = client
             .query::<wire::ListProjectsData>(
@@ -97,10 +107,13 @@ async fn owner_projects(
                 json!({ "login": login, "isOrg": is_org, "after": after }),
             )
             .await?;
+
         let Some(owner) = reply.data.user.or(reply.data.organization) else {
             return Ok(projects);
         };
+
         let page = owner.projects_v2;
+
         projects.extend(page.nodes.into_iter().flatten().map(|p| ProjectSummary {
             id: ProjectId(p.id),
             number: p.number,
@@ -108,6 +121,7 @@ async fn owner_projects(
             closed: p.closed,
             url: p.url,
         }));
+
         match next_cursor(page.page_info) {
             Some(cursor) => after = Some(cursor),
             None => return Ok(projects),
@@ -119,6 +133,7 @@ pub async fn project_meta(client: &GithubClient, project: &ProjectId) -> Result<
     let reply = client
         .query::<wire::ProjectMetaData>(QUERIES, "ProjectMeta", json!({ "projectId": project }))
         .await?;
+
     meta_from_wire(project_node(reply.data.node)?)
 }
 
@@ -156,6 +171,7 @@ pub async fn board_page(
         .or(reply.data.repository_owner)
         .and_then(|o| o.project_v2)
         .ok_or_else(not_found)?;
+
     Ok((
         meta_from_wire(project.meta)?,
         items_page_from_wire(project.items),
@@ -175,6 +191,7 @@ pub async fn items_page(
             json!({ "projectId": project, "after": cursor }),
         )
         .await?;
+
     Ok(items_page_from_wire(project_node(reply.data.node)?.items))
 }
 
@@ -228,6 +245,7 @@ pub async fn execute(client: &GithubClient, operation: &Operation) -> Result<Opt
                     json!({ "projectId": project_id, "title": title }),
                 )
                 .await?;
+
             return Ok(Some(ItemId(
                 reply.data.add_project_v2_draft_issue.project_item.id,
             )));
@@ -254,9 +272,11 @@ pub async fn execute(client: &GithubClient, operation: &Operation) -> Result<Opt
             json!({ "draftIssueId": draft_issue_id, "assigneeIds": assignee_ids }),
         ),
     };
+
     client
         .query::<IgnoredAny>(MUTATIONS, name, variables)
         .await?;
+
     Ok(None)
 }
 
@@ -273,12 +293,14 @@ pub async fn assignable_users(client: &GithubClient, owner: &str, name: &str) ->
         .data
         .repository
         .ok_or_else(|| Error::Decode(format!("repository {owner}/{name} is null")))?;
+
     Ok(users(repository.assignable_users))
 }
 
 /// Decodes a captured `ProjectMeta` response body.
 pub fn decode_project_meta(body: &str) -> Result<ProjectMeta> {
     let (data, _) = decode::<wire::ProjectMetaData>(body)?;
+
     meta_from_wire(project_node(data.node)?)
 }
 
@@ -292,6 +314,7 @@ pub struct ItemsPage {
 /// Decodes a captured `ProjectItems` response body.
 pub fn decode_project_items(body: &str) -> Result<ItemsPage> {
     let (data, _) = decode::<wire::ProjectItemsData>(body)?;
+
     Ok(items_page_from_wire(project_node(data.node)?.items))
 }
 
@@ -345,6 +368,7 @@ fn meta_from_wire(p: wire::Project) -> Result<ProjectMeta> {
                     "ROADMAP_LAYOUT" => ViewLayout::Roadmap,
                     _ => return None,
                 };
+
                 Some(View {
                     id: ViewId(v.id),
                     number: v.number,
@@ -392,6 +416,7 @@ fn item_from_wire(item: wire::Item) -> Item {
             _ => None,
         })
         .collect();
+
     Item {
         id: crate::domain::ItemId(item.id),
         archived: item.is_archived,

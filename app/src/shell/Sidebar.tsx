@@ -76,6 +76,7 @@ export function AppSidebar({
       onHide={() => setProjectHidden(login, project.id, !isHidden)}
     />
   );
+
   return (
     <Sidebar>
       <div className="flex items-center gap-1">
@@ -148,6 +149,7 @@ function SyncFooter({ syncedAt, error }: { syncedAt: string | null; error?: stri
   const showSettings = () => setSettingsOpen(true);
   const now = useNow(30_000);
   const { tone, text } = footerText(status.data, syncedAt, now, error);
+
   return (
     <>
       <SidebarFooter
@@ -192,9 +194,12 @@ function SyncFooter({ syncedAt, error }: { syncedAt: string | null; error?: stri
 /** The current time, refreshed every `ms`, for relative times. */
 function useNow(ms: number) {
   const [now, setNow] = useState(Date.now);
+
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), ms);
+
     return () => clearInterval(timer);
   }, [ms]);
+
   return now;
 }

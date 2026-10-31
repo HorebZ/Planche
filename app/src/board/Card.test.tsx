@@ -7,6 +7,7 @@ test.each(["backlog", "todo", "doing", "review", "done"] as const)(
   "a draft keeps its dotted glyph in a %s column",
   (status) => {
     const container = document.createElement("div");
+
     container.innerHTML = renderToStaticMarkup(
       <Card
         status={status}
@@ -22,7 +23,9 @@ test.each(["backlog", "todo", "doing", "review", "done"] as const)(
         }}
       />,
     );
+
     const glyph = container.querySelector("[data-slot='status-square'] svg");
+
     expect(glyph?.getAttribute("aria-label")).toBe("Draft");
     expect(glyph?.querySelector("circle")?.getAttribute("stroke-dasharray")).toBe("2.26 2.26");
   },

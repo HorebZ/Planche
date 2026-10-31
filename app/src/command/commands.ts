@@ -36,7 +36,9 @@ export function toggleAssignee(board: Board, card: Card, user: User): Intent | n
   if (card.kind === "redacted") {
     return null;
   }
+
   const assigned = card.assignees.some((u) => u.id === user.id);
+
   return {
     type: "set_assignees",
     project_id: board.project.id,
@@ -94,6 +96,7 @@ export function paletteCommands(
 ): PaletteCommand[] {
   const commands: PaletteCommand[] = [];
   const from = board && card ? columnIndexOf(board, card) : -1;
+
   if (board && card && from >= 0) {
     for (const [index, column] of board.columns.entries()) {
       commands.push({
@@ -110,6 +113,7 @@ export function paletteCommands(
         },
       });
     }
+
     if (card.kind !== "redacted") {
       commands.push({
         value: "Assign",
@@ -119,6 +123,7 @@ export function paletteCommands(
         run: actions.assign,
       });
     }
+
     commands.push({
       value: "Archive",
       group: "card",
@@ -127,6 +132,7 @@ export function paletteCommands(
       run: actions.archive,
     });
   }
+
   commands.push(
     {
       value: "New draft",
@@ -143,11 +149,13 @@ export function paletteCommands(
       run: actions.syncNow,
     },
   );
+
   for (const owner of owners) {
     for (const project of owner.projects) {
       if (project.closed || project.id === board?.project.id) {
         continue;
       }
+
       commands.push({
         value: `Go to project ${project.title} ${owner.login}/${project.number}`,
         group: "commands",
@@ -157,6 +165,7 @@ export function paletteCommands(
       });
     }
   }
+
   commands.push({
     value: "Show board",
     group: "commands",
@@ -178,38 +187,48 @@ export function paletteCommands(
     icon: LogOut,
     run: actions.signOut,
   });
+
   return commands;
 }
 
 /** Cards whose title, number or repo holds each word of `query` in order, at most `limit`. */
 export function matchCards(board: Board | null, query: string, limit = 50): Card[] {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+
   if (!board || words.length === 0) {
     return [];
   }
+
   const found: Card[] = [];
+
   for (const card of board.columns.flatMap((c) => c.cards)) {
     if (card.kind === "redacted") {
       continue;
     }
+
     const text =
       `${card.title} ${"number" in card ? `${card.repo}#${card.number}` : ""}`.toLowerCase();
+
     if (words.every((word) => inOrder(text, word))) {
       found.push(card);
     }
+
     if (found.length === limit) {
       break;
     }
   }
+
   return found;
 }
 
 function inOrder(text: string, word: string) {
   let at = 0;
+
   for (const char of text) {
     if (char === word[at]) {
       at++;
     }
   }
+
   return at === word.length;
 }

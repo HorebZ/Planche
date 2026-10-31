@@ -8,12 +8,15 @@ const Playground = import.meta.env.DEV ? lazy(() => import("./playground/Playgro
 async function start() {
   const params = new URLSearchParams(window.location.search);
   const scenario = params.get("mock");
+
   // Playwright renders the app in a browser against a fake backend: on the dev server, or in a
   // production build made with VITE_MOCK=1 for the scroll budget. Other builds drop it.
   if ((import.meta.env.DEV || import.meta.env.VITE_MOCK) && scenario) {
     const { installMockBackend } = await import("../e2e/mockBackend");
+
     installMockBackend(scenario as Parameters<typeof installMockBackend>[0]);
   }
+
   const page =
     Playground && window.location.pathname === "/playground" ? (
       <Suspense>
@@ -22,6 +25,7 @@ async function start() {
     ) : (
       <App />
     );
+
   createRoot(document.getElementById("root") as HTMLElement).render(
     <StrictMode>{page}</StrictMode>,
   );

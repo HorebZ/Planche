@@ -13,6 +13,7 @@ test.each([
   "%s header uses its status glyph regardless of GitHub color",
   (name, color, dash, fill, pathColor) => {
     const container = document.createElement("div");
+
     container.innerHTML = renderToStaticMarkup(
       <Column
         column={{ option_id: "status", name, color, cards: [] }}
@@ -25,11 +26,15 @@ test.each([
         }}
       />,
     );
+
     const glyph = container.querySelector("header [data-slot='status-square'] svg");
+
     expect(glyph?.getAttribute("aria-label")).toBe(name);
     expect(glyph?.querySelector("circle")?.getAttribute("stroke-dasharray")).toBe(dash);
     expect(glyph?.querySelector("circle")?.getAttribute("fill")).toBe(fill);
+
     const path = glyph?.querySelector("path");
+
     expect(path?.getAttribute("stroke") ?? path?.getAttribute("fill") ?? null).toBe(pathColor);
   },
 );
