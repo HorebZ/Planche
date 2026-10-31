@@ -24,7 +24,7 @@ import {
   commands,
   type Intent,
   type ItemId,
-} from "@/ipc/bindings";
+} from "@/ipc/bindings.types";
 import { commandFor, dragCodes } from "@/keyboard/shortcuts";
 import { useUi } from "@/stores/ui";
 import { cardData } from "./Card";

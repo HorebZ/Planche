@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { BoardColumn } from "@/components/ui/board-column";
 import type { DisplayProperty } from "@/components/ui/display-menu";
 import { CardPlaceholder } from "@/components/ui/issue-card";
-import type { Column as BoardColumnData, ItemId } from "@/ipc/bindings";
+import type { Column as BoardColumnData, ItemId } from "@/ipc/bindings.types";
 import { useUi } from "@/stores/ui";
 import { Card } from "./Card";
 import { type DraftSubmit, NewDraft } from "./NewDraft";

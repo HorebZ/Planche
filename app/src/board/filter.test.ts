@@ -1,28 +1,23 @@
 import { expect, test } from "vitest";
-import type { Board, Card, Intent, Placement } from "@/ipc/bindings";
+import {
+  boardField,
+  board as boardFixture,
+  boardProject,
+  column,
+} from "@/ipc/_fixtures/board.fixtures";
+import { draft } from "@/ipc/_fixtures/card.fixtures";
+import type { Intent, Placement } from "@/ipc/bindings.types";
 import { inverse } from "@/undo/inverse";
 import { dropPlacement, filterBoard, selectionAfterRemoval } from "./filter";
 import { applyIntent } from "./moveCard";
 
-const card = (item_id: string, position: number): Card => ({
-  kind: "draft",
-  id: item_id,
-  item_id,
-  position,
-  title: item_id,
-  assignees: [],
-  pending: false,
-  updated_by_sync: false,
-});
-const board: Board = {
-  project: { id: "project", number: 1, title: "Project", url: "" },
-  view: null,
-  field: { id: "status", name: "Status" },
+const card = (item_id: string, position: number) =>
+  draft({ id: item_id, item_id, position, title: item_id });
+const board = boardFixture({
+  project: boardProject({ id: "project", number: 1, title: "Project", url: "" }),
+  field: boardField({ id: "status" }),
   columns: [
-    {
-      option_id: "todo",
-      name: "Todo",
-      color: null,
+    column({
       cards: [
         card("leading", 0),
         card("alpha", 1),
@@ -30,14 +25,12 @@ const board: Board = {
         card("beta", 3),
         card("tail", 4),
       ],
-    },
-    { option_id: "done", name: "Done", color: null, cards: [card("moving", 5), card("other", 6)] },
-    { option_id: "empty", name: "Empty", color: null, cards: [] },
-    { option_id: null, name: "No Status", color: null, cards: [card("unset", 7)] },
+    }),
+    column({ option_id: "done", name: "Done", cards: [card("moving", 5), card("other", 6)] }),
+    column({ option_id: "empty", name: "Empty" }),
+    column({ option_id: null, name: "No Status", cards: [card("unset", 7)] }),
   ],
-  pending_count: 0,
-  synced_at: null,
-};
+});
 
 test("status filtering preserves columns, server cards and canonical positions", () => {
   const filtered = filterBoard(board, ["done", null]);

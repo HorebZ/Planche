@@ -6,7 +6,7 @@
     "app"
   ],
   "scripts": {
-    "check": "cargo fmt --check && cargo clippy --workspace -- -D warnings && cargo test --workspace && git diff --exit-code app/src/ipc/bindings.ts && bun run lint && bun run --cwd app check && bun run validate:gql",
+    "check": "cargo fmt --check && cargo clippy --workspace -- -D warnings && cargo test --workspace && git diff --exit-code app/src/ipc/bindings.types.ts && bun run lint && bun run --cwd app check && bun run validate:gql",
     "format": "cargo fmt && biome check --write",
     "lint": "biome check",
     "validate:gql": "bun scripts/validate-graphql.ts",

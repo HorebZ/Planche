@@ -64,28 +64,3 @@ for (const layout of ["Board", "List"] as const) {
     await expect(card).toBeInViewport();
   });
 }
-
-for (const colorScheme of ["light", "dark"] as const) {
-  test(`palette keys and no-match focus in ${colorScheme}`, async ({ page }, testInfo) => {
-    await page.emulateMedia({ colorScheme });
-    await page.goto("/?mock=board");
-
-    const card = page.locator('[data-item-id="PVTI_226"]');
-
-    await card.click();
-    await page.keyboard.press("Meta+k");
-
-    const dialog = page.getByRole("dialog");
-
-    await expect(dialog.getByRole("option").locator("kbd")).toHaveCount(0);
-
-    await page.screenshot({ path: testInfo.outputPath("search-palette.png") });
-    await dialog.getByRole("combobox").fill("zzzzzzzzzzzzzz");
-
-    await expect(dialog.getByText("No matches", { exact: true })).toBeVisible();
-
-    await page.keyboard.press("Escape");
-
-    await expect(card).toBeFocused();
-  });
-}

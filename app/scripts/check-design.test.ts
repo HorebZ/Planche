@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
@@ -48,4 +48,23 @@ test("a file using only tokens passes", () => {
 
   expect(stderr).toBe("");
   expect(code).toBe(0);
+});
+
+test("the source scan skips colocated test assertions about colors and issue numbers", () => {
+  const sourceDir = join(dir, "src");
+
+  mkdirSync(sourceDir);
+  writeFileSync(join(sourceDir, "Card.tsx"), '<div className="bg-surface" />');
+  writeFileSync(join(sourceDir, "Card.visual.e2e.ts"), 'expect(color).toBe("rgb(18, 18, 19)");');
+  writeFileSync(join(sourceDir, "Card.test.tsx"), 'expect(reference).toBe("#226");');
+  mkdirSync(join(sourceDir, "_fixtures"));
+  writeFileSync(join(sourceDir, "_fixtures", "card.ts"), 'const label = { color: "#226" };');
+
+  const result = spawnSync("bun", [join(import.meta.dirname, "check-design.ts")], {
+    cwd: dir,
+    encoding: "utf8",
+  });
+
+  expect(result.stderr).toBe("");
+  expect(result.status).toBe(0);
 });

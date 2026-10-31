@@ -1,15 +1,23 @@
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
-  testDir: "e2e",
+  testDir: "src",
   fullyParallel: true,
   reporter: "list",
-  use: { baseURL: process.env.BASE_URL ?? "http://localhost:1420" },
+  use: {
+    ...devices["Desktop Safari"],
+    baseURL: process.env.BASE_URL ?? "http://localhost:1420",
+    viewport: { width: 1600, height: 1000 },
+  },
   projects: [
     {
       name: "webkit",
-      use: { ...devices["Desktop Safari"], viewport: { width: 1600, height: 1000 } },
+      testMatch: "**/*.e2e.ts",
+      testIgnore: ["**/*.visual.e2e.ts", "**/*.perf.e2e.ts", "**/*.video.e2e.ts"],
     },
+    { name: "visual", testMatch: "**/*.visual.e2e.ts" },
+    { name: "perf", testMatch: "**/*.perf.e2e.ts" },
+    { name: "video", testMatch: "**/*.video.e2e.ts" },
   ],
   webServer: {
     command: "bun run dev",

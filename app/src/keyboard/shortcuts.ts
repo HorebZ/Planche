@@ -1,4 +1,4 @@
-import type { Board, ItemId } from "@/ipc/bindings";
+import type { Board, ItemId } from "@/ipc/bindings.types";
 
 export type Scope = "global" | "board" | "menu" | "palette" | "dialog" | "sidebar" | "drag";
 

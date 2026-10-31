@@ -65,8 +65,9 @@ While `bun run dev` is running, http://localhost:1420/playground shows every UI 
 - Always use braces for conditions and loops, including early returns.
 - Separate logical steps with one blank line; keep related declarations together. Biome preserves these groups and collapses repeated blank lines.
 - Let Biome organize imports and check Tailwind class ordering.
+- Use concise role suffixes when useful: `.types.ts`, `.models.ts`, `.service.ts`, `.routes.ts` and `.fixtures.ts`. Avoid adding a suffix when the filename already makes its role clear.
 
-Run `bun run format` to format Rust and TypeScript across the repository with rustfmt and Biome. `bun run lint` checks the web code without changing files and runs as part of `bun run check`. The frontend-only commands are `bun run --cwd app format` and `bun run --cwd app lint`. The generated `app/src/ipc/bindings.ts` keeps the generator's formatting and is excluded from Biome.
+Run `bun run format` to format Rust and TypeScript across the repository with rustfmt and Biome. `bun run lint` checks the web code without changing files and runs as part of `bun run check`. The frontend-only commands are `bun run --cwd app format` and `bun run --cwd app lint`. The generated `app/src/ipc/bindings.types.ts` keeps the generator's formatting and is excluded from Biome.
 
 Separate logical steps with a blank line. In tests, keep setup, action, and assertions distinct, with related assertions together. Biome and rustfmt preserve these blank lines but do not insert them; maintain this spacing when adding or editing code.
 
@@ -117,9 +118,51 @@ Run these commands from the root.
 
 ```sh
 bun run check                             # Rust fmt, clippy and tests, lint, app checks, GraphQL validation
+bun run --cwd app test                    # colocated unit and React integration tests
 bunx playwright install webkit            # first time only
-bun run --cwd app test:e2e                # end-to-end tests in WebKit
+bun run --cwd app test:e2e                # critical browser journeys in WebKit
+bun run --cwd app test:visual             # CSS, themes, contrast, layout and screenshots (on demand)
+bun run --cwd app test:perf               # performance budgets (on demand, one worker)
+bun run --cwd app test:video              # keyboard walkthrough recording (on demand)
 ```
+
+Behavior belongs in unit and integration tests beside the implementation. Vitest runs
+`Name.test.ts` and `Name.test.tsx`; React integration tests use happy-dom and mock only
+the Tauri boundary. Rust tests live in adjacent `module.test.rs` or
+`module.integration.test.rs` files, loaded with `#[cfg(test)]`. Cache and sync
+integration tests use SQLite and a fake GitHub, without network access.
+
+The small `Name.e2e.ts` suite covers startup authentication, onboarding, draft input,
+drag and drop, Undo, keyboard focus, and scrolling to virtualized search results.
+WebKit rendering checks live in `Name.visual.e2e.ts` and run separately; light and
+dark variants belong there rather than in behavioral tests. Performance and video
+checks also stay opt-in. All browser tests are beside the feature they exercise.
+
+`bun run check` type-checks all tests. `bun run --cwd app build` uses
+`tsconfig.build.json` to exclude tests and the React test helpers; Vite bundles only
+the application entry graph. The mock backend is loaded only in development or an
+explicit `VITE_MOCK=1` build. Rust excludes test modules from normal builds.
+
+Reusable fixtures live in `_fixtures/` beside the file that declares their types.
+Frontend domain types are generated from Rust into `app/src/ipc/bindings.types.ts`,
+so their fixtures live in `app/src/ipc/_fixtures/`. The `ipc/` directory also contains
+the queries and events used to communicate with Rust. Fixture code uses the suffix
+`<name>.fixtures.ts`, including mocks: `user.fixtures.ts`, `board.fixtures.ts`,
+`backend.fixtures.ts` and `scenarios.fixtures.ts`. The generic helper stays in
+`factory.ts`, without dedicated tests. `fixtureFactory(defaults)` returns fresh, deeply
+cloned data on every call; `Partial<T>` overrides replace top-level fields, including
+whole nested objects and arrays. For example, `issue({ assignees: [user({ login: "lea" })] })`
+creates an issue without sharing mutable data with another test. Cards have a factory
+per variant; factories use deterministic defaults and need no builder or dependency.
+
+Rust uses `<name>.fixtures.rs` functions from `crates/planche-core/src/_fixtures/` and struct update syntax,
+such as `Board { columns, ..board() }`. The fixture modules compile only under
+`#[cfg(test)]`; test values do not add `Default` implementations to domain types.
+GitHub response JSON and the fake GitHub service live in
+`crates/planche-core/src/github/_fixtures/`. `fixtures/move_cases.json` stays at the
+root because Rust and TypeScript replay the same contract. Data specific to one test
+stays in that test. TypeScript production roots, the design check and Tailwind exclude
+`_fixtures/`; the dev/mock backend remains conditionally loaded.
 
 UI styles must come from the design tokens in `app/src/styles/tokens.css`. The design check fails on hardcoded colors, default Tailwind palette classes, and `dark:` utilities.
 
@@ -136,7 +179,8 @@ app/
   src/components/ui/   UI components
   src/playground/      Component playground
   src/styles/          Design tokens and Tailwind theme
-  e2e/                 Playwright tests
+  src/**/*.test.ts(x)  Unit and React integration tests, beside their implementation
+  src/**/*.e2e.ts      Focused WebKit journeys and optional rendering/performance checks
   src-tauri/           Tauri shell
 scripts/               GraphQL validation, schema update
 ```

@@ -12,7 +12,7 @@ import {
   type SyncPrefs,
   type SyncStatus,
   type ViewId,
-} from "./bindings";
+} from "./bindings.types";
 
 type Gate = {
   preparation: number;

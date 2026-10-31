@@ -1,7 +1,7 @@
 import { BoardColumn } from "@/components/ui/board-column";
 import { EmptyBoardCard, SkeletonColumn } from "@/components/ui/board-states";
 import { Progress } from "@/components/ui/progress";
-import type { Board, OptionId } from "@/ipc/bindings";
+import type { Board, OptionId } from "@/ipc/bindings.types";
 import { statusTone } from "./statusTone";
 
 const boardClass = "flex h-full items-start gap-2.5 overflow-x-auto px-3 pt-0.5 pb-3";

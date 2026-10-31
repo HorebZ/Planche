@@ -1,4 +1,4 @@
-import type { Board, Column, ItemId, OptionId, Placement } from "@/ipc/bindings";
+import type { Board, Column, ItemId, OptionId, Placement } from "@/ipc/bindings.types";
 
 export function filterBoard(board: Board, statuses: (OptionId | null)[]): Board {
   if (!statuses.length) {

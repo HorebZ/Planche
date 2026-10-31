@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
+import { draft } from "@/ipc/_fixtures/card.fixtures";
 import { useUi } from "@/stores/ui";
 import { Card, focusCard } from "./Card";
 
@@ -12,16 +13,7 @@ test.each(["backlog", "todo", "doing", "review", "done"] as const)(
     container.innerHTML = renderToStaticMarkup(
       <Card
         status={status}
-        card={{
-          kind: "draft",
-          item_id: "item",
-          id: "draft",
-          title: "Draft issue",
-          assignees: [],
-          position: 0,
-          pending: false,
-          updated_by_sync: false,
-        }}
+        card={draft({ item_id: "item", id: "draft" })}
       />,
     );
 

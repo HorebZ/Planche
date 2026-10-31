@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { UserList } from "@/components/ui/picker";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
-import type { Board, Card, User } from "@/ipc/bindings";
+import type { Board, Card, User } from "@/ipc/bindings.types";
 import { assignableUsersQuery, errorMessage } from "@/ipc/queries";
 import { useUi } from "@/stores/ui";
 import { cardElement, focusCard } from "./Card";

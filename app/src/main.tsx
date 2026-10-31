@@ -12,7 +12,7 @@ async function start() {
   // Playwright renders the app in a browser against a fake backend: on the dev server, or in a
   // production build made with VITE_MOCK=1 for the scroll budget. Other builds drop it.
   if ((import.meta.env.DEV || import.meta.env.VITE_MOCK) && scenario) {
-    const { installMockBackend } = await import("../e2e/mockBackend");
+    const { installMockBackend } = await import("./ipc/_fixtures/backend.fixtures");
 
     installMockBackend(scenario as Parameters<typeof installMockBackend>[0]);
   }

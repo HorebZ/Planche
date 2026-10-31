@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/onboarding";
 import { SidebarGroup, SidebarItem } from "@/components/ui/sidebar";
 import { Spinner } from "@/components/ui/spinner";
-import { type AuthStatus, commands, type ProjectId } from "@/ipc/bindings";
+import { type AuthStatus, commands, type ProjectId } from "@/ipc/bindings.types";
 import {
   authQuery,
   currentProjectQuery,

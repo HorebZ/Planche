@@ -1,48 +1,34 @@
 import { expect, test } from "vitest";
 import { applyIntent } from "@/board/moveCard";
-import type { Board, Card, Intent, User } from "@/ipc/bindings";
+import { board as boardFixture, column } from "@/ipc/_fixtures/board.fixtures";
+import { issue as issueFixture } from "@/ipc/_fixtures/card.fixtures";
+import { user } from "@/ipc/_fixtures/user.fixtures";
+import type { Board, Card, Intent, User } from "@/ipc/bindings.types";
 import { inverse, describe as label } from "./inverse";
 
-const hor: User = { id: "U_hor", login: "HorebZ", avatar_url: "" };
-const lea: User = { id: "U_lea", login: "lea", avatar_url: "" };
+const hor = user({ id: "U_hor", login: "HorebZ" });
+const lea = user({ id: "U_lea", login: "lea" });
 
 function issue(n: number, position: number, assignees: User[] = []): Card {
-  return {
+  return issueFixture({
     item_id: `PVTI_${n}`,
-    position,
-    kind: "issue",
     id: `I_${n}`,
     number: n,
     title: `Issue ${n}`,
-    url: "",
-    repo: "HorebZ/Planche",
-    state: "open",
+    position,
     assignees,
-    labels: [],
-    pending: false,
-    updated_by_sync: false,
-  };
+  });
 }
 
 /** Todo #9 #10 #11, In Progress #1, Done #2, in project order 1 9 10 11 2. */
 function board(): Board {
-  return {
-    project: { id: "PVT_1", number: 2, title: "Planche", url: "" },
-    view: null,
-    field: { id: "F_status", name: "Status" },
+  return boardFixture({
     columns: [
-      {
-        option_id: "todo",
-        name: "Todo",
-        color: "BLUE",
-        cards: [issue(9, 1), issue(10, 2, [lea]), issue(11, 3)],
-      },
-      { option_id: "progress", name: "In Progress", color: "YELLOW", cards: [issue(1, 0)] },
-      { option_id: "done", name: "Done", color: "GREEN", cards: [issue(2, 4)] },
+      column({ color: "BLUE", cards: [issue(9, 1), issue(10, 2, [lea]), issue(11, 3)] }),
+      column({ option_id: "progress", name: "In Progress", color: "YELLOW", cards: [issue(1, 0)] }),
+      column({ option_id: "done", name: "Done", color: "GREEN", cards: [issue(2, 4)] }),
     ],
-    pending_count: 0,
-    synced_at: null,
-  };
+  });
 }
 
 const base = { project_id: "PVT_1" } as const;

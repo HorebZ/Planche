@@ -1,8 +1,11 @@
 // @vitest-environment happy-dom
+
 import { onlineManager, QueryObserver } from "@tanstack/react-query";
 import { emit } from "@tauri-apps/api/event";
 import { clearMocks, mockIPC } from "@tauri-apps/api/mocks";
 import { afterEach, expect, test } from "vitest";
+import { authStatus } from "@/ipc/_fixtures/user.fixtures";
+import { useUi } from "@/stores/ui";
 import { authQuery, beginBoardWrite, boardQuery, createQueryClient, listenToCore } from "./queries";
 
 afterEach(() => clearMocks());
@@ -19,7 +22,7 @@ test("cancelled authentication retries only on an explicit request", async () =>
       throw { kind: "Auth", message: "Authentication cancelled" };
     }
 
-    return { id: "U_me", login: "me", avatar_url: null, missing_scopes: [] };
+    return authStatus({ id: "U_me", login: "me" });
   });
 
   const client = createQueryClient();
@@ -90,6 +93,46 @@ test("a board-changed event refetches get_board for that project", async () => {
 
   unsubscribe();
   stop();
+});
+
+test("board changes during a drag are coalesced until the drop", async () => {
+  let reads = 0;
+
+  mockIPC(
+    (command) => {
+      if (command === "get_board") {
+        reads++;
+
+        return null;
+      }
+
+      throw new Error(`unexpected ${command}`);
+    },
+    { shouldMockEvents: true },
+  );
+
+  const client = createQueryClient();
+  const stop = await listenToCore(client);
+  const unsubscribe = new QueryObserver(client, boardQuery("P", null)).subscribe(() => {});
+
+  try {
+    await expect.poll(() => reads).toBe(1);
+
+    useUi.getState().setDragging(true);
+    await emit("board-changed", { project_id: "P" });
+    await emit("board-changed", { project_id: "P" });
+
+    expect(reads).toBe(1);
+
+    useUi.getState().setDragging(false);
+
+    await expect.poll(() => reads).toBe(2);
+  } finally {
+    unsubscribe();
+    stop();
+    useUi.getState().setDragging(false);
+    client.clear();
+  }
 });
 
 test.each([false, true])(

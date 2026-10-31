@@ -1,15 +1,10 @@
-use planche_core::github::ops::{decode_project_items, decode_project_meta};
+use crate::github::fixtures::{ITEM_PAGES, PROJECT_META};
+use crate::github::ops::{decode_project_items, decode_project_meta};
 use serde_json::{Value, json};
-
-fn fixture(name: &str) -> String {
-    let path = format!("{}/../../fixtures/{name}", env!("CARGO_MANIFEST_DIR"));
-
-    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{path}: {e}"))
-}
 
 #[test]
 fn every_fixture_decodes() {
-    let meta = decode_project_meta(&fixture("project_meta.json")).unwrap();
+    let meta = decode_project_meta(PROJECT_META).unwrap();
 
     assert_eq!(meta.title, "Planche");
     assert!(
@@ -18,8 +13,8 @@ fn every_fixture_decodes() {
             .any(|f| f.name == "Status" && f.options.is_some())
     );
 
-    let page1 = decode_project_items(&fixture("project_items_page1.json")).unwrap();
-    let page2 = decode_project_items(&fixture("project_items_page2.json")).unwrap();
+    let page1 = decode_project_items(ITEM_PAGES[0]).unwrap();
+    let page2 = decode_project_items(ITEM_PAGES[1]).unwrap();
 
     assert!(page1.next_cursor.is_some());
     assert!(page2.next_cursor.is_none());
@@ -28,11 +23,11 @@ fn every_fixture_decodes() {
 
 #[test]
 fn issue_relations_decode_and_survive_the_offline_cache() {
-    use planche_core::cache::Cache;
-    use planche_core::domain::{ItemContent, PullRequestState};
+    use crate::cache::Cache;
+    use crate::domain::{ItemContent, PullRequestState};
 
-    let meta = decode_project_meta(&fixture("project_meta.json")).unwrap();
-    let page = decode_project_items(&fixture("project_items_page1.json")).unwrap();
+    let meta = decode_project_meta(PROJECT_META).unwrap();
+    let page = decode_project_items(ITEM_PAGES[0]).unwrap();
 
     let ItemContent::Issue { details, .. } = &page.items[0].content else {
         panic!("expected an issue");
@@ -63,9 +58,9 @@ fn issue_relations_decode_and_survive_the_offline_cache() {
 
 #[test]
 fn multiple_linked_prs_use_the_total_count_and_empty_sub_issues_are_omitted() {
-    use planche_core::domain::ItemContent;
+    use crate::domain::ItemContent;
 
-    let mut page: Value = serde_json::from_str(&fixture("project_items_page1.json")).unwrap();
+    let mut page: Value = serde_json::from_str(ITEM_PAGES[0]).unwrap();
     let content = &mut page["data"]["node"]["items"]["nodes"][0]["content"];
 
     content["closedByPullRequestsReferences"]["totalCount"] = json!(3);
@@ -84,7 +79,7 @@ fn multiple_linked_prs_use_the_total_count_and_empty_sub_issues_are_omitted() {
 
 #[test]
 fn unknown_field_value_typename_is_ignored() {
-    let mut page: Value = serde_json::from_str(&fixture("project_items_page1.json")).unwrap();
+    let mut page: Value = serde_json::from_str(ITEM_PAGES[0]).unwrap();
     let values = page["data"]["node"]["items"]["nodes"][0]["fieldValues"]["nodes"]
         .as_array_mut()
         .unwrap();

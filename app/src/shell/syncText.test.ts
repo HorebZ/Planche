@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import type { SyncStatus } from "@/ipc/bindings";
+import type { SyncStatus } from "@/ipc/bindings.types";
 import { ago, busyLabel, footerText } from "./syncText";
 
 const now = Date.parse("2026-10-15T12:00:00Z");

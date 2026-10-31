@@ -550,3 +550,7 @@ fn labels_from_wire(nodes: wire::Nodes<wire::Label>) -> Vec<Label> {
         })
         .collect()
 }
+
+#[cfg(test)]
+#[path = "ops.test.rs"]
+mod tests;

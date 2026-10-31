@@ -7,7 +7,7 @@
       "app/**",
       "!app/src-tauri",
       "!app/dist",
-      "!app/src/ipc/bindings.ts"
+      "!app/src/ipc/bindings.types.ts"
     ]
   },
   "formatter": {

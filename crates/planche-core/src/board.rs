@@ -132,3 +132,7 @@ fn column_field<'a>(meta: &'a ProjectMeta, view: Option<&View>) -> Result<&'a Fi
             .ok_or(Error::NoStatusField),
     }
 }
+
+#[cfg(test)]
+#[path = "board.integration.test.rs"]
+mod integration_tests;

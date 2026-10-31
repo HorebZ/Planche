@@ -1,6 +1,10 @@
 pub mod ops;
 mod wire;
 
+#[cfg(test)]
+#[path = "_fixtures/mod.rs"]
+pub(crate) mod fixtures;
+
 use std::sync::Mutex;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 

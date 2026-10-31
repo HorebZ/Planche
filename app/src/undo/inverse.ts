@@ -1,4 +1,4 @@
-import type { Board, Card, Intent } from "@/ipc/bindings";
+import type { Board, Card, Intent } from "@/ipc/bindings.types";
 
 function find(board: Board, id: string) {
   for (const column of board.columns) {

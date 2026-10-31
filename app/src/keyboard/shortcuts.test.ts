@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
-import type { Board, Card } from "@/ipc/bindings";
+import { board as boardFixture, column } from "@/ipc/_fixtures/board.fixtures";
+import { draft } from "@/ipc/_fixtures/card.fixtures";
 import { commandFor, keysOf, navigate, shortcuts } from "./shortcuts";
 
 test("no two shortcuts share a key in one scope", () => {
@@ -35,25 +36,16 @@ test("events resolve to the command of their scope", () => {
   expect(keysOf("Meta+Shift+c")).toEqual(["⌘", "⇧", "C"]);
 });
 
-const card = (id: string): Card => ({
-  item_id: id,
-  position: 0,
-  kind: "draft",
-  id: "",
-  title: id,
-  assignees: [],
-  pending: false,
-  updated_by_sync: false,
-});
+const card = (id: string) => draft({ item_id: id, title: id });
 
 /** Todo a b c, an empty In Progress, Done d. */
-const board = {
+const board = boardFixture({
   columns: [
-    { option_id: "todo", name: "Todo", color: null, cards: [card("a"), card("b"), card("c")] },
-    { option_id: "progress", name: "In Progress", color: null, cards: [] },
-    { option_id: "done", name: "Done", color: null, cards: [card("d")] },
+    column({ cards: [card("a"), card("b"), card("c")] }),
+    column({ option_id: "progress", name: "In Progress" }),
+    column({ option_id: "done", name: "Done", cards: [card("d")] }),
   ],
-} as unknown as Board;
+});
 
 test("navigation stays in its column, keeps the nearest index, and skips empty columns", () => {
   expect(navigate(board, null, "next")).toBe("a");

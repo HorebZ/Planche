@@ -3,7 +3,7 @@
   "root": false,
   "extends": "//",
   "files": {
-    "includes": ["src/**", "e2e/**", "scripts/**", "*.ts", "*.json", "!src/ipc/bindings.ts"]
+    "includes": ["src/**", "scripts/**", "*.ts", "*.json", "!src/ipc/bindings.types.ts"]
   },
   "formatter": {
     "indentStyle": "space",

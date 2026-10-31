@@ -1,196 +1,20 @@
 //! The cache and the sync engine, on a temporary database and a fake GitHub built from the
 //! fixtures. The fake serves the 12 fixture items in pages of 6, so a full sync takes 2 pages.
 
-use std::future::{Future, ready};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant, SystemTime};
+use std::sync::Arc;
+use std::time::Duration;
 
-use planche_core::Error;
-use planche_core::board::project_board;
-use planche_core::cache::Cache;
-use planche_core::domain::{
-    Board, ContentId, Item, ItemContent, ItemId, ProjectId, ProjectMeta, RateUsage,
-};
-use planche_core::error::{GraphqlError, Result};
-use planche_core::github::ops::{ItemsPage, decode_project_items, decode_project_meta};
-use planche_core::intent::{self, Intent, Operation, Placement, to_operations};
-use planche_core::sync::{
-    self, Clock, Remote, Sent, SyncCommand, SyncConfig, SyncEvent, SyncInterval, SystemClock,
-};
+use crate::Error;
+use crate::board::project_board;
+use crate::cache::Cache;
+use crate::domain::{Board, ItemContent, ItemId, ProjectId};
+use crate::error::Result;
+use crate::fixtures::FakeClock;
+use crate::github::fixtures::{FakeGithub, FakeOffline};
+use crate::intent::{self, Intent, Operation, Placement, to_operations};
+use crate::sync::{self, Sent, SyncCommand, SyncConfig, SyncEvent, SyncInterval, SystemClock};
 use tokio::sync::broadcast;
-
-const PAGE: usize = 6;
-
-struct State {
-    meta: ProjectMeta,
-    items: Vec<Item>,
-    fail_page: Option<u32>,
-    fail_mutations: bool,
-    /// False makes GitHub read stale right after a mutation.
-    apply_mutations: bool,
-    executed: Vec<Operation>,
-    fetches: u32,
-    cost: u32,
-}
-
-#[derive(Clone)]
-struct FakeGithub(Arc<Mutex<State>>);
-
-impl FakeGithub {
-    fn new() -> Self {
-        let fixture = |name: &str| {
-            let path = format!("{}/../../fixtures/{name}", env!("CARGO_MANIFEST_DIR"));
-
-            std::fs::read_to_string(path).unwrap()
-        };
-        let items = ["project_items_page1.json", "project_items_page2.json"]
-            .iter()
-            .flat_map(|page| decode_project_items(&fixture(page)).unwrap().items)
-            .collect();
-
-        Self(Arc::new(Mutex::new(State {
-            meta: decode_project_meta(&fixture("project_meta.json")).unwrap(),
-            items,
-            fail_page: None,
-            fail_mutations: false,
-            apply_mutations: true,
-            executed: Vec::new(),
-            fetches: 0,
-            cost: 0,
-        })))
-    }
-
-    fn edit<T>(&self, f: impl FnOnce(&mut State) -> T) -> T {
-        f(&mut self.0.lock().unwrap())
-    }
-
-    fn page(&self, n: u32) -> Result<ItemsPage> {
-        self.edit(|s| {
-            s.cost += 3;
-
-            if s.fail_page == Some(n) {
-                return Err(Error::Network(format!("page {n} timed out")));
-            }
-
-            let start = (n as usize - 1) * PAGE;
-            let end = (start + PAGE).min(s.items.len());
-
-            Ok(ItemsPage {
-                items: s.items[start..end].to_vec(),
-                next_cursor: (end < s.items.len()).then(|| (n + 1).to_string()),
-                total_count: s.items.len() as u32,
-            })
-        })
-    }
-
-    fn server_apply(state: &mut State, operation: &Operation) {
-        let index = |items: &[Item], id: &ItemId| items.iter().position(|i| &i.id == id).unwrap();
-
-        match operation {
-            Operation::SetSingleSelect {
-                item_id,
-                field_id,
-                option_id,
-                ..
-            } => {
-                let i = index(&state.items, item_id);
-                let selects = &mut state.items[i].single_selects;
-
-                selects.retain(|(f, _)| f != field_id);
-                selects.push((field_id.clone(), option_id.clone()));
-            }
-            Operation::ClearFieldValue {
-                item_id, field_id, ..
-            } => {
-                let i = index(&state.items, item_id);
-
-                state.items[i].single_selects.retain(|(f, _)| f != field_id);
-            }
-            Operation::MoveItemPosition {
-                item_id, after_id, ..
-            } => {
-                let item = state.items.remove(index(&state.items, item_id));
-                let at = after_id
-                    .as_ref()
-                    .map_or(0, |after| index(&state.items, after) + 1);
-
-                state.items.insert(at, item);
-            }
-            Operation::AddDraftIssue { title, .. } => state.items.push(Item {
-                id: ItemId(format!("PVTI_draft_{}", state.items.len())),
-                archived: false,
-                updated_at: "2026-10-16T00:00:00Z".into(),
-                single_selects: Vec::new(),
-                content: ItemContent::Draft {
-                    id: ContentId(format!("DI_{}", state.items.len())),
-                    title: title.clone(),
-                    assignees: Vec::new(),
-                },
-            }),
-            Operation::ArchiveItem { item_id, .. } => {
-                let i = index(&state.items, item_id);
-
-                state.items[i].archived = true;
-            }
-            _ => {}
-        }
-    }
-}
-
-impl Remote for FakeGithub {
-    fn board_page(
-        &self,
-        _owner: &str,
-        _number: u32,
-    ) -> impl Future<Output = Result<(ProjectMeta, ItemsPage)>> + Send {
-        self.edit(|s| s.fetches += 1);
-
-        let meta = self.edit(|s| s.meta.clone());
-
-        ready(self.page(1).map(|page| (meta, page)))
-    }
-
-    fn items_page(
-        &self,
-        _project: &ProjectId,
-        cursor: &str,
-    ) -> impl Future<Output = Result<ItemsPage>> + Send {
-        ready(self.page(cursor.parse().unwrap()))
-    }
-
-    fn execute(
-        &self,
-        operation: &Operation,
-    ) -> impl Future<Output = Result<Option<ItemId>>> + Send {
-        ready(self.edit(|s| {
-            if s.fail_mutations {
-                return Err(Error::GitHub(vec![GraphqlError {
-                    kind: Some("NOT_FOUND".into()),
-                    message: "Could not resolve to a node".into(),
-                }]));
-            }
-
-            s.executed.push(operation.clone());
-
-            if s.apply_mutations {
-                Self::server_apply(s, operation);
-            }
-
-            Ok(matches!(operation, Operation::AddDraftIssue { .. })
-                .then(|| s.items.last().unwrap().id.clone()))
-        }))
-    }
-
-    fn usage(&self) -> RateUsage {
-        RateUsage {
-            cost_total: self.edit(|s| s.cost),
-            remaining: Some(4900),
-            limit: Some(5000),
-            reset_at: None,
-        }
-    }
-}
 
 fn temp_cache(name: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("planche-sync-{}-{name}", std::process::id()));
@@ -563,34 +387,6 @@ async fn two_connections_write_at_once_without_database_is_locked() {
     }
 }
 
-#[derive(Default)]
-struct FakeClock {
-    start: Option<(SystemTime, Instant)>,
-    /// How long the Mac slept: the wall clock moved, the monotonic clock did not.
-    slept: Mutex<Duration>,
-    /// Time awake: both clocks moved.
-    awake: Mutex<Duration>,
-}
-
-impl FakeClock {
-    fn new() -> Self {
-        Self {
-            start: Some((SystemTime::now(), Instant::now())),
-            ..Self::default()
-        }
-    }
-}
-
-impl Clock for FakeClock {
-    fn wall(&self) -> SystemTime {
-        self.start.unwrap().0 + *self.slept.lock().unwrap() + *self.awake.lock().unwrap()
-    }
-
-    fn mono(&self) -> Instant {
-        self.start.unwrap().1 + *self.awake.lock().unwrap()
-    }
-}
-
 #[tokio::test(start_paused = true)]
 async fn a_wall_clock_jump_longer_than_the_interval_syncs_unless_sync_on_wake_is_off() {
     for sync_on_wake in [true, false] {
@@ -719,38 +515,6 @@ async fn until_synced(events: &mut broadcast::Receiver<SyncEvent>) -> Vec<SyncEv
     }
 }
 
-/// GitHub unreachable.
-struct FakeOffline;
-
-impl Remote for FakeOffline {
-    fn board_page(
-        &self,
-        _owner: &str,
-        _number: u32,
-    ) -> impl Future<Output = Result<(ProjectMeta, ItemsPage)>> + Send {
-        ready(Err(Error::Network("offline".into())))
-    }
-
-    fn items_page(
-        &self,
-        _project: &ProjectId,
-        _cursor: &str,
-    ) -> impl Future<Output = Result<ItemsPage>> + Send {
-        ready(Err(Error::Network("offline".into())))
-    }
-
-    fn execute(
-        &self,
-        _operation: &Operation,
-    ) -> impl Future<Output = Result<Option<ItemId>>> + Send {
-        ready(Err(Error::Network("offline".into())))
-    }
-
-    fn usage(&self) -> RateUsage {
-        RateUsage::default()
-    }
-}
-
 #[tokio::test]
 async fn the_board_flags_pending_cards_and_cards_the_last_sync_changed() {
     let github = FakeGithub::new();
@@ -758,7 +522,7 @@ async fn the_board_flags_pending_cards_and_cards_the_last_sync_changed() {
     let flagged = |cache: &Cache| {
         let board = cache.board(&project, None).unwrap().unwrap();
         let cards: Vec<_> = board.columns.into_iter().flat_map(|c| c.cards).collect();
-        let ids = |f: fn(&planche_core::domain::Card) -> bool| {
+        let ids = |f: fn(&crate::domain::Card) -> bool| {
             cards
                 .iter()
                 .filter(|c| f(c))
@@ -794,7 +558,7 @@ async fn the_board_flags_pending_cards_and_cards_the_last_sync_changed() {
             .find(|i| &i.id != local.item_id())
             .unwrap();
 
-        if let planche_core::domain::ItemContent::Issue { title, .. } = &mut item.content {
+        if let crate::domain::ItemContent::Issue { title, .. } = &mut item.content {
             title.push_str(" (edited)");
         }
 

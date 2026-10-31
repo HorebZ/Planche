@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/button";
 import { IssueListGroup } from "@/components/ui/issue-list";
 import { defaultProjectTones } from "@/components/ui/sidebar";
 import { notify } from "@/components/ui/toast";
-import type { Card, Column, OptionId, ProjectId, User } from "@/ipc/bindings";
+import type { Card, Column, OptionId, ProjectId, User } from "@/ipc/bindings.types";
 import {
   currentProjectQuery,
   errorMessage,

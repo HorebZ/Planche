@@ -1,13 +1,12 @@
-use planche_core::Error;
-use planche_core::board::project_board;
-use planche_core::domain::{Item, ItemContent, ProjectMeta};
-use planche_core::github::ops::{decode_project_items, decode_project_meta};
+use crate::Error;
+use crate::board::project_board;
+use crate::domain::{Item, ItemContent, ProjectMeta};
+use crate::github::fixtures::{ITEM_PAGES, PROJECT_META};
+use crate::github::ops::{decode_project_items, decode_project_meta};
 use serde_json::{Value, json};
 
-fn fixture_json(name: &str) -> Value {
-    let path = format!("{}/../../fixtures/{name}", env!("CARGO_MANIFEST_DIR"));
-
-    serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap()
+fn project_meta_json() -> Value {
+    serde_json::from_str(PROJECT_META).unwrap()
 }
 
 fn meta(json: &Value) -> ProjectMeta {
@@ -16,10 +15,7 @@ fn meta(json: &Value) -> ProjectMeta {
 
 /// Both item pages, as a full sync concatenates them.
 fn pages() -> [Value; 2] {
-    [
-        fixture_json("project_items_page1.json"),
-        fixture_json("project_items_page2.json"),
-    ]
+    ITEM_PAGES.map(|page| serde_json::from_str(page).unwrap())
 }
 
 fn items(pages: &[Value]) -> Vec<Item> {
@@ -35,7 +31,7 @@ fn item_nodes(page: &mut Value) -> &mut Vec<Value> {
         .unwrap()
 }
 
-fn titles(board: &planche_core::domain::Board) -> Vec<(String, Vec<String>)> {
+fn titles(board: &crate::domain::Board) -> Vec<(String, Vec<String>)> {
     board
         .columns
         .iter()
@@ -52,7 +48,7 @@ fn titles(board: &planche_core::domain::Board) -> Vec<(String, Vec<String>)> {
 fn every_unarchived_item_of_both_pages_becomes_a_card_in_position_order() {
     let pages = pages();
     let items = items(&pages);
-    let board = project_board(&meta(&fixture_json("project_meta.json")), None, &items).unwrap();
+    let board = project_board(&meta(&project_meta_json()), None, &items).unwrap();
 
     assert_eq!(board.field.name, "Status");
 
@@ -88,12 +84,7 @@ fn an_item_without_status_falls_into_no_status_first() {
         .unwrap()
         .retain(|v| v["__typename"] != "ProjectV2ItemFieldSingleSelectValue");
 
-    let board = project_board(
-        &meta(&fixture_json("project_meta.json")),
-        None,
-        &items(&pages),
-    )
-    .unwrap();
+    let board = project_board(&meta(&project_meta_json()), None, &items(&pages)).unwrap();
 
     assert_eq!(board.columns[0].name, "No Status");
     assert_eq!(board.columns[0].option_id, None);
@@ -108,12 +99,7 @@ fn a_redacted_item_becomes_the_redacted_card() {
     node["type"] = json!("REDACTED");
     node["content"] = Value::Null;
 
-    let board = project_board(
-        &meta(&fixture_json("project_meta.json")),
-        None,
-        &items(&pages),
-    )
-    .unwrap();
+    let board = project_board(&meta(&project_meta_json()), None, &items(&pages)).unwrap();
     let redacted: Vec<_> = board
         .columns
         .iter()
@@ -133,12 +119,7 @@ fn an_archived_item_is_left_out() {
     node["isArchived"] = json!(true);
 
     let archived_id = node["id"].as_str().unwrap().to_owned();
-    let board = project_board(
-        &meta(&fixture_json("project_meta.json")),
-        None,
-        &items(&pages),
-    )
-    .unwrap();
+    let board = project_board(&meta(&project_meta_json()), None, &items(&pages)).unwrap();
 
     assert!(
         board
@@ -151,7 +132,7 @@ fn an_archived_item_is_left_out() {
 
 #[test]
 fn a_board_view_grouped_by_another_field_uses_its_options() {
-    let mut meta_json = fixture_json("project_meta.json");
+    let mut meta_json = project_meta_json();
     let project = &mut meta_json["data"]["node"];
 
     project["fields"]["nodes"]
@@ -208,7 +189,7 @@ fn a_board_view_grouped_by_another_field_uses_its_options() {
 
 #[test]
 fn a_view_filter_does_not_change_the_cards() {
-    let mut meta_json = fixture_json("project_meta.json");
+    let mut meta_json = project_meta_json();
 
     for view in meta_json["data"]["node"]["views"]["nodes"]
         .as_array_mut()
@@ -218,8 +199,7 @@ fn a_view_filter_does_not_change_the_cards() {
     }
 
     let items = items(&pages());
-    let unfiltered =
-        project_board(&meta(&fixture_json("project_meta.json")), None, &items).unwrap();
+    let unfiltered = project_board(&meta(&project_meta_json()), None, &items).unwrap();
     let filtered = project_board(&meta(&meta_json), None, &items).unwrap();
 
     assert_eq!(titles(&filtered), titles(&unfiltered));
@@ -227,11 +207,11 @@ fn a_view_filter_does_not_change_the_cards() {
 
 #[test]
 fn a_table_view_is_not_a_board() {
-    let meta = meta(&fixture_json("project_meta.json"));
+    let meta = meta(&project_meta_json());
     let table = meta
         .views
         .iter()
-        .find(|v| v.layout == planche_core::domain::ViewLayout::Table)
+        .find(|v| v.layout == crate::domain::ViewLayout::Table)
         .unwrap();
     let error = project_board(&meta, Some(table.number), &items(&pages())).unwrap_err();
 
@@ -245,7 +225,7 @@ fn a_table_view_is_not_a_board() {
 #[test]
 fn a_view_sorted_by_a_field_has_no_manual_order() {
     let sorted = |count: u32| {
-        let mut meta_json = fixture_json("project_meta.json");
+        let mut meta_json = project_meta_json();
 
         for view in meta_json["data"]["node"]["views"]["nodes"]
             .as_array_mut()

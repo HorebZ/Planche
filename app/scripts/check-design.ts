@@ -27,10 +27,14 @@ function sourceFiles(dir: string): string[] {
     const path = join(dir, entry.name);
 
     if (entry.isDirectory()) {
-      return sourceFiles(path);
+      return entry.name === "_fixtures" ? [] : sourceFiles(path);
     }
 
-    return /\.(tsx?|css)$/.test(entry.name) && relative(".", path) !== tokensFile ? [path] : [];
+    return /\.(tsx?|css)$/.test(entry.name) &&
+      !/\.(test|e2e)\.tsx?$/.test(entry.name) &&
+      relative(".", path) !== tokensFile
+      ? [path]
+      : [];
   });
 }
 

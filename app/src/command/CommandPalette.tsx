@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/command";
 import { Kbd } from "@/components/ui/kbd";
 import { StatusSquare } from "@/components/ui/status";
-import type { Board, Card } from "@/ipc/bindings";
+import type { Board, Card } from "@/ipc/bindings.types";
 import { commandFor, keysFor } from "@/keyboard/shortcuts";
 import { useUi } from "@/stores/ui";
 import { cardRef } from "@/undo/inverse";

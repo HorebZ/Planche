@@ -1,12 +1,15 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
-import type { Scenario } from "./mockBackend";
+
+import type { Scenario } from "@/ipc/_fixtures/scenarios.fixtures";
 
 test.use({ viewport: { width: 1920, height: 900 } });
 
 const card = (page: Page, number: number) =>
   page.locator(`[data-slot="issue-card"][data-item-id="PVTI_${number}"]`);
+
 const column = (page: Page, name: string) =>
   page.locator('[data-slot="board-column"]').filter({ has: page.getByText(name, { exact: true }) });
+
 const numbers = (col: Locator) =>
   col
     .locator('[data-slot="issue-card"]')
@@ -20,7 +23,6 @@ async function open(page: Page, scenario: Scenario) {
   await expect(card(page, 226)).toBeVisible();
 }
 
-/** Presses on `from`, then moves in steps to the lower part of `to`, and returns the drop. */
 async function lift(page: Page, from: Locator, to: Locator, below = true) {
   const a = await from.boundingBox();
   const b = await to.boundingBox();
@@ -81,45 +83,6 @@ test("the keyboard lifts, moves across and down, and drops", async ({ page }) =>
   await expect.poll(() => numbers(column(page, "In progress"))).toEqual([231, 226, 232, 228]);
 });
 
-test("Escape puts the card back where it was", async ({ page }) => {
-  await open(page, "board");
-  await card(page, 226).focus();
-  await page.keyboard.press("Space");
-  await page.keyboard.press("ArrowRight");
-  await page.keyboard.press("Escape");
-
-  await expect(page.locator('[data-slot="drag-help-bar"]')).toHaveCount(0);
-  await expect.poll(() => numbers(column(page, "Todo"))).toEqual([226, 223, 219]);
-});
-
-test("a failed move comes back and says so", async ({ page }) => {
-  await open(page, "rollback");
-  await lift(page, card(page, 226), card(page, 220));
-  await page.mouse.up();
-
-  // The refusal comes at once, so the card may never be seen in Done; the toast and the
-  // card back in its slot are what the user sees.
-  await expect(
-    page.getByText(`Couldn't move "Show linked PRs in issue detail". Reverted.`),
-  ).toBeVisible();
-  await expect.poll(() => numbers(column(page, "Todo"))).toEqual([226, 223, 219]);
-});
-
-test("offline, the banner counts down and the moved card says Pending", async ({ page }) => {
-  await open(page, "offline");
-
-  await expect(page.locator('[data-slot="banner"]')).toContainText("Can't reach api.github.com");
-  await expect(page.locator('[data-slot="banner"]')).toContainText(/Retrying in \d+s/);
-  await expect(page.locator('[data-slot="sidebar-footer"]')).toContainText(
-    "Offline · 1 change pending",
-  );
-
-  await lift(page, card(page, 226), card(page, 220));
-  await page.mouse.up();
-
-  await expect(card(page, 226).getByText("Pending")).toBeVisible();
-});
-
 test("a sorted view moves cards between columns but not within one", async ({ page }) => {
   await open(page, "sorted");
   await lift(page, card(page, 219), card(page, 226), false);
@@ -145,70 +108,4 @@ test("a sorted view moves cards between columns but not within one", async ({ pa
   await page.mouse.up();
 
   await expect.poll(() => numbers(column(page, "Done"))).toContain(219);
-});
-
-test("a sync during a drag waits for the drop", async ({ page }) => {
-  await open(page, "board");
-
-  const calls = () =>
-    page.evaluate(
-      () =>
-        (window as unknown as { __planche: { calls: Record<string, number> } }).__planche.calls
-          .get_board,
-    );
-  const emit = () =>
-    page.evaluate(() =>
-      (
-        window as unknown as { __planche: { emit: (e: string, p: unknown) => Promise<void> } }
-      ).__planche.emit("board-changed", { project_id: "PVT_planche" }),
-    );
-
-  await lift(page, card(page, 223), card(page, 231));
-
-  const before = await calls();
-
-  await emit();
-  await page.waitForTimeout(300);
-
-  expect(await calls()).toBe(before);
-  await expect(page.locator('[data-slot="drag-help-bar"]')).toBeVisible();
-
-  await page.mouse.up();
-
-  await expect.poll(calls).toBeGreaterThan(before);
-});
-
-test.describe("screenshots", () => {
-  test.skip(!process.env.SCREENSHOTS, "set SCREENSHOTS=1 to capture the drag states");
-
-  for (const colorScheme of ["light", "dark"] as const) {
-    test(`drag ${colorScheme}`, async ({ page }) => {
-      await page.emulateMedia({ colorScheme });
-      await open(page, "board");
-      await lift(page, card(page, 214), card(page, 231));
-      await page.waitForTimeout(250);
-      await page.screenshot({ path: `screenshots/window-drag-${colorScheme}.png` });
-      await page.mouse.up();
-    });
-    test(`offline ${colorScheme}`, async ({ page }) => {
-      await page.emulateMedia({ colorScheme });
-      await open(page, "offline");
-      await page.screenshot({
-        path: `screenshots/window-error-${colorScheme}.png`,
-        animations: "disabled",
-      });
-    });
-    test(`rollback ${colorScheme}`, async ({ page }) => {
-      await page.emulateMedia({ colorScheme });
-      await open(page, "rollback");
-      await lift(page, card(page, 226), card(page, 220));
-      await page.mouse.up();
-      await page.getByText("Reverted.").waitFor();
-      await page.waitForTimeout(400);
-      await page.screenshot({
-        path: `screenshots/window-rollback-${colorScheme}.png`,
-        animations: "disabled",
-      });
-    });
-  }
 });

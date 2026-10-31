@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { StatusList } from "@/components/ui/picker";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
-import type { Board, Card, OptionId } from "@/ipc/bindings";
+import type { Board, Card, OptionId } from "@/ipc/bindings.types";
 import { type CommandId, commandFor, keysFor } from "@/keyboard/shortcuts";
 import { useUi } from "@/stores/ui";
 import { cardElement, focusCard } from "./Card";

@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { QueryClientProvider, QueryObserver } from "@tanstack/react-query";
@@ -10,7 +11,8 @@ import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, expect, test, vi } from "vitest";
 import { toast } from "@/components/ui/toast";
-import type { Board, DispatchOutcome, Intent } from "@/ipc/bindings";
+import { authStatus } from "@/ipc/_fixtures/user.fixtures";
+import type { Board, DispatchOutcome, Intent } from "@/ipc/bindings.types";
 import {
   authQuery,
   boardQuery,
@@ -110,12 +112,7 @@ function deferred() {
 function harness() {
   const client = createQueryClient();
 
-  client.setQueryData(authQuery.queryKey, {
-    id: "U",
-    login: "u",
-    avatar_url: null,
-    missing_scopes: [],
-  });
+  client.setQueryData(authQuery.queryKey, authStatus({ id: "U", login: "u" }));
   client.setQueryData(boardQuery(first.board.project.id, null).queryKey, first.board);
   useUi.getState().selectProject(first.board.project.id);
 
@@ -218,12 +215,7 @@ test.each(
   const h = harness();
 
   try {
-    h.client.setQueryData(authQuery.queryKey, {
-      id: "U",
-      login: "u",
-      avatar_url: null,
-      missing_scopes: [],
-    });
+    h.client.setQueryData(authQuery.queryKey, authStatus({ id: "U", login: "u" }));
     h.client.setQueryData(boardQuery(first.board.project.id, null).queryKey, first.board);
 
     const confirmed = h.actions.run(first.intent);
@@ -254,18 +246,8 @@ test.each(
       useUi.getState().selectView("V2");
       useUi.getState().selectView(null);
     } else if (context === "account") {
-      h.client.setQueryData(authQuery.queryKey, {
-        id: "V",
-        login: "v",
-        avatar_url: null,
-        missing_scopes: [],
-      });
-      h.client.setQueryData(authQuery.queryKey, {
-        id: "U",
-        login: "u",
-        avatar_url: null,
-        missing_scopes: [],
-      });
+      h.client.setQueryData(authQuery.queryKey, authStatus({ id: "V", login: "v" }));
+      h.client.setQueryData(authQuery.queryKey, authStatus({ id: "U", login: "u" }));
       h.client.setQueryData(boardQuery(first.board.project.id, null).queryKey, first.board);
     } else {
       useUi.setState({ projectId: null });
@@ -438,7 +420,7 @@ test("a current draft clears Undo, while a cosmetic auth update preserves it", a
   const h = harness();
 
   try {
-    const auth = { id: "U", login: "u", avatar_url: null, missing_scopes: [] };
+    const auth = authStatus({ id: "U", login: "u" });
 
     h.client.setQueryData(authQuery.queryKey, auth);
     h.client.setQueryData(boardQuery(first.board.project.id, null).queryKey, first.board);
@@ -634,7 +616,7 @@ test.each(["action", "undo", "project", "account"])(
         useUi.getState().selectProject("Q");
       }
 
-      const auth = { id: "V", login: "v", avatar_url: null, missing_scopes: [] };
+      const auth = authStatus({ id: "V", login: "v" });
 
       if (kind === "account") {
         h.client.setQueryData(authQuery.queryKey, auth);
@@ -668,18 +650,8 @@ test("account roundtrip before preparation rejects locally without invoking IPC"
   try {
     const sent = h.actions.run(first.intent);
 
-    h.client.setQueryData(authQuery.queryKey, {
-      id: "V",
-      login: "v",
-      avatar_url: null,
-      missing_scopes: [],
-    });
-    h.client.setQueryData(authQuery.queryKey, {
-      id: "U",
-      login: "u",
-      avatar_url: null,
-      missing_scopes: [],
-    });
+    h.client.setQueryData(authQuery.queryKey, authStatus({ id: "V", login: "v" }));
+    h.client.setQueryData(authQuery.queryKey, authStatus({ id: "U", login: "u" }));
 
     expect(await sent).toMatchObject({ type: "rejected" });
     expect(h.receipts).toHaveLength(0);
@@ -1078,18 +1050,8 @@ test("late rejection from previous account cannot erase shared optimistic refere
 
     const optimistic = h.client.getQueryData(key);
 
-    h.client.setQueryData(authQuery.queryKey, {
-      id: "V",
-      login: "v",
-      avatar_url: null,
-      missing_scopes: [],
-    });
-    h.client.setQueryData(authQuery.queryKey, {
-      id: "U",
-      login: "u",
-      avatar_url: null,
-      missing_scopes: [],
-    });
+    h.client.setQueryData(authQuery.queryKey, authStatus({ id: "V", login: "v" }));
+    h.client.setQueryData(authQuery.queryKey, authStatus({ id: "U", login: "u" }));
     h.client.setQueryData(key, optimistic);
     h.receipts[0].resolve({ type: "rejected", error: { kind: "Cache", message: "busy" } });
     await a;

@@ -1,22 +1,7 @@
-/**
- * A fake Rust backend for the browser. `bun run dev` loads it when the URL has `?mock=<scenario>`,
- * so Playwright renders the app without Tauri. The data is the mockup's.
- */
-import { emit } from "@tauri-apps/api/event";
-import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
-import { applyIntent } from "../src/board/moveCard";
-import type {
-  AppError,
-  AuthStatus,
-  Board,
-  Card,
-  Column,
-  Intent,
-  ProjectList,
-  ProjectMeta,
-  SyncPrefs,
-  SyncStatus,
-} from "../src/ipc/bindings";
+import type { Board, Card, Column, ProjectList, SyncStatus } from "../bindings.types";
+import { board as boardFixture, column as columnFixture } from "./board.fixtures";
+import { issue, pullRequest } from "./card.fixtures";
+import { authStatus, user } from "./user.fixtures";
 
 export type Scenario =
   | "labels"
@@ -47,7 +32,7 @@ export type Scenario =
   | "rollback"
   | "sorted";
 
-const PROJECT = "PVT_planche";
+export const PROJECT = "PVT_planche";
 
 const labelColors: Record<string, string> = {
   bug: "d73a4a",
@@ -61,14 +46,12 @@ const labelColors: Record<string, string> = {
   dnd: "e07a3a",
 };
 
-const people: Record<string, string> = {
+export const people: Record<string, string> = {
   CR: "camille-r",
   TM: "theo-m",
   LB: "lea-b",
   AM: "amina-m",
 };
-
-let position = 0;
 
 function card(
   number: number,
@@ -80,12 +63,11 @@ function card(
 ): Card {
   const common = {
     item_id: `PVTI_${number}`,
-    position: position++,
     number,
     title,
     url: `https://github.com/planche/${repo}/issues/${number}`,
     repo: `planche/${repo}`,
-    assignees: who ? [{ id: `U_${who}`, login: people[who], avatar_url: "" }] : [],
+    assignees: who ? [user({ id: `U_${who}`, login: people[who] })] : [],
     labels: labels.map((name) => ({ name, color: labelColors[name] })),
     pending: false,
     updated_by_sync: false,
@@ -93,20 +75,18 @@ function card(
   };
 
   if (kind === "p") {
-    return { ...common, kind: "pull_request", id: `PR_${number}`, state: "open", is_draft: false };
+    return pullRequest({ ...common, id: `PR_${number}` });
   }
 
-  return { ...common, kind: "issue", id: `I_${number}`, state: kind === "d" ? "closed" : "open" };
+  return issue({ ...common, id: `I_${number}`, state: kind === "d" ? "closed" : "open" });
 }
 
 function column(id: string, name: string, color: string, cards: Card[]): Column {
-  return { option_id: id, name, color, cards };
+  return columnFixture({ option_id: id, name, color, cards });
 }
 
-function mockupBoard(): Board {
-  position = 0;
-
-  return {
+export function mockupBoard(): Board {
+  const board = boardFixture({
     project: {
       id: PROJECT,
       number: 1,
@@ -160,18 +140,22 @@ function mockupBoard(): Board {
     ],
     pending_count: 0,
     synced_at: new Date(Date.now() - 150_000).toISOString(),
-  };
+  });
+
+  for (const [position, card] of board.columns.flatMap((column) => column.cards).entries()) {
+    card.position = position;
+  }
+
+  return board;
 }
 
 /** 1000 cards over five columns, for the scroll budget. */
 function bigBoard(): Board {
   const board = mockupBoard();
 
-  position = 0;
-
   for (const [index, col] of board.columns.entries()) {
-    col.cards = Array.from({ length: 200 }, (_, i) =>
-      card(
+    col.cards = Array.from({ length: 200 }, (_, i) => ({
+      ...card(
         index * 1000 + i,
         `Synthetic card ${index * 200 + i} with a title long enough to wrap`,
         "app",
@@ -179,13 +163,14 @@ function bigBoard(): Board {
         i % 3 ? ["feature"] : ["bug", "perf"],
         i % 4 ? "CR" : undefined,
       ),
-    );
+      position: index * 200 + i,
+    }));
   }
 
   return board;
 }
 
-function boardFor(scenario: Scenario): Board | null {
+export function boardFor(scenario: Scenario): Board | null {
   switch (scenario) {
     case "labels": {
       const board = mockupBoard();
@@ -287,7 +272,7 @@ function boardFor(scenario: Scenario): Board | null {
   }
 }
 
-const projects: ProjectList = {
+export const projects: ProjectList = {
   owners: [
     {
       login: "camille-r",
@@ -308,7 +293,7 @@ const projects: ProjectList = {
   sso_blocked: [],
 };
 
-function statusFor(scenario: Scenario): SyncStatus {
+export function statusFor(scenario: Scenario): SyncStatus {
   const base = { last_sync_at: Date.now() - 150_000, retry_at: null, pending: 0 };
 
   switch (scenario) {
@@ -332,230 +317,11 @@ function statusFor(scenario: Scenario): SyncStatus {
   }
 }
 
-const signedIn: AuthStatus = {
-  id: "U_CR",
-  login: "camille-r",
-  avatar_url: null,
-  missing_scopes: [],
-};
-const signedOut: AuthStatus = { id: null, login: null, avatar_url: null, missing_scopes: [] };
-const onboarding = (s: Scenario) =>
+export const signedIn = authStatus({ id: "U_CR", login: "camille-r" });
+export const signedOut = authStatus({ id: null, login: null });
+export const onboarding = (s: Scenario) =>
   s === "onboarding" ||
   s === "checking" ||
   s === "valid" ||
   s === "invalid" ||
   s === "valid-projects-error";
-
-/** Counts calls per command, for tests that check a refetch. */
-export const calls: Record<string, number> = {};
-
-export function installMockBackend(scenario: Scenario) {
-  mockWindows("main");
-
-  let prefs: SyncPrefs = { interval: "five_minutes", on_wake: true };
-  let auth = onboarding(scenario) ? signedOut : signedIn;
-  let board = boardFor(scenario);
-  let boardError = scenario === "board-error";
-  let status = statusFor(scenario);
-  let projectError = scenario === "projects-error" || scenario === "valid-projects-error";
-  let projectList: ProjectList =
-    scenario === "projects-empty" || projectError
-      ? { owners: [], sso_blocked: [] }
-      : scenario === "projects-sso"
-        ? { owners: [], sso_blocked: ["acme-sso"] }
-        : scenario === "projects-partial-sso"
-          ? { ...projects, sso_blocked: ["acme-sso"] }
-          : projects;
-  const changed = () => emit("board-changed", { project_id: PROJECT });
-  let dispatchSeq = 0;
-  let unlock: (() => void) | undefined;
-  const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
-    auth_status: async () => {
-      if (scenario === "locked") {
-        await new Promise<void>((resolve) => {
-          unlock = resolve;
-        });
-      }
-
-      if (scenario === "unlock-cancelled" && calls.auth_status === 1) {
-        throw {
-          kind: "Auth",
-          message: "Authentication cancelled. Try again when you're ready.",
-        } satisfies AppError;
-      }
-
-      return auth;
-    },
-    auth_set_token: async (args) => {
-      if (scenario === "checking") {
-        return new Promise(() => {});
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 600));
-
-      if (scenario === "invalid" && args.token === "ghp_wrong") {
-        throw { kind: "Auth", message: "token rejected by GitHub (401)" } satisfies AppError;
-      }
-
-      auth = signedIn;
-
-      return auth;
-    },
-    auth_sign_out: () => {
-      auth = signedOut;
-
-      return null;
-    },
-    list_projects: () => {
-      if (projectError) {
-        throw { kind: "GitHub", message: "Projects are inaccessible (403)" } satisfies AppError;
-      }
-
-      return projectList;
-    },
-    cached_projects: () => projectList,
-    open_project: () => null,
-    current_project: () =>
-      onboarding(scenario) || scenario.startsWith("projects-") ? null : PROJECT,
-    get_project: (): ProjectMeta => ({
-      id: PROJECT,
-      number: 1,
-      title: "Planche — v1.2",
-      url: "",
-      owner: "planche",
-      owner_is_org: true,
-      updated_at: "",
-      fields: [],
-      views: [
-        {
-          id: "PVTV_1",
-          number: 1,
-          name: "Board",
-          layout: "Board",
-          filter: null,
-          group_by: null,
-          manual_order: true,
-        },
-        {
-          id: "PVTV_2",
-          number: 2,
-          name: "Planning",
-          layout: "Board",
-          filter: null,
-          group_by: null,
-          manual_order: true,
-        },
-      ],
-    }),
-    get_board: (args) => {
-      if (boardError) {
-        throw { kind: "Cache", message: "Could not read the local cache" } satisfies AppError;
-      }
-
-      return board && args.viewId === "PVTV_2"
-        ? { ...board, view: { number: 2, name: "Planning", manual_order: true } }
-        : board;
-    },
-    // Queue locally before sending in the background.
-    dispatch_intent: (args) => {
-      const intent = args.intent as Intent;
-      const before = board;
-
-      if (!before) {
-        throw new Error("mockBackend: no board to move a card on");
-      }
-
-      const pending = (b: Board, value: boolean): Board => ({
-        ...b,
-        columns: b.columns.map((c) => ({
-          ...c,
-          cards: c.cards.map((card) =>
-            card.item_id === intent.item_id ? { ...card, pending: value } : card,
-          ),
-        })),
-      });
-
-      board = pending(applyIntent(before, intent), true);
-
-      if (scenario !== "offline") {
-        setTimeout(
-          async () => {
-            if (scenario === "rollback") {
-              board = before;
-              await emit("mutation-failed", { intent, message: "PLANCHE_FAULT=fail_mutations" });
-            } else {
-              board = pending(board ?? before, false);
-            }
-
-            await changed();
-            // A refused move fails at once, like PLANCHE_FAULT=fail_mutations; an accepted one takes a moment.
-          },
-          scenario === "rollback" ? 0 : 300,
-        );
-      }
-
-      return { type: "accepted", seq: ++dispatchSeq };
-    },
-    list_assignable_users: () =>
-      Object.entries(people).map(([who, login]) => ({ id: `U_${who}`, login, avatar_url: "" })),
-    refresh_project: async () => {
-      if (scenario === "refresh-error" && calls.refresh_project === 1) {
-        throw { kind: "Network", message: "Could not start synchronization" } satisfies AppError;
-      }
-
-      if (
-        ["sync-error", "rate-limited", "uncached-sync-error", "refresh-error"].includes(scenario)
-      ) {
-        status = { ...status, state: { type: "idle" }, retry_at: null, last_sync_at: Date.now() };
-        board ??= mockupBoard();
-        await emit("sync-status", status);
-        await changed();
-      }
-
-      return { project: PROJECT, items: 17, cost: 4, usage: {}, changes: [] };
-    },
-    sync_status: () => status,
-    get_sync_prefs: () => prefs,
-    set_sync_prefs: (args) => {
-      prefs = args.prefs as SyncPrefs;
-
-      return prefs;
-    },
-    perf_mark: () => null,
-  };
-
-  mockIPC(
-    (cmd, args) => {
-      calls[cmd] = (calls[cmd] ?? 0) + 1;
-
-      // Window and opener plugin calls succeed without effect.
-      if (cmd.startsWith("plugin:")) {
-        return null;
-      }
-
-      const handler = handlers[cmd];
-
-      if (!handler) {
-        throw new Error(`mockBackend: no handler for ${cmd}`);
-      }
-
-      return handler((args ?? {}) as Record<string, unknown>);
-    },
-    { shouldMockEvents: true },
-  );
-  Object.assign(window, {
-    __planche: {
-      emit,
-      calls,
-      getBoard: () => board,
-      unlock: () => unlock?.(),
-      setBoardError: (fail: boolean) => {
-        boardError = fail;
-      },
-      restoreProjects: () => {
-        projectError = false;
-        projectList = projects;
-      },
-    },
-  });
-}

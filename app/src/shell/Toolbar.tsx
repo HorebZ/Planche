@@ -15,7 +15,7 @@ import { type ProjectTone, projectTones } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusFilter } from "@/components/ui/status-filter";
 import { SyncIndicator } from "@/components/ui/sync-indicator";
-import type { Board, ProjectMeta, SyncStatus, ViewId } from "@/ipc/bindings";
+import type { Board, ProjectMeta, SyncStatus, ViewId } from "@/ipc/bindings.types";
 import type { ProjectLayout } from "@/stores/preferences";
 import { busyLabel, footerText } from "./syncText";
 

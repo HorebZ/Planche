@@ -3,7 +3,7 @@ import { memo, useLayoutEffect, useRef } from "react";
 import type { DisplayProperty } from "@/components/ui/display-menu";
 import { IssueCard, type IssueCardData } from "@/components/ui/issue-card";
 import type { StatusKey } from "@/components/ui/status";
-import type { Card as BoardCard } from "@/ipc/bindings";
+import type { Card as BoardCard } from "@/ipc/bindings.types";
 import { useUi } from "@/stores/ui";
 
 /** The repository name without its owner, as the card shows it. */

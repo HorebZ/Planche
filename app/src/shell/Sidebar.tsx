@@ -19,7 +19,7 @@ import {
   SidebarGroup,
 } from "@/components/ui/sidebar";
 import { SidebarProject } from "@/components/ui/sidebar-project";
-import { commands, type ProjectId, type SyncInterval } from "@/ipc/bindings";
+import { commands, type ProjectId, type SyncInterval } from "@/ipc/bindings.types";
 import { useAuth, useProjects, useSetSyncPrefs, useSyncPrefs, useSyncStatus } from "@/ipc/queries";
 import { keysOf, shortcuts } from "@/keyboard/shortcuts";
 import { usePreferences } from "@/stores/preferences";

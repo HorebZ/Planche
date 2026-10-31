@@ -1,4 +1,4 @@
-import type { ItemId } from "@/ipc/bindings";
+import type { ItemId } from "@/ipc/bindings.types";
 
 export type Rect = { left: number; top: number };
 

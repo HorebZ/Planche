@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { Rect } from "@/board/flip";
-import type { Intent, ItemId, OptionId, ProjectId, ViewId } from "@/ipc/bindings";
+import type { Intent, ItemId, OptionId, ProjectId, ViewId } from "@/ipc/bindings.types";
 
 /** What sits over the board and takes the keyboard. `draft` is the new-draft field of a column. */
 export type Overlay =

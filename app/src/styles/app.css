@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
+@source not "../**/*.test.ts";
+@source not "../**/*.test.tsx";
+@source not "../**/*.e2e.ts";
+@source not "../**/_fixtures/**";
+@source not "../test-support.tsx";
+
 /* Only Planche tokens exist as utilities. Tailwind's default palette and scales are removed. */
 @theme {
   --color-*: initial;

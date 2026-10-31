@@ -8,7 +8,7 @@ use tauri_specta::{ErrorHandlingMode, collect_commands, collect_events};
 
 use crate::commands::Core;
 
-const BINDINGS: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../src/ipc/bindings.ts");
+const BINDINGS: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../src/ipc/bindings.types.ts");
 
 fn builder() -> tauri_specta::Builder<tauri::Wry> {
     tauri_specta::Builder::new()
@@ -98,10 +98,5 @@ pub fn run() {
 }
 
 #[cfg(test)]
-mod tests {
-    /// `bun run check` runs this, then fails if `bindings.ts` changed.
-    #[test]
-    fn export_typescript_bindings() {
-        super::export_bindings(&super::builder());
-    }
-}
+#[path = "lib.test.rs"]
+mod tests;

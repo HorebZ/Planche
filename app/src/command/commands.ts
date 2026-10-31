@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { statusTone } from "@/board/statusTone";
 import type { StatusKey } from "@/components/ui/status";
-import type { Board, Card, Intent, OptionId, OwnerProjects, User } from "@/ipc/bindings";
+import type { Board, Card, Intent, OptionId, OwnerProjects, User } from "@/ipc/bindings.types";
 
 /** The column of a card, as an index into `board.columns`. */
 export function columnIndexOf(board: Board, card: Card) {

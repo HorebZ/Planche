@@ -9,7 +9,7 @@ import {
   type Intent,
   type ProjectId,
   type ViewId,
-} from "@/ipc/bindings";
+} from "@/ipc/bindings.types";
 import {
   authQuery,
   beginBoardWrite,

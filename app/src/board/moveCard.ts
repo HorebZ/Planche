@@ -1,4 +1,4 @@
-import type { Board, Card, Intent, ItemId, OptionId } from "@/ipc/bindings";
+import type { Board, Card, Intent, ItemId, OptionId } from "@/ipc/bindings.types";
 
 /**
  * The board once GitHub has applied `intent`: the TypeScript twin of `intent::apply` in Rust,

@@ -1,4 +1,4 @@
-import { commands } from "@/ipc/bindings";
+import { commands } from "@/ipc/bindings.types";
 
 /** Measures drops and drags for the phase 5 budget. On in dev, and in VITE_PERF or VITE_MOCK builds. */
 const enabled = Boolean(

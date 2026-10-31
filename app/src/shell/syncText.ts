@@ -1,4 +1,4 @@
-import type { SyncStatus } from "@/ipc/bindings";
+import type { SyncStatus } from "@/ipc/bindings.types";
 
 /** "just now", "2 min ago", "3 h ago". */
 export function ago(ms: number, now = Date.now()) {
