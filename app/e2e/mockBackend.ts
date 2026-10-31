@@ -547,6 +547,7 @@ export function installMockBackend(scenario: Scenario) {
     __planche: {
       emit,
       calls,
+      getBoard: () => board,
       unlock: () => unlock?.(),
       setBoardError: (fail: boolean) => {
         boardError = fail;

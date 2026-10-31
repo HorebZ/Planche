@@ -115,5 +115,11 @@ export function cardElement(id: string) {
 
 /** Gives the focus back to a card after an overlay closes. */
 export function focusCard(id: string) {
-  cardElement(id)?.focus();
+  const element = cardElement(id);
+
+  element?.focus();
+
+  if (element?.contains(document.activeElement)) {
+    useUi.getState().finishReveal(id);
+  }
 }
