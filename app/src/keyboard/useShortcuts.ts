@@ -14,7 +14,7 @@ export function useShortcuts(handlers: Handlers) {
   latest.current = handlers;
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      const { overlay, dragging } = useUi.getState();
+      const { overlay, dragging, detailId } = useUi.getState();
 
       if (event.defaultPrevented || overlay || dragging || isTextField(event.target)) {
         return;
@@ -29,13 +29,16 @@ export function useShortcuts(handlers: Handlers) {
 
       if (
         !global &&
+        !detailId &&
         target?.closest('button, [data-slot="sidebar"]') &&
         !target.closest("[data-item-id]")
       ) {
         return;
       }
 
-      const command = global ?? commandFor(event, "board");
+      const command = detailId
+        ? commandFor(event, "detail")
+        : (global ?? commandFor(event, "board"));
       const run = command && latest.current[command];
 
       if (!run) {

@@ -188,7 +188,7 @@ test("⌘K shows the palette within 50 ms p95, and J the next card within 16 ms 
 
   await expect(page.locator('[data-slot="column-scroll"]')).toHaveCount(5);
 
-  await page.locator('[data-slot="issue-card"]').first().click();
+  await page.locator('[data-slot="issue-card"]').first().focus();
 
   const palette = await keyLatencies(
     page,

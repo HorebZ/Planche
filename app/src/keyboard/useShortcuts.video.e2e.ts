@@ -11,7 +11,7 @@ test.describe("keyboard review video", () => {
   test("keyboard walkthrough in WebKit", async ({ page }) => {
     test.setTimeout(60_000);
     await page.goto("/?mock=board");
-    await page.locator('[data-item-id="PVTI_226"]').click();
+    await page.locator('[data-item-id="PVTI_226"]').focus();
 
     // Hold each state long enough to make the review recording readable.
     const pause = () => page.waitForTimeout(2000);

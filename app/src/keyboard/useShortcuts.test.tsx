@@ -59,3 +59,33 @@ test.each(["input", "button", "dialog", "menu", "popover", "overlay", "dragging"
     expect(move).not.toHaveBeenCalled();
   },
 );
+
+test("detail scope allows its navigation and close while leaving board-only actions silent", () => {
+  const next = vi.fn();
+  const close = vi.fn();
+  const create = vi.fn();
+  const clear = vi.fn();
+
+  render(
+    <BoardKeys
+      handlers={{
+        "card.next": next,
+        "detail.close": close,
+        "issue.new": create,
+        "selection.clear": clear,
+      }}
+    />,
+  );
+  useUi.getState().openDetail("issue");
+
+  key("j");
+  key("Escape");
+  key("c");
+  key(" ");
+  key("Enter");
+
+  expect(next).toHaveBeenCalledOnce();
+  expect(close).toHaveBeenCalledOnce();
+  expect(create).not.toHaveBeenCalled();
+  expect(clear).not.toHaveBeenCalled();
+});

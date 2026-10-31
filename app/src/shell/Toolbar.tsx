@@ -123,7 +123,10 @@ export function Toolbar({
   }, [board, viewerId, viewerLogin]);
 
   return (
-    <header className="shrink-0">
+    <header
+      data-slot="project-toolbar"
+      className="shrink-0"
+    >
       <div
         data-tauri-drag-region
         className="flex h-12 items-center gap-2 pr-3 pl-[18px]"

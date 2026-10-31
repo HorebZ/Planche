@@ -12,6 +12,7 @@ import { useUi } from "@/stores/ui";
 const scopes: Record<Scope, string> = {
   global: "Anywhere",
   board: "On the board or list",
+  detail: "In an issue",
   sidebar: "On a sidebar project",
   drag: "While a card is lifted",
   menu: "In the Status menu",

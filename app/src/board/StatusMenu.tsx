@@ -13,7 +13,15 @@ type StatusMenuProps = { board: Board; card: Card; onMove: (to: OptionId) => voi
 export function StatusMenu({ board, card, onMove }: StatusMenuProps) {
   const open = useUi((s) => s.overlay?.type === "status");
   // biome-ignore lint/correctness/useExhaustiveDependencies: the card element can change between two openings
-  const anchor = useMemo(() => ({ current: cardElement(card.item_id) }), [card.item_id, open]);
+  const anchor = useMemo(
+    () => ({
+      current:
+        document.querySelector<HTMLElement>(
+          '[data-slot="issue-detail"] [aria-label="Change project status"]',
+        ) ?? cardElement(card.item_id),
+    }),
+    [card.item_id, open],
+  );
   const current =
     board.columns.find((c) => c.cards.some((x) => x.item_id === card.item_id))?.option_id ?? null;
   const options = board.columns.flatMap((c) =>

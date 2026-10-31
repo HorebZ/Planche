@@ -24,6 +24,7 @@ import { Banner } from "@/components/ui/banner";
 import { emptyFilters } from "@/components/ui/board-filter";
 import { BoardErrorCard, NoFilterResults } from "@/components/ui/board-states";
 import { Button } from "@/components/ui/button";
+import { IssueDetail } from "@/components/ui/issue-detail";
 import { IssueListGroup } from "@/components/ui/issue-list";
 import { defaultProjectTones } from "@/components/ui/sidebar";
 import { notify } from "@/components/ui/toast";
@@ -59,6 +60,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   const queryClient = useQueryClient();
   const viewId = useUi((s) => s.viewId);
   const selectedId = useUi((s) => s.selectedId);
+  const detailId = useUi((s) => s.detailId);
   const revealId = useUi((s) => s.revealId);
   const overlay = useUi((s) => s.overlay);
   const filters = useUi((s) => s.filters);
@@ -81,8 +83,13 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   const viewPreferences = usePreferences((s) => s.views[context]);
   const layout = viewPreferences?.layout ?? "board";
   const setLayout = (layout: ProjectLayout) => usePreferences.getState().setLayout(context, layout);
-  const card = data?.columns.flatMap((c) => c.cards).find((c) => c.item_id === selectedId) ?? null;
+  const card =
+    data?.columns.flatMap((c) => c.cards).find((c) => c.item_id === (detailId ?? selectedId)) ??
+    null;
   const visibleBoard = useMemo(() => (data ? filterBoard(data, filters) : null), [data, filters]);
+  const detailColumn = detailId
+    ? data?.columns.find((column) => column.cards.some((card) => card.item_id === detailId))
+    : null;
   const visibleIds = useMemo(
     () =>
       visibleBoard?.columns
@@ -96,6 +103,24 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   );
   const visibleCount =
     visibleBoard?.columns.reduce((count, column) => count + column.cards.length, 0) ?? 0;
+  const detailOrder = useRef<string[]>([]);
+  const detailIds = detailId && visibleIds.includes(detailId) ? visibleIds : detailOrder.current;
+  const detailIndex = detailId ? detailIds.indexOf(detailId) : -1;
+  const previousDetail = detailIds
+    .slice(0, Math.max(0, detailIndex))
+    .reverse()
+    .find((id) => visibleIds.includes(id));
+  const nextDetail =
+    detailIndex < 0
+      ? undefined
+      : detailIds.slice(detailIndex + 1).find((id) => visibleIds.includes(id));
+
+  useLayoutEffect(() => {
+    if (detailId && visibleIds.includes(detailId)) {
+      detailOrder.current = visibleIds;
+    }
+  }, [detailId, visibleIds]);
+
   const previousIds = useRef<string[]>([]);
   const viewRef = useRef<HTMLElement>(null);
 
@@ -115,7 +140,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
     const next = selectionAfterRemoval(previous, visibleIds, selectedId);
 
     if (next) {
-      if (overlay) {
+      if (overlay || detailId) {
         select(next);
       } else {
         useUi.getState().revealCard(next);
@@ -124,11 +149,39 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
     } else {
       select(null);
 
-      if (!overlay) {
+      if (!overlay && !detailId) {
         viewRef.current?.focus();
       }
     }
-  }, [data, visibleIds, selectedId, revealId, dragging, overlay, select]);
+  }, [data, visibleIds, selectedId, revealId, dragging, overlay, detailId, select]);
+
+  const returning = useRef(false);
+
+  useLayoutEffect(() => {
+    if (detailId) {
+      returning.current = true;
+
+      return;
+    }
+
+    if (!returning.current) {
+      return;
+    }
+
+    returning.current = false;
+    if (useUi.getState().overlay) {
+      return;
+    }
+
+    const id = useUi.getState().selectedId;
+
+    if (id) {
+      useUi.getState().revealCard(id);
+      focusCard(id);
+    } else {
+      viewRef.current?.focus();
+    }
+  }, [detailId]);
 
   const viewer: User | null = auth.data?.id
     ? { id: auth.data.id, login: auth.data.login ?? "", avatar_url: auth.data.avatar_url ?? "" }
@@ -150,6 +203,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
     openProject.mutate(id);
   };
   const newDraft = (column: OptionId | null) => {
+    useUi.getState().closeDetail();
     show({ type: "draft", column });
   };
 
@@ -168,6 +222,16 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   };
 
   const step = (direction: Direction) => {
+    if (detailId) {
+      const id = direction === "next" ? nextDetail : previousDetail;
+
+      if (id) {
+        useUi.getState().openDetail(id);
+      }
+
+      return;
+    }
+
     if (!visibleBoard) {
       return;
     }
@@ -237,9 +301,10 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
     "card.prev": () => step("prev"),
     "column.next": () => step("right"),
     "column.prev": () => step("left"),
-    // The detail panel arrives with #11. Until then, Enter opens the card on github.com.
-    "card.open": () => card && data && void openUrl(urlOf(card, data.project.url)),
-    "card.github": () => card && data && void openUrl(urlOf(card, data.project.url)),
+    "card.open": () => card && useUi.getState().openDetail(card.item_id),
+    "detail.close": useUi.getState().closeDetail,
+    "card.github": () =>
+      card && card.kind !== "redacted" && data && void openUrl(urlOf(card, data.project.url)),
     "selection.clear": () => {
       select(null);
 
@@ -249,7 +314,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
     },
     "card.moveNext": () => moveBy(1),
     "card.movePrev": () => moveBy(-1),
-    "card.status": () => card && show({ type: "status" }),
+    "card.status": () => card && card.kind !== "redacted" && show({ type: "status" }),
     "card.assignMe": () => toggle(viewer),
     "card.copyLink": () => {
       if (!card || !data) {
@@ -272,8 +337,14 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
     syncNow,
     openProject: goTo,
     signOut: () => void signOut(queryClient),
-    showBoard: () => setLayout("board"),
-    showList: () => setLayout("list"),
+    showBoard: () => {
+      useUi.getState().closeDetail();
+      setLayout("board");
+    },
+    showList: () => {
+      useUi.getState().closeDetail();
+      setLayout("list");
+    },
   });
 
   const { run } = actions;
@@ -291,14 +362,6 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
           }),
     [data, run],
   );
-
-  const openIssue = (id: string) => {
-    const target = data?.columns.flatMap((c) => c.cards).find((c) => c.item_id === id);
-
-    if (target && data) {
-      void openUrl(urlOf(target, data.project.url));
-    }
-  };
 
   const cards = data?.columns.reduce((sum, c) => sum + c.cards.length, 0);
   const syncing = status.data?.state.type === "syncing";
@@ -346,150 +409,197 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
         onSearch={showPalette}
       />
       <main className="relative my-2 mr-2 flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-bg shadow-panel">
-        <Toolbar
-          tone={
-            projectColor ??
-            defaultProjectTones[(data?.project.number ?? 0) % defaultProjectTones.length]
-          }
-          board={data}
-          project={project.data}
-          status={status.data}
-          error={error}
-          onSelectView={selectView}
-          layout={layout}
-          onLayoutChange={setLayout}
-          onSearch={showPalette}
-          filters={filters}
-          onFiltersChange={setFilters}
-          viewer={viewer}
-          filterOpen={overlay?.type === "filters"}
-          onFilterOpenChange={(open) => show(open ? { type: "filters" } : null)}
-          onFilterClose={(event) => {
-            event.preventDefault();
+        <div
+          inert={detailId !== null}
+          aria-hidden={detailId !== null}
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <Toolbar
+            tone={
+              projectColor ??
+              defaultProjectTones[(data?.project.number ?? 0) % defaultProjectTones.length]
+            }
+            board={data}
+            project={project.data}
+            status={status.data}
+            error={error}
+            onSelectView={selectView}
+            layout={layout}
+            onLayoutChange={setLayout}
+            onSearch={showPalette}
+            filters={filters}
+            onFiltersChange={setFilters}
+            viewer={viewer}
+            filterOpen={overlay?.type === "filters"}
+            onFilterOpenChange={(open) => show(open ? { type: "filters" } : null)}
+            onFilterClose={(event) => {
+              event.preventDefault();
 
-            requestAnimationFrame(() => {
-              const { selectedId: id, overlay, dragging } = useUi.getState();
+              requestAnimationFrame(() => {
+                const { selectedId: id, overlay, dragging } = useUi.getState();
 
-              if (overlay || dragging) {
-                return;
-              }
+                if (overlay || dragging) {
+                  return;
+                }
 
-              if (id) {
-                useUi.getState().revealCard(id);
-                focusCard(id);
-              } else {
-                viewRef.current?.focus();
-              }
-            });
-          }}
-          dragging={dragging}
-          visibleCount={visibleCount}
-          hiddenProperties={viewPreferences?.hiddenProperties}
-          onPropertyChange={(property, visible) =>
-            usePreferences.getState().setPropertyVisible(context, property, visible)
-          }
-        />
-        {syncing ? <SyncBar /> : null}
-        {data && offline && !error ? (
-          <OfflineBanner
-            retryAt={status.data?.retry_at ?? null}
-            onRetry={syncNow}
-            pending={refresh.isPending}
+                if (id) {
+                  useUi.getState().revealCard(id);
+                  focusCard(id);
+                } else {
+                  viewRef.current?.focus();
+                }
+              });
+            }}
+            dragging={dragging}
+            visibleCount={visibleCount}
+            hiddenProperties={viewPreferences?.hiddenProperties}
+            onPropertyChange={(property, visible) =>
+              usePreferences.getState().setPropertyVisible(context, property, visible)
+            }
           />
-        ) : null}
-        {data && failed && (!offline || error) ? (
-          <Banner
-            className="mx-3.5 mt-2.5"
-            title="Could not refresh this project"
-            description={feedback.text}
-            meta="Showing saved data"
-            action={
-              <Button
-                size="sm"
-                disabled={retrying}
-                onClick={retry}
+          {syncing ? <SyncBar /> : null}
+          {data && offline && !error ? (
+            <OfflineBanner
+              retryAt={status.data?.retry_at ?? null}
+              onRetry={syncNow}
+              pending={refresh.isPending}
+            />
+          ) : null}
+          {data && failed && (!offline || error) ? (
+            <Banner
+              className="mx-3.5 mt-2.5"
+              title="Could not refresh this project"
+              description={feedback.text}
+              meta="Showing saved data"
+              action={
+                <Button
+                  size="sm"
+                  disabled={retrying}
+                  onClick={retry}
+                >
+                  Retry now
+                </Button>
+              }
+            />
+          ) : null}
+          <section
+            ref={viewRef}
+            tabIndex={-1}
+            aria-label="Project view"
+            className="min-h-0 flex-1 outline-none"
+          >
+            {data == null && failed ? (
+              <div className="grid h-full place-items-center overflow-y-auto p-6">
+                <BoardErrorCard
+                  message={feedback.text}
+                  pending={retrying}
+                  onRetry={retry}
+                  onBack={chooseProject}
+                />
+              </div>
+            ) : data == null ? (
+              <LoadingBoard />
+            ) : filtering && visibleCount === 0 && !drafting ? (
+              <NoFilterResults onReset={() => setFilters(emptyFilters)} />
+            ) : cards === 0 && !drafting && layout === "board" ? (
+              <EmptyBoard
+                board={data}
+                onNewIssue={newIssue}
+                onNewDraft={newDraft}
+              />
+            ) : layout === "list" ? (
+              <div
+                data-slot="issue-list"
+                className="h-full overflow-y-auto"
               >
-                Retry now
-              </Button>
+                {visibleBoard?.columns.map((column) => (
+                  <IssueListGroup
+                    key={column.option_id ?? "none"}
+                    name={column.name}
+                    status={statusTone(column.color, column.name)}
+                    items={column.cards.map((card) => ({
+                      ...cardData(card),
+                      status:
+                        card.kind === "draft" ? "draft" : statusTone(column.color, column.name),
+                      id: card.item_id,
+                      pending: card.pending,
+                    }))}
+                    onOpen={useUi.getState().openDetail}
+                    onSelect={select}
+                    revealId={revealId}
+                    onRevealed={useUi.getState().finishReveal}
+                    hiddenProperties={viewPreferences?.hiddenProperties}
+                    expanded={
+                      !viewPreferences?.collapsedGroups.includes(column.option_id ?? "none")
+                    }
+                    onExpandedChange={(expanded) =>
+                      usePreferences
+                        .getState()
+                        .setGroupExpanded(context, column.option_id ?? "none", expanded)
+                    }
+                    onAddDraft={() => newDraft(column.option_id)}
+                    draft={
+                      overlay?.type === "draft" && overlay.column === column.option_id ? (
+                        <NewDraft
+                          key={overlay.editor}
+                          projectId={projectId}
+                          column={column.option_id}
+                          onSubmit={(title, observe) => onCreateDraft(column, title, observe)}
+                        />
+                      ) : undefined
+                    }
+                  />
+                ))}
+              </div>
+            ) : (
+              <Board
+                board={visibleBoard ?? data}
+                canonicalBoard={data}
+                hiddenProperties={viewPreferences?.hiddenProperties}
+                onMove={run}
+                onCreateDraft={onCreateDraft}
+              />
+            )}
+          </section>
+        </div>
+        {detailId && data ? (
+          <IssueDetail
+            key={detailId}
+            itemId={detailId}
+            item={card ? cardData(card) : null}
+            project={data.project.title}
+            status={
+              detailColumn
+                ? {
+                    name: detailColumn.name,
+                    tone: statusTone(detailColumn.color, detailColumn.name),
+                  }
+                : null
+            }
+            notice={
+              !card
+                ? "This item is no longer in the project. Return to the visible collection."
+                : card.kind === "redacted"
+                  ? "This item's content is unavailable with your current access."
+                  : card.kind === "draft"
+                    ? "This is a project draft. It has no GitHub issue page yet."
+                    : "Read the full description and activity on GitHub."
+            }
+            editable={Boolean(card && card.kind !== "redacted")}
+            onBack={useUi.getState().closeDetail}
+            onPrevious={
+              previousDetail ? () => useUi.getState().openDetail(previousDetail) : undefined
+            }
+            onNext={nextDetail ? () => useUi.getState().openDetail(nextDetail) : undefined}
+            onStatus={() => show({ type: "status" })}
+            onAssign={() => show({ type: "assign" })}
+            onGitHub={
+              card && card.kind !== "redacted"
+                ? () => void openUrl(urlOf(card, data.project.url))
+                : undefined
             }
           />
         ) : null}
-        <section
-          ref={viewRef}
-          tabIndex={-1}
-          aria-label="Project view"
-          className="min-h-0 flex-1 outline-none"
-        >
-          {data == null && failed ? (
-            <div className="grid h-full place-items-center overflow-y-auto p-6">
-              <BoardErrorCard
-                message={feedback.text}
-                pending={retrying}
-                onRetry={retry}
-                onBack={chooseProject}
-              />
-            </div>
-          ) : data == null ? (
-            <LoadingBoard />
-          ) : filtering && visibleCount === 0 && !drafting ? (
-            <NoFilterResults onReset={() => setFilters(emptyFilters)} />
-          ) : cards === 0 && !drafting && layout === "board" ? (
-            <EmptyBoard
-              board={data}
-              onNewIssue={newIssue}
-              onNewDraft={newDraft}
-            />
-          ) : layout === "list" ? (
-            <div
-              data-slot="issue-list"
-              className="h-full overflow-y-auto"
-            >
-              {visibleBoard?.columns.map((column) => (
-                <IssueListGroup
-                  key={column.option_id ?? "none"}
-                  name={column.name}
-                  status={statusTone(column.color, column.name)}
-                  items={column.cards.map((card) => ({
-                    ...cardData(card),
-                    status: card.kind === "draft" ? "draft" : statusTone(column.color, column.name),
-                    id: card.item_id,
-                    pending: card.pending,
-                  }))}
-                  onOpen={openIssue}
-                  onSelect={select}
-                  revealId={revealId}
-                  onRevealed={useUi.getState().finishReveal}
-                  hiddenProperties={viewPreferences?.hiddenProperties}
-                  expanded={!viewPreferences?.collapsedGroups.includes(column.option_id ?? "none")}
-                  onExpandedChange={(expanded) =>
-                    usePreferences
-                      .getState()
-                      .setGroupExpanded(context, column.option_id ?? "none", expanded)
-                  }
-                  onAddDraft={() => newDraft(column.option_id)}
-                  draft={
-                    overlay?.type === "draft" && overlay.column === column.option_id ? (
-                      <NewDraft
-                        key={overlay.editor}
-                        projectId={projectId}
-                        column={column.option_id}
-                        onSubmit={(title, observe) => onCreateDraft(column, title, observe)}
-                      />
-                    ) : undefined
-                  }
-                />
-              ))}
-            </div>
-          ) : (
-            <Board
-              board={visibleBoard ?? data}
-              canonicalBoard={data}
-              hiddenProperties={viewPreferences?.hiddenProperties}
-              onMove={run}
-              onCreateDraft={onCreateDraft}
-            />
-          )}
-        </section>
       </main>
       <CommandPalette
         board={data}
@@ -506,7 +616,11 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
             notify("Filters cleared to show the search result");
           }
 
-          useUi.getState().revealCard(id);
+          if (detailId) {
+            useUi.getState().openDetail(id);
+          } else {
+            useUi.getState().revealCard(id);
+          }
         }}
       />
       <ShortcutSheet />

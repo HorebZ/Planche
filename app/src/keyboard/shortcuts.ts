@@ -1,6 +1,14 @@
 import type { Board, ItemId } from "@/ipc/bindings.types";
 
-export type Scope = "global" | "board" | "menu" | "palette" | "dialog" | "sidebar" | "drag";
+export type Scope =
+  | "global"
+  | "board"
+  | "detail"
+  | "menu"
+  | "palette"
+  | "dialog"
+  | "sidebar"
+  | "drag";
 
 /** One key per row. `key` is `KeyboardEvent.key`, after `Meta+` and `Shift+` when held. */
 type Shortcut = { key: string; command: string; scope: Scope; label: string };
@@ -47,6 +55,19 @@ export const shortcuts = [
   { key: "i", command: "card.assignMe", scope: "board", label: "Assign me" },
   { key: "Meta+Shift+c", command: "card.copyLink", scope: "board", label: "Copy link" },
   { key: "Meta+z", command: "undo", scope: "board", label: "Undo" },
+
+  { key: "j", command: "card.next", scope: "detail", label: "Next issue" },
+  { key: "Meta+k", command: "palette.open", scope: "detail", label: "Command palette" },
+  { key: "Meta+r", command: "sync.now", scope: "detail", label: "Sync now" },
+  { key: "Meta+,", command: "settings.open", scope: "detail", label: "Settings" },
+  { key: "?", command: "help.open", scope: "detail", label: "All shortcuts" },
+  { key: "k", command: "card.prev", scope: "detail", label: "Previous issue" },
+  { key: "Escape", command: "detail.close", scope: "detail", label: "Back to project" },
+  { key: "Meta+o", command: "card.github", scope: "detail", label: "Open on GitHub" },
+  { key: "s", command: "card.status", scope: "detail", label: "Status" },
+  { key: "i", command: "card.assignMe", scope: "detail", label: "Assign me" },
+  { key: "Meta+Shift+c", command: "card.copyLink", scope: "detail", label: "Copy link" },
+  { key: "Meta+z", command: "undo", scope: "detail", label: "Undo" },
 
   { key: "1", command: "status.1", scope: "menu", label: "First status" },
   { key: "2", command: "status.2", scope: "menu", label: "Second status" },

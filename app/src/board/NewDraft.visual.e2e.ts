@@ -9,7 +9,7 @@ for (const colorScheme of ["light", "dark"] as const) {
 
     const selected = page.locator('[data-item-id="PVTI_231"]');
 
-    await selected.click();
+    await selected.focus();
 
     const add = page.getByRole("button", { name: "Add draft to Todo", exact: true });
 

@@ -1,5 +1,5 @@
 import { GitMerge } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { focusCard } from "@/board/Card";
 import { statusTone } from "@/board/statusTone";
 import {
@@ -36,6 +36,7 @@ export function CommandPalette({ board, card, commands, onReveal }: CommandPalet
   const open = useUi((s) => s.overlay?.type === "palette");
   const [query, setQuery] = useState("");
   const [withContext, setWithContext] = useState(true);
+  const pending = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (!open) {
@@ -44,6 +45,7 @@ export function CommandPalette({ board, card, commands, onReveal }: CommandPalet
 
     setQuery("");
     setWithContext(true);
+    pending.current = null;
   }, [open]);
 
   const target = withContext ? card : null;
@@ -52,8 +54,8 @@ export function CommandPalette({ board, card, commands, onReveal }: CommandPalet
   const cards = matchCards(board, query);
   const close = () => useUi.getState().open(null);
   const run = (command: PaletteCommand) => {
+    pending.current = command.run;
     close();
-    command.run();
   };
   const keys = (command: Parameters<typeof keysFor>[0]) => keysFor(command, "palette").join("");
 
@@ -65,11 +67,22 @@ export function CommandPalette({ board, card, commands, onReveal }: CommandPalet
         onCloseAutoFocus: (event) => {
           event.preventDefault();
 
-          // The overlay that follows, such as the assignee picker, takes the focus instead.
-          const { overlay, selectedId } = useUi.getState();
+          // Release the dialog's focus trap before focusing an inline draft editor.
+          const run = pending.current;
+          pending.current = null;
 
-          if (!overlay && selectedId) {
-            focusCard(selectedId);
+          if (run) {
+            run();
+
+            return;
+          }
+
+          // The overlay that follows, such as the assignee picker, takes the focus instead.
+          const { overlay, selectedId, detailId } = useUi.getState();
+          const id = detailId ?? selectedId;
+
+          if (!overlay && id) {
+            focusCard(id);
           }
         },
       }}

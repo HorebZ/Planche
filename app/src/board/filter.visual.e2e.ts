@@ -23,7 +23,7 @@ for (const colorScheme of ["light", "dark"] as const) {
       await expect(chip).toBeInViewport();
     }
 
-    await expect(page.locator("main > header")).toContainText("1/17 issues");
+    await expect(page.locator('[data-slot="project-toolbar"]')).toContainText("1/17 issues");
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(1100);
     await page.screenshot({
       path: test.info().outputPath(`filters-${colorScheme}.png`),

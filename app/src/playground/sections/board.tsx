@@ -11,6 +11,7 @@ import {
   IssueCard,
   type IssueCardData,
 } from "@/components/ui/issue-card";
+import { IssueDetail } from "@/components/ui/issue-detail";
 import { IssueListGroup } from "@/components/ui/issue-list";
 import { LabelChip } from "@/components/ui/label-chip";
 import { PriorityGlyph, ProgressRing } from "@/components/ui/planche-glyph";
@@ -78,6 +79,51 @@ export function BoardSection() {
     >
       {() => (
         <div className="flex flex-col gap-5">
+          <Row label="issue detail">
+            {(["issue", "draft", "redacted", "missing"] as const).map((kind) => (
+              <State
+                key={kind}
+                label={kind}
+                className="relative h-[440px] w-full overflow-hidden rounded-xl bg-bg shadow-panel"
+              >
+                <IssueDetail
+                  itemId={kind}
+                  item={
+                    kind === "missing"
+                      ? null
+                      : kind === "issue"
+                        ? openIssue
+                        : {
+                            ...openIssue,
+                            number: undefined,
+                            repo: undefined,
+                            title: kind === "draft" ? "A project draft" : "Redacted item",
+                            assignees: [],
+                            labels: [],
+                          }
+                  }
+                  project="Planche"
+                  status={{ name: "Todo", tone: "todo" }}
+                  notice={
+                    kind === "draft"
+                      ? "This draft has no GitHub issue page yet."
+                      : kind === "redacted"
+                        ? "Content unavailable with your current access."
+                        : kind === "missing"
+                          ? "This item is no longer in the project."
+                          : undefined
+                  }
+                  editable={kind === "issue" || kind === "draft"}
+                  onBack={() => {}}
+                  onPrevious={() => {}}
+                  onNext={() => {}}
+                  onStatus={() => {}}
+                  onAssign={() => {}}
+                  onGitHub={kind === "redacted" || kind === "missing" ? undefined : () => {}}
+                />
+              </State>
+            ))}
+          </Row>
           <Row label="avatar">
             <State label="18 fallback">
               <Avatar
