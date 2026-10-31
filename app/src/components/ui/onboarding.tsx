@@ -3,6 +3,7 @@ import type { ComponentProps } from "react";
 import icon from "@/assets/brand/planche-icon-flat.svg";
 import smallIcon from "@/assets/brand/planche-icon-small.svg";
 import { Avatar } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/cn";
 
@@ -102,7 +103,7 @@ export function ScopeRow({ name, why, state, className, ...props }: ScopeRowProp
 type AccountBlockProps = ComponentProps<"div"> & {
   login: string;
   avatarUrl?: string;
-  projects: number;
+  projects?: number;
 };
 
 export function AccountBlock({
@@ -127,9 +128,66 @@ export function AccountBlock({
       <div className="flex min-w-0 flex-col">
         <span className="font-semibold">{login}</span>
         <span className="text-fg-3 text-xs">
-          Signed in as <span>{login}</span> · {projects} {projects === 1 ? "project" : "projects"}{" "}
-          found
+          Signed in as <span>{login}</span>
+          {projects != null
+            ? ` · ${projects} ${projects === 1 ? "project" : "projects"} found`
+            : null}
         </span>
+      </div>
+    </div>
+  );
+}
+
+export function ProjectAccessState({
+  state,
+  message,
+  pending,
+  onRetry,
+  onAuthorize,
+}: {
+  state: "empty" | "error" | "sso";
+  message?: string;
+  pending: boolean;
+  onRetry: () => void;
+  onAuthorize?: () => void;
+}) {
+  return (
+    <div
+      data-slot="project-access-state"
+      data-state={state}
+      role={state === "error" ? "alert" : "status"}
+      className="flex flex-col gap-2 rounded-lg bg-bg-sunken p-3 text-xs"
+    >
+      <h2 className="font-semibold">
+        {state === "error"
+          ? "Could not load projects"
+          : state === "sso"
+            ? "Organization access needs SSO"
+            : "No open projects found"}
+      </h2>
+      <p className="break-words text-fg-2">
+        {state === "error"
+          ? message
+          : state === "sso"
+            ? `Authorize this token for ${message} using Configure SSO, then retry.`
+            : "Create a project on GitHub or check that this account can access one, then retry."}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {state !== "error" && onAuthorize ? (
+          <Button
+            size="sm"
+            onClick={onAuthorize}
+          >
+            {state === "sso" ? "Configure SSO" : "Open GitHub Projects"}
+          </Button>
+        ) : null}
+        <Button
+          size="sm"
+          disabled={pending}
+          onClick={onRetry}
+        >
+          {pending ? "Retrying…" : "Retry now"}
+        </Button>
       </div>
     </div>
   );

@@ -86,7 +86,10 @@ export function FieldMessage({ className, children, ...props }: ComponentProps<"
       className={cn("flex items-center gap-1 text-[11.5px] text-danger leading-[14px]", className)}
       {...props}
     >
-      <CircleAlert className="size-3.5 shrink-0" />
+      <CircleAlert
+        className="size-3.5 shrink-0"
+        aria-hidden
+      />
       {children}
     </p>
   );
