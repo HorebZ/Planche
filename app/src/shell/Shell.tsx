@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { AssigneePicker } from "@/board/AssigneePicker";
 import { Board } from "@/board/Board";
 import { EmptyBoard, LoadingBoard, SyncBar } from "@/board/BoardStates";
@@ -39,12 +39,12 @@ import {
 } from "@/ipc/queries";
 import { type Direction, navigate } from "@/keyboard/shortcuts";
 import { useShortcuts } from "@/keyboard/useShortcuts";
-import { usePreferences } from "@/stores/preferences";
+import { type ProjectLayout, usePreferences } from "@/stores/preferences";
 import { useUi } from "@/stores/ui";
 import { OfflineBanner } from "./OfflineBanner";
 import { AppSidebar, signOut } from "./Sidebar";
 import { footerText } from "./syncText";
-import { type ProjectLayout, Toolbar } from "./Toolbar";
+import { Toolbar } from "./Toolbar";
 
 /** The card's page on github.com. A draft has none, so its project's. */
 function urlOf(card: Card, projectUrl: string) {
@@ -53,7 +53,6 @@ function urlOf(card: Card, projectUrl: string) {
 
 /** The main window: sidebar, toolbar, and the board of the open project. */
 export function Shell({ projectId }: { projectId: ProjectId }) {
-  const [layout, setLayout] = useState<ProjectLayout>("board");
   const showPalette = () => show({ type: "palette" });
   const queryClient = useQueryClient();
   const viewId = useUi((s) => s.viewId);
@@ -73,6 +72,10 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   const actions = useActions(projectId, viewId);
 
   const data = board.data ?? null;
+  const context = JSON.stringify([auth.data?.login, projectId, data?.view?.number ?? null]);
+  const viewPreferences = usePreferences((s) => s.views[context]);
+  const layout = viewPreferences?.layout ?? "board";
+  const setLayout = (layout: ProjectLayout) => usePreferences.getState().setLayout(context, layout);
   const card = data?.columns.flatMap((c) => c.cards).find((c) => c.item_id === selectedId) ?? null;
   const viewer: User | null = auth.data?.id
     ? { id: auth.data.id, login: auth.data.login ?? "", avatar_url: auth.data.avatar_url ?? "" }
@@ -362,6 +365,12 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
                   onSelect={select}
                   revealId={revealId}
                   onRevealed={useUi.getState().finishReveal}
+                  expanded={!viewPreferences?.collapsedGroups.includes(column.option_id ?? "none")}
+                  onExpandedChange={(expanded) =>
+                    usePreferences
+                      .getState()
+                      .setGroupExpanded(context, column.option_id ?? "none", expanded)
+                  }
                   onAddDraft={() => newDraft(column.option_id)}
                   draft={
                     overlay?.type === "draft" && overlay.column === column.option_id ? (

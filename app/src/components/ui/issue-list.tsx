@@ -16,6 +16,8 @@ export function IssueListGroup({
   onAddDraft,
   revealId,
   onRevealed,
+  expanded: controlledExpanded,
+  onExpandedChange,
 }: {
   name: string;
   status: StatusKey;
@@ -26,8 +28,12 @@ export function IssueListGroup({
   onAddDraft?: () => void;
   revealId?: string | null;
   onRevealed?: (id: string) => void;
+  expanded?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
 }) {
-  const [expanded, setExpanded] = useState(true);
+  const [localExpanded, setLocalExpanded] = useState(true);
+  const expanded = controlledExpanded ?? localExpanded;
+  const setExpanded = onExpandedChange ?? setLocalExpanded;
   const groupRef = useRef<HTMLElement>(null);
 
   useLayoutEffect(() => {
@@ -51,15 +57,15 @@ export function IssueListGroup({
     if (row) {
       onRevealed?.(revealId);
     }
-  }, [revealId, expanded, items, onRevealed]);
+  }, [revealId, expanded, items, onRevealed, setExpanded]);
 
   const drafting = Boolean(draft);
 
   useLayoutEffect(() => {
-    if (drafting) {
+    if (drafting && !expanded) {
       setExpanded(true);
     }
-  }, [drafting]);
+  }, [drafting, expanded, setExpanded]);
 
   return (
     <section

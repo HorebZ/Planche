@@ -419,14 +419,25 @@ export function installMockBackend(scenario: Scenario) {
           group_by: null,
           manual_order: true,
         },
+        {
+          id: "PVTV_2",
+          number: 2,
+          name: "Planning",
+          layout: "Board",
+          filter: null,
+          group_by: null,
+          manual_order: true,
+        },
       ],
     }),
-    get_board: () => {
+    get_board: (args) => {
       if (boardError) {
         throw { kind: "Cache", message: "Could not read the local cache" } satisfies AppError;
       }
 
-      return board;
+      return board && args.viewId === "PVTV_2"
+        ? { ...board, view: { number: 2, name: "Planning", manual_order: true } }
+        : board;
     },
     // Queue locally before sending in the background.
     dispatch_intent: (args) => {
