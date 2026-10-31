@@ -5,8 +5,11 @@ test.use({ viewport: { width: 1440, height: 900 } });
 test("the inset shell and neutral controls follow the v2 light and dark tokens", async ({
   page,
 }) => {
+  await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/?mock=board");
 
+  await expect(page.locator("body")).toHaveCSS("background-color", "rgb(239, 239, 240)");
+  await expect(page.locator("main")).toHaveCSS("background-color", "rgb(249, 249, 250)");
   await expect(page.locator('[data-slot="sidebar"]')).toHaveCSS("width", "220px");
   await expect(page.locator("main")).toHaveCSS("margin-top", "8px");
   await expect(page.locator("main")).toHaveCSS("border-radius", "10px");

@@ -1,24 +1,24 @@
 /* Shared theme tokens; edit light and dark values here. */
 :root {
   color-scheme: light dark;
-  --pl-bg: light-dark(#fcfbf9, #121213);
-  --pl-bg-sunken: light-dark(#f1efeb, #09090a);
+  --pl-bg: light-dark(#f9f9fa, #121213);
+  --pl-bg-sunken: light-dark(#efeff0, #09090a);
   --pl-surface: light-dark(#ffffff, #161617);
-  --pl-column: light-dark(rgba(28, 25, 20, 0.04), #101011);
+  --pl-column: light-dark(#f5f5f6, #101011);
   --pl-card: light-dark(#ffffff, #1a1a1b);
   --pl-elevated: light-dark(#ffffff, #242425);
-  --pl-overlay: light-dark(rgba(28, 25, 20, 0.18), rgba(0, 0, 0, 0.45));
-  --pl-hover: light-dark(rgba(28, 25, 20, 0.04), rgba(255, 255, 255, 0.05));
-  --pl-active: light-dark(rgba(28, 25, 20, 0.07), rgba(255, 255, 255, 0.09));
-  --pl-skeleton: light-dark(rgba(28, 25, 20, 0.06), rgba(255, 255, 255, 0.07));
-  --pl-border: light-dark(rgba(28, 25, 20, 0.08), rgba(255, 255, 255, 0.08));
-  --pl-border-strong: light-dark(rgba(28, 25, 20, 0.15), rgba(255, 255, 255, 0.18));
-  --pl-fg: light-dark(#1c1a17, #ededee);
-  --pl-fg-2: light-dark(#57534c, #b4b4bc);
-  --pl-fg-3: light-dark(#716c63, #96969f);
-  --pl-primary: light-dark(#1c1a17, #ededee);
-  --pl-primary-fg: light-dark(#fcfbf9, #121213);
-  --pl-ring: light-dark(rgba(28, 25, 20, 0.28), rgba(255, 255, 255, 0.48));
+  --pl-overlay: light-dark(rgba(36, 36, 37, 0.18), rgba(0, 0, 0, 0.45));
+  --pl-hover: light-dark(rgba(36, 36, 37, 0.04), rgba(255, 255, 255, 0.05));
+  --pl-active: light-dark(rgba(36, 36, 37, 0.07), rgba(255, 255, 255, 0.09));
+  --pl-skeleton: light-dark(rgba(36, 36, 37, 0.06), rgba(255, 255, 255, 0.07));
+  --pl-border: light-dark(rgba(36, 36, 37, 0.08), rgba(255, 255, 255, 0.08));
+  --pl-border-strong: light-dark(rgba(36, 36, 37, 0.15), rgba(255, 255, 255, 0.18));
+  --pl-fg: light-dark(#242425, #ededee);
+  --pl-fg-2: light-dark(#54545b, #b4b4bc);
+  --pl-fg-3: light-dark(#626269, #96969f);
+  --pl-primary: light-dark(#242425, #ededee);
+  --pl-primary-fg: light-dark(#ffffff, #121213);
+  --pl-ring: light-dark(rgba(36, 36, 37, 0.6), rgba(255, 255, 255, 0.48));
   --pl-focus: var(--pl-ring);
   --pl-accent: light-dark(oklch(0.56 0.18 38), oklch(0.7 0.16 42));
   --pl-accent-fg: light-dark(#ffffff, #1c1209);
@@ -34,25 +34,25 @@
   --pl-s-done: light-dark(oklch(0.58 0.13 150), oklch(0.72 0.13 150));
   --pl-s-cancelled: var(--pl-fg-3);
   --pl-s-deleted: var(--pl-danger);
-  --pl-shadow-card-light: 0 0 0 1px rgba(28, 25, 20, 0.06), 0 1px 2px rgba(28, 25, 20, 0.05);
+  --pl-shadow-card-light: 0 0 0 1px rgba(36, 36, 37, 0.06), 0 1px 2px rgba(36, 36, 37, 0.05);
   --pl-shadow-card-dark: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 1px 2px rgba(0, 0, 0, 0.3);
   --pl-shadow-drag-light:
-    0 0 0 1px rgba(28, 25, 20, 0.08), 0 18px 40px -10px rgba(28, 25, 20, 0.28),
-    0 6px 14px -4px rgba(28, 25, 20, 0.12);
+    0 0 0 1px rgba(36, 36, 37, 0.08), 0 18px 40px -10px rgba(36, 36, 37, 0.28),
+    0 6px 14px -4px rgba(36, 36, 37, 0.12);
   --pl-shadow-drag-dark:
     0 0 0 1px rgba(255, 255, 255, 0.12), 0 20px 44px -10px rgba(0, 0, 0, 0.65),
     0 6px 14px -4px rgba(0, 0, 0, 0.4);
   --pl-shadow-pop-light:
-    0 0 0 1px rgba(28, 25, 20, 0.08), 0 12px 32px -8px rgba(28, 25, 20, 0.2),
-    0 2px 6px rgba(28, 25, 20, 0.05);
+    0 0 0 1px rgba(36, 36, 37, 0.08), 0 12px 32px -8px rgba(36, 36, 37, 0.2),
+    0 2px 6px rgba(36, 36, 37, 0.05);
   --pl-shadow-pop-dark:
     0 0 0 1px rgba(255, 255, 255, 0.1), 0 16px 40px -8px rgba(0, 0, 0, 0.6),
     0 2px 6px rgba(0, 0, 0, 0.3);
-  --pl-shadow-panel-light: 0 0 0 1px rgba(28, 25, 20, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
+  --pl-shadow-panel-light: 0 0 0 1px rgba(36, 36, 37, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
   --pl-shadow-panel-dark: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 1px 3px rgba(0, 0, 0, 0.3);
   --pl-shadow-window-light:
-    0 0 0 0.5px rgba(0, 0, 0, 0.2), 0 30px 80px -20px rgba(30, 25, 15, 0.32),
-    0 10px 30px -10px rgba(30, 25, 15, 0.16);
+    0 0 0 0.5px rgba(0, 0, 0, 0.2), 0 30px 80px -20px rgba(36, 36, 37, 0.32),
+    0 10px 30px -10px rgba(36, 36, 37, 0.16);
   --pl-shadow-window-dark:
     0 0 0 0.5px rgba(0, 0, 0, 0.7), inset 0 0 0 0.5px rgba(255, 255, 255, 0.08),
     0 30px 80px -20px rgba(0, 0, 0, 0.7);

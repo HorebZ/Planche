@@ -44,53 +44,59 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("each theme scope resolves its own token values", async ({ page }) => {
-  await expect(scope(page, "buttons", "light")).toHaveCSS("background-color", "rgb(252, 251, 249)");
+  await expect(scope(page, "buttons", "light")).toHaveCSS("background-color", "rgb(249, 249, 250)");
   await expect(scope(page, "buttons", "dark")).toHaveCSS("background-color", "rgb(18, 18, 19)");
-  await expect(scope(page, "buttons", "light")).toHaveCSS("color", "rgb(28, 26, 23)");
+  await expect(scope(page, "buttons", "light")).toHaveCSS("color", "rgb(36, 36, 37)");
   await expect(scope(page, "buttons", "dark")).toHaveCSS("color", "rgb(237, 237, 238)");
 });
 
-test("dark metadata has at least 4.5:1 contrast on every base surface", async ({ page }) => {
-  const contrasts = await scope(page, "buttons", "dark").evaluate((panel) => {
-    const probe = document.createElement("span");
+for (const theme of ["light", "dark"] as const) {
+  test(`${theme} metadata has at least 4.5:1 contrast on every base surface`, async ({ page }) => {
+    const contrasts = await scope(page, "buttons", theme).evaluate((panel) => {
+      const probe = document.createElement("span");
 
-    probe.style.color = "var(--pl-fg-3)";
-    panel.append(probe);
+      probe.style.color = "var(--pl-fg-3)";
+      panel.append(probe);
 
-    const luminance = (color: string) => {
-      const [r, g, b] = (color.match(/[\d.]+/g) ?? []).map((value) => {
-        const channel = Number(value) / 255;
+      const luminance = (color: string) => {
+        const [r, g, b] = (color.match(/[\d.]+/g) ?? []).map((value) => {
+          const channel = Number(value) / 255;
 
-        return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+          return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+        });
+
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      };
+
+      const foreground = luminance(getComputedStyle(probe).color);
+      const results = ["bg-sunken", "bg", "column", "surface", "card", "elevated"].map((name) => {
+        probe.style.backgroundColor = `var(--pl-${name})`;
+
+        const background = luminance(getComputedStyle(probe).backgroundColor);
+
+        return {
+          name,
+          ratio:
+            (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05),
+        };
       });
 
-      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    };
+      probe.remove();
 
-    const foreground = luminance(getComputedStyle(probe).color);
-    const results = ["bg-sunken", "bg", "column", "surface", "card", "elevated"].map((name) => {
-      probe.style.backgroundColor = `var(--pl-${name})`;
-
-      const background = luminance(getComputedStyle(probe).backgroundColor);
-
-      return { name, ratio: (foreground + 0.05) / (background + 0.05) };
+      return results;
     });
 
-    probe.remove();
-
-    return results;
+    for (const { name, ratio } of contrasts) {
+      expect(ratio, name).toBeGreaterThanOrEqual(4.5);
+    }
   });
-
-  for (const { name, ratio } of contrasts) {
-    expect(ratio, name).toBeGreaterThanOrEqual(4.5);
-  }
-});
+}
 
 test("shadows switch with the theme scope", async ({ page }) => {
   const secondary = (theme: Theme) =>
     scope(page, "buttons", theme).getByRole("button", { name: "Secondary" }).first();
 
-  await expect(secondary("light")).toHaveCSS("box-shadow", /rgba\(28, 25, 20, 0\.06\)/);
+  await expect(secondary("light")).toHaveCSS("box-shadow", /rgba\(36, 36, 37, 0\.06\)/);
   await expect(secondary("dark")).toHaveCSS("box-shadow", /rgba\(255, 255, 255, 0\.04\)/);
 });
 
@@ -126,6 +132,9 @@ test("cards resolve the card token per theme", async ({ page }) => {
     scope(page, "board", theme).locator('[data-slot="issue-card"]').first();
 
   await expect(card("light")).toHaveCSS("background-color", "rgb(255, 255, 255)");
+  await expect(
+    scope(page, "board", "light").locator('[data-slot="board-column"]').first(),
+  ).toHaveCSS("background-color", "rgb(245, 245, 246)");
   await expect(card("dark")).toHaveCSS("background-color", "rgb(26, 26, 27)");
   await expect(
     scope(page, "board", "dark").locator('[data-slot="board-column"]').first(),
@@ -144,7 +153,7 @@ test("a drop target column counts the hovering card, the origin keeps its own", 
     await expect(target.locator('[data-slot="board-column-count"]')).toHaveText("4");
     await expect(target.locator('[data-slot="board-column-count"]')).toHaveCSS(
       "color",
-      "rgb(113, 108, 99)",
+      "rgb(98, 98, 105)",
     );
   }
 
