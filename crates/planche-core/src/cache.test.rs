@@ -26,4 +26,54 @@ fn card_details_migration_preserves_existing_cache_data() {
     let details: crate::domain::CardDetails = serde_json::from_str("{}").unwrap();
 
     assert_eq!(details, Default::default());
+    conn.prepare("SELECT host, account_id, content_id, body FROM issue_description")
+        .unwrap();
+}
+
+#[test]
+fn descriptions_are_scoped_by_host_account_and_content_and_survive_reopening() {
+    let path = std::env::temp_dir().join(format!(
+        "planche-body-isolation-{}.sqlite",
+        std::process::id()
+    ));
+    let _ = std::fs::remove_file(&path);
+    let cache = Cache::open(&path).unwrap();
+    let account = UserId("A".into());
+    let issue = ContentId("issue".into());
+    let revision = cache
+        .begin_description("github.com", &account, &issue)
+        .unwrap();
+
+    cache
+        .finish_description("github.com", &account, &issue, revision, Some("private"))
+        .unwrap();
+    drop(cache);
+    let cache = Cache::open(&path).unwrap();
+
+    assert_eq!(
+        cache
+            .issue_description("github.com", &account, &issue)
+            .unwrap()
+            .unwrap()
+            .body,
+        "private"
+    );
+    assert!(
+        cache
+            .issue_description("other.host", &account, &issue)
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        cache
+            .issue_description("github.com", &UserId("B".into()), &issue)
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        cache
+            .issue_description("github.com", &account, &ContentId("other".into()))
+            .unwrap()
+            .is_none()
+    );
 }

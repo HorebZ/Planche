@@ -1,8 +1,10 @@
 use std::sync::{Mutex, PoisonError};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use specta::Type;
 
+use crate::cache::Cache;
 use crate::domain::{UserId, Viewer};
 use crate::error::{Error, Result};
 use crate::github::{GithubClient, ops};
@@ -17,6 +19,28 @@ const KEYCHAIN_ACCOUNT: &str = "github-token";
 static TOKEN: Mutex<Option<String>> = Mutex::new(None);
 
 pub const REQUIRED_SCOPES: [&str; 3] = ["repo", "read:org", "project"];
+
+fn identity_key(token: &str) -> String {
+    let digest: String = Sha256::digest(token.trim().as_bytes())
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect();
+
+    format!("account_identity:github.com:{digest}")
+}
+
+pub fn cached_status(cache: &Cache, token: &str) -> Result<Option<AuthStatus>> {
+    cache
+        .get(&identity_key(token))?
+        .map(|json| serde_json::from_str(&json).map_err(|error| Error::Cache(error.to_string())))
+        .transpose()
+}
+
+pub fn remember_status(cache: &Cache, token: &str, status: &AuthStatus) -> Result<()> {
+    let json = serde_json::to_string(status).map_err(|error| Error::Cache(error.to_string()))?;
+
+    cache.set(&identity_key(token), &json)
+}
 
 /// The token from `PLANCHE_TOKEN`, else from the macOS keychain, read once per process.
 pub fn load_token() -> Result<String> {
@@ -78,7 +102,7 @@ pub async fn login(token: &str) -> Result<Viewer> {
 }
 
 /// Who the stored token signs in as. `login` is `None` without a token.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Type)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct AuthStatus {
     /// The viewer's node ID, for "assign me".
     pub id: Option<UserId>,

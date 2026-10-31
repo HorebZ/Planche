@@ -1,5 +1,5 @@
 import { ArrowLeft, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
-import { useLayoutEffect, useRef } from "react";
+import { type ReactNode, useLayoutEffect, useRef } from "react";
 import { AvatarStack } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import type { IssueCardData } from "@/components/ui/issue-card";
@@ -19,6 +19,7 @@ export function IssueDetail({
   onStatus,
   onAssign,
   onGitHub,
+  children,
 }: {
   itemId: string;
   item: IssueCardData | null;
@@ -32,6 +33,7 @@ export function IssueDetail({
   onStatus: () => void;
   onAssign: () => void;
   onGitHub?: () => void;
+  children?: ReactNode;
 }) {
   const anchor = useRef<HTMLDivElement>(null);
 
@@ -163,6 +165,7 @@ export function IssueDetail({
               </dl>
             ) : null}
           </div>
+          {children}
         </div>
       </div>
     </article>

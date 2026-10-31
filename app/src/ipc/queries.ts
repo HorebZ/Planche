@@ -176,6 +176,8 @@ export function createQueryClient() {
     current.accountEpoch++;
     void client.cancelQueries({ queryKey: ["board"] }, { revert: false, silent: true });
     client.removeQueries({ queryKey: ["board"] });
+    void client.cancelQueries({ queryKey: ["issue-description"] }, { revert: false, silent: true });
+    client.removeQueries({ queryKey: ["issue-description"] });
 
     for (const gate of current.gates.values()) {
       for (const wake of gate.wake) {
@@ -234,6 +236,35 @@ export const assignableUsersQuery = (repo: string) =>
   queryOptions({
     queryKey: ["assignable-users", repo],
     queryFn: () => commands.listAssignableUsers(repo),
+  });
+
+export const cachedDescriptionQuery = (account: string, content: string) =>
+  queryOptions({
+    queryKey: ["issue-description", "github.com", account, content, "cached"],
+    networkMode: "always",
+    refetchOnMount: "always",
+    queryFn: async ({ signal }) => {
+      const result = await commands.cachedIssueDescription(account, content);
+
+      signal.throwIfAborted();
+
+      return result;
+    },
+  });
+
+export const descriptionQuery = (account: string, content: string) =>
+  queryOptions({
+    queryKey: ["issue-description", "github.com", account, content, "fresh"],
+    networkMode: "always",
+    refetchOnMount: "always",
+    queryFn: async ({ client, signal }) => {
+      const result = await commands.refreshIssueDescription(account, content);
+
+      signal.throwIfAborted();
+      client.setQueryData(cachedDescriptionQuery(account, content).queryKey, result);
+
+      return result;
+    },
   });
 
 export const projectQuery = (projectId: ProjectId) =>

@@ -15,6 +15,37 @@ use crate::intent::Operation;
 const QUERIES: &str = include_str!("../../graphql/queries.graphql");
 const MUTATIONS: &str = include_str!("../../graphql/mutations.graphql");
 
+pub async fn issue_description(
+    client: &GithubClient,
+    account: &UserId,
+    content: &ContentId,
+) -> Result<Option<String>> {
+    let reply = client
+        .query::<wire::IssueDescriptionData>(
+            include_str!("../../graphql/issue_description.graphql"),
+            "IssueDescription",
+            json!({ "id": content.as_str() }),
+        )
+        .await?;
+
+    description_from_wire(reply.data, account, content)
+}
+
+fn description_from_wire(
+    data: wire::IssueDescriptionData,
+    account: &UserId,
+    content: &ContentId,
+) -> Result<Option<String>> {
+    if data.viewer.id != account.as_str() {
+        return Err(Error::Unauthorized);
+    }
+
+    Ok(data
+        .node
+        .filter(|node| node.id == content.as_str() && node.__typename == "Issue")
+        .and_then(|node| node.body))
+}
+
 /// The signed-in user, and the token scopes from `x-oauth-scopes`.
 pub async fn viewer(client: &GithubClient) -> Result<(Viewer, Option<String>)> {
     let reply = client

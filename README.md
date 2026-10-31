@@ -97,6 +97,10 @@ from the legacy Keychain; macOS may ask for the old item's password permission
 during this one-time migration. The token is then kept in memory for the session.
 Cancelling authentication keeps the window locked until you choose to retry.
 Background commands use only the unlocked session and never open the Keychain.
+The remembered account is tied to a SHA-256 fingerprint of the verified token,
+including a token supplied through `PLANCHE_TOKEN`. After upgrading from an older
+cache or changing to an unknown token, one online identity check is required;
+subsequent launches with that token can use its saved identity offline.
 Sync starts after authentication succeeds; waiting, refocusing the window, or
 reconnecting the network does not launch another authentication request.
 The protected token belongs to the signed app's access group. An unsigned CLI
@@ -109,6 +113,12 @@ rebuilding can cause macOS to ask for permission again because the binary's
 signature changes. `PLANCHE_TOKEN` bypasses Keychain authentication for development.
 
 The board lives in a SQLite cache at `~/Library/Application Support/dev.planche.app/cache.sqlite`. `PLANCHE_CACHE` overrides the path. `board` prints the cached board at once, then refreshes it from GitHub. A move shows at once and goes into a queue. When GitHub is unreachable, the move stays queued, and the next `sync` sends it.
+
+Opening an issue in the desktop app reads its saved description immediately and
+revalidates it on each online opening. Descriptions are plain text, cached separately
+by GitHub host, account and issue ID. Offline copies are marked as saved; a refused
+or missing issue removes the saved text. Pull requests and drafts keep their explicit
+GitHub fallback. Markdown rendering is tracked in #35.
 
 In debug builds, `PLANCHE_FAULT` injects failures: `fail_page_2`, `fail_mutations`, `hang_before_ack` and `ratelimit_low`.
 

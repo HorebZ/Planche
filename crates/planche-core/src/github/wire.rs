@@ -3,6 +3,24 @@
 use serde::Deserialize;
 
 #[derive(Deserialize)]
+pub(super) struct IssueDescriptionData {
+    pub viewer: DescriptionViewer,
+    pub node: Option<DescriptionNode>,
+}
+
+#[derive(Deserialize)]
+pub(super) struct DescriptionViewer {
+    pub id: String,
+}
+
+#[derive(Deserialize)]
+pub(super) struct DescriptionNode {
+    pub id: String,
+    pub __typename: String,
+    pub body: Option<String>,
+}
+
+#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct PageInfo {
     pub has_next_page: bool,

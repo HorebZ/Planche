@@ -167,3 +167,14 @@ test("palette search updates the detail and New draft leaves it with the editor 
   expect(document.querySelector('[data-slot="issue-detail"]')).toBeNull();
   expect(document.activeElement).toBe(get('[aria-label="Draft title"]'));
 });
+
+test("pull requests keep an explicit external fallback without requesting an issue description", async () => {
+  await open();
+  click(row(227));
+
+  expect(detail().textContent).toContain(
+    "Read this pull request's description and activity on GitHub",
+  );
+  expect(document.querySelector('[aria-label="Description"]')).toBeNull();
+  expect(calls.refresh_issue_description).toBeUndefined();
+});

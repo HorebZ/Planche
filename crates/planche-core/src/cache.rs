@@ -13,9 +13,9 @@ use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, 
 
 use crate::board::{self, project_board};
 use crate::domain::{
-    Board, ContentId, Field, FieldId, IssueState, Item, ItemContent, ItemId, Label, OptionId,
-    OwnerProjects, ProjectId, ProjectList, ProjectMeta, ProjectSummary, PullRequestState,
-    SelectOption, User, UserId, View, ViewId, ViewLayout,
+    Board, ContentId, Field, FieldId, IssueDescription, IssueState, Item, ItemContent, ItemId,
+    Label, OptionId, OwnerProjects, ProjectId, ProjectList, ProjectMeta, ProjectSummary,
+    PullRequestState, SelectOption, User, UserId, View, ViewId, ViewLayout,
 };
 use crate::error::{Error, Result};
 use crate::intent::{self, Intent, Placement};
@@ -23,6 +23,7 @@ use crate::intent::{self, Intent, Placement};
 const MIGRATIONS: &[&str] = &[
     include_str!("../migrations/0001_init.sql"),
     include_str!("../migrations/0002_card_details.sql"),
+    include_str!("../migrations/0003_issue_description.sql"),
 ];
 
 /// An acked row stays replayed until the snapshot reflects it, or for this many syncs.
@@ -86,6 +87,50 @@ impl Cache {
 
     pub fn set(&self, key: &str, value: &str) -> Result<()> {
         set_kv(&self.conn, key, value)
+    }
+
+    pub fn issue_description(
+        &self,
+        host: &str,
+        account: &UserId,
+        content: &ContentId,
+    ) -> Result<Option<IssueDescription>> {
+        Ok(self.conn.query_row(
+            "SELECT body, fetched_at FROM issue_description WHERE host = ?1 AND account_id = ?2 AND content_id = ?3 AND body IS NOT NULL",
+            params![host, account.as_str(), content.as_str()],
+            |row| Ok(IssueDescription { body: row.get(0)?, fetched_at: row.get(1)? }),
+        ).optional()?)
+    }
+
+    pub fn begin_description(
+        &self,
+        host: &str,
+        account: &UserId,
+        content: &ContentId,
+    ) -> Result<i64> {
+        Ok(self.conn.query_row(
+            "INSERT INTO issue_description (host, account_id, content_id, revision) VALUES (?1, ?2, ?3, 1)
+             ON CONFLICT (host, account_id, content_id) DO UPDATE SET revision = revision + 1 RETURNING revision",
+            params![host, account.as_str(), content.as_str()], |row| row.get(0),
+        )?)
+    }
+
+    pub fn finish_description(
+        &self,
+        host: &str,
+        account: &UserId,
+        content: &ContentId,
+        revision: i64,
+        body: Option<&str>,
+    ) -> Result<Option<IssueDescription>> {
+        // A refusal must also supersede an older successful request still in flight.
+        self.conn.execute(&format!(
+            "UPDATE issue_description SET body = ?5, fetched_at = CASE WHEN ?5 IS NULL THEN NULL ELSE {NOW} END
+             WHERE host = ?1 AND account_id = ?2 AND content_id = ?3 AND revision = ?4"),
+            params![host, account.as_str(), content.as_str(), revision, body],
+        )?;
+
+        self.issue_description(host, account, content)
     }
 
     /// The cached project `<owner>/<number>`, where `@me` is the viewer of the last sync.

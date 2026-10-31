@@ -46,6 +46,14 @@ export const commands = {
 	/**  When the last full sync finished, in UTC. `None` before the first one. */
 	synced_at: string | null,
 } | null>("get_board", { projectId, viewId }),
+	cachedIssueDescription: (account: UserId, content: ContentId) => __TAURI_INVOKE<{
+	body: string,
+	fetched_at: string,
+} | null>("cached_issue_description", { account, content }),
+	refreshIssueDescription: (account: UserId, content: ContentId) => __TAURI_INVOKE<{
+	body: string,
+	fetched_at: string,
+} | null>("refresh_issue_description", { account, content }),
 	/**  Syncs now and waits for the result. */
 	refreshProject: (projectId: ProjectId) => __TAURI_INVOKE<SyncReport>("refresh_project", { projectId }),
 	/**  Accepted confirms the local enqueue commit, not synchronization with GitHub. */
@@ -183,6 +191,11 @@ to: OptionId | null; placement: Placement } | { type: "set_assignees"; project_i
  *  for the card shown until GitHub creates the real item.
  */
 { type: "create_draft"; project_id: ProjectId; item_id: ItemId; field_id: FieldId; column: OptionId | null; title: string };
+
+export type IssueDescription = {
+	body: string,
+	fetched_at: string,
+};
 
 export type IssueState = "open" | "closed";
 

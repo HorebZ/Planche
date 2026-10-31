@@ -67,6 +67,12 @@ pub struct Label {
     pub color: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct IssueDescription {
+    pub body: String,
+    pub fetched_at: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
 pub struct ProjectList {
     /// The viewer first, then organizations by login.

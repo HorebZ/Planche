@@ -11,6 +11,7 @@ import {
   IssueCard,
   type IssueCardData,
 } from "@/components/ui/issue-card";
+import { type DescriptionStatus, IssueDescriptionContent } from "@/components/ui/issue-description";
 import { IssueDetail } from "@/components/ui/issue-detail";
 import { IssueListGroup } from "@/components/ui/issue-list";
 import { LabelChip } from "@/components/ui/label-chip";
@@ -120,6 +121,34 @@ export function BoardSection() {
                   onStatus={() => {}}
                   onAssign={() => {}}
                   onGitHub={kind === "redacted" || kind === "missing" ? undefined : () => {}}
+                />
+              </State>
+            ))}
+          </Row>
+          <Row label="issue description">
+            {(
+              [
+                "loading",
+                "refreshing",
+                "ready",
+                "offline",
+                "error",
+                "unavailable",
+              ] as const satisfies DescriptionStatus[]
+            ).map((status) => (
+              <State
+                key={status}
+                label={status}
+                className="w-full rounded-xl bg-bg p-4"
+              >
+                <IssueDescriptionContent
+                  status={status}
+                  body={
+                    ["ready", "refreshing", "offline"].includes(status)
+                      ? "## A description\n\nRead as plain text.\n\n- Keep drafts\n- Restore focus"
+                      : undefined
+                  }
+                  onRetry={() => {}}
                 />
               </State>
             ))}

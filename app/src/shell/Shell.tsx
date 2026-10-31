@@ -6,6 +6,7 @@ import { Board } from "@/board/Board";
 import { EmptyBoard, LoadingBoard, SyncBar } from "@/board/BoardStates";
 import { cardData, focusCard } from "@/board/Card";
 import { filterBoard, selectionAfterRemoval } from "@/board/filter";
+import { IssueDescription } from "@/board/IssueDescription";
 import { NewDraft } from "@/board/NewDraft";
 import { StatusMenu } from "@/board/StatusMenu";
 import { statusTone } from "@/board/statusTone";
@@ -583,7 +584,9 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
                   ? "This item's content is unavailable with your current access."
                   : card.kind === "draft"
                     ? "This is a project draft. It has no GitHub issue page yet."
-                    : "Read the full description and activity on GitHub."
+                    : card.kind === "pull_request"
+                      ? "Read this pull request's description and activity on GitHub."
+                      : undefined
             }
             editable={Boolean(card && card.kind !== "redacted")}
             onBack={useUi.getState().closeDetail}
@@ -598,7 +601,16 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
                 ? () => void openUrl(urlOf(card, data.project.url))
                 : undefined
             }
-          />
+          >
+            {card?.kind === "issue" && auth.data?.id ? (
+              <IssueDescription
+                key={`${auth.data.id}:${card.id}`}
+                account={auth.data.id}
+                content={card.id}
+                offline={offline}
+              />
+            ) : null}
+          </IssueDetail>
         ) : null}
       </main>
       <CommandPalette
