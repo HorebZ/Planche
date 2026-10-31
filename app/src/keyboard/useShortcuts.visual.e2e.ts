@@ -11,7 +11,7 @@ const focused = (page: Page) =>
 const toast = (page: Page) => page.locator('[data-slot="toast"]');
 
 async function selectCard(page: Page, number: number) {
-  await card(page, number).click();
+  await card(page, number).focus();
 
   await expect.poll(() => focused(page)).toBe(`PVTI_${number}`);
 }

@@ -132,7 +132,7 @@ test("combined filters share results between Board/List, removable chips and res
       .evaluateAll((cards) => cards.map((card) => card.getAttribute("data-item-id")));
 
   await expect.poll(() => ids("issue-card")).toEqual(expected);
-  await expect(page.locator("main > header")).toContainText("4/17 issues");
+  await expect(page.locator('[data-slot="project-toolbar"]')).toContainText("4/17 issues");
   await page.getByRole("button", { name: "List", exact: true }).click();
 
   await expect.poll(() => ids("issue-list-row")).toEqual(expected);

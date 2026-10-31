@@ -34,7 +34,15 @@ function repoOf(board: Board, card: Card) {
 export function AssigneePicker({ board, card, viewer, onToggle }: AssigneePickerProps) {
   const open = useUi((s) => s.overlay?.type === "assign");
   // biome-ignore lint/correctness/useExhaustiveDependencies: the card element can change between two openings
-  const anchor = useMemo(() => ({ current: cardElement(card.item_id) }), [card.item_id, open]);
+  const anchor = useMemo(
+    () => ({
+      current:
+        document.querySelector<HTMLElement>(
+          '[data-slot="issue-detail"] [aria-label="Change assignees"]',
+        ) ?? cardElement(card.item_id),
+    }),
+    [card.item_id, open],
+  );
   const repo = repoOf(board, card);
   const listed = useQuery({ ...assignableUsersQuery(repo ?? ""), enabled: open && repo != null });
   const users = repo ? listed.data : viewer ? [viewer] : [];

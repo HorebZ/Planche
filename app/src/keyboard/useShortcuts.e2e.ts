@@ -27,7 +27,7 @@ async function open(page: Page) {
 }
 
 async function selectCard(page: Page, number: number) {
-  await card(page, number).click();
+  await card(page, number).focus();
 
   await expect.poll(() => focused(page)).toBe(`PVTI_${number}`);
 }

@@ -72,15 +72,24 @@ export const Card = memo(function Card({
   selected = false,
   hiddenProperties,
 }: CardProps) {
-  const { setNodeRef, attributes, listeners } = useSortable({ id: card.item_id });
+  const detailing = useUi((state) => state.detailId !== null);
+  const { setNodeRef, attributes, listeners } = useSortable({
+    id: card.item_id,
+    disabled: detailing,
+  });
   const ref = useRef<HTMLDivElement | null>(null);
 
   // A selection made with the keyboard moves the focus here. An open overlay keeps it.
   useLayoutEffect(() => {
-    if (selected && !useUi.getState().overlay && !ref.current?.contains(document.activeElement)) {
+    if (
+      selected &&
+      !detailing &&
+      !useUi.getState().overlay &&
+      !ref.current?.contains(document.activeElement)
+    ) {
       ref.current?.focus();
     }
-  }, [selected]);
+  }, [selected, detailing]);
 
   return (
     <IssueCard
@@ -93,6 +102,11 @@ export const Card = memo(function Card({
       }}
       {...attributes}
       {...listeners}
+      onClick={(event) => {
+        if (!event.defaultPrevented && !(event.target as HTMLElement).closest("button, a")) {
+          useUi.getState().openDetail(card.item_id);
+        }
+      }}
       onFocus={() => {
         useUi.getState().finishReveal(card.item_id);
 
@@ -110,7 +124,12 @@ export const Card = memo(function Card({
 });
 
 export function cardElement(id: string) {
-  return document.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(id)}"]`);
+  const selector = `[data-item-id="${CSS.escape(id)}"]`;
+
+  return (
+    document.querySelector<HTMLElement>(`[data-slot="issue-detail"] ${selector}`) ??
+    document.querySelector<HTMLElement>(selector)
+  );
 }
 
 /** Gives the focus back to a card after an overlay closes. */
