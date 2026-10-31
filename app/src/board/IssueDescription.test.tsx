@@ -173,7 +173,7 @@ test("an account change clears descriptions and rejects an old IPC response", as
   client.clear();
 });
 
-test("description text never renders HTML or loads remote images", () => {
+test("description Markdown never renders raw HTML or loads remote images", () => {
   const body = "<script>alert(1)</script>\n![tracking](https://example.com/pixel.png)";
 
   render(
@@ -181,9 +181,10 @@ test("description text never renders HTML or loads remote images", () => {
       status="ready"
       body={body}
       onRetry={() => {}}
+      onOpenLink={() => {}}
     />,
   );
 
-  expect(get('[aria-label="Description"]').textContent).toContain(body);
+  expect(get('[aria-label="Description"]').textContent).toContain("Image not loaded: tracking");
   expect(document.querySelector("script, img, a")).toBeNull();
 });

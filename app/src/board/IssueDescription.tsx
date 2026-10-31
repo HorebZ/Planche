@@ -1,15 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { type DescriptionStatus, IssueDescriptionContent } from "@/components/ui/issue-description";
+import { notify } from "@/components/ui/toast";
 import { cachedDescriptionQuery, descriptionQuery, errorMessage } from "@/ipc/queries";
 
 export function IssueDescription({
   account,
   content,
   offline,
+  sourceUrl,
 }: {
   account: string;
   content: string;
   offline: boolean;
+  sourceUrl?: string;
 }) {
   const cached = useQuery(cachedDescriptionQuery(account, content));
   const fresh = useQuery({ ...descriptionQuery(account, content), enabled: !offline });
@@ -38,6 +42,12 @@ export function IssueDescription({
       status={status}
       message={failure && !networkError ? errorMessage(failure) : undefined}
       onRetry={() => void fresh.refetch()}
+      sourceUrl={sourceUrl}
+      onOpenLink={(url) =>
+        void openUrl(url).catch((error) =>
+          notify(`Could not open link: ${errorMessage(error)}`, "error"),
+        )
+      }
     />
   );
 }

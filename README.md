@@ -115,10 +115,13 @@ signature changes. `PLANCHE_TOKEN` bypasses Keychain authentication for developm
 The board lives in a SQLite cache at `~/Library/Application Support/dev.planche.app/cache.sqlite`. `PLANCHE_CACHE` overrides the path. `board` prints the cached board at once, then refreshes it from GitHub. A move shows at once and goes into a queue. When GitHub is unreachable, the move stays queued, and the next `sync` sends it.
 
 Opening an issue in the desktop app reads its saved description immediately and
-revalidates it on each online opening. Descriptions are plain text, cached separately
-by GitHub host, account and issue ID. Offline copies are marked as saved; a refused
-or missing issue removes the saved text. Pull requests and drafts keep their explicit
-GitHub fallback. Markdown rendering is tracked in #35.
+revalidates it on each online opening. The app renders descriptions as CommonMark
+and caches them separately by GitHub host, account and issue ID. Offline copies are
+marked as saved; a refused or missing issue removes the saved text. Pull requests and drafts keep their explicit
+GitHub fallback. Raw HTML is ignored; images remain unloaded text placeholders.
+Links allow HTTP, HTTPS and mailto and open externally. A rendering error falls
+back to plain text. GitHub-specific extensions such as task lists and tables are
+not enabled.
 
 In debug builds, `PLANCHE_FAULT` injects failures: `fail_page_2`, `fail_mutations`, `hang_before_ack` and `ratelimit_low`.
 
