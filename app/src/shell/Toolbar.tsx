@@ -1,5 +1,6 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Columns3, Link, List, Search } from "lucide-react";
+import { statusTone } from "@/board/statusTone";
 import { Button } from "@/components/ui/button";
 import { DisplayMenu, type DisplayProperty } from "@/components/ui/display-menu";
 import {
@@ -12,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { type ProjectTone, projectTones } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StatusFilter } from "@/components/ui/status-filter";
 import { SyncIndicator } from "@/components/ui/sync-indicator";
 import type { Board, ProjectMeta, SyncStatus, ViewId } from "@/ipc/bindings";
 import type { ProjectLayout } from "@/stores/preferences";
@@ -29,6 +31,13 @@ type ToolbarProps = {
   onSearch: () => void;
   hiddenProperties?: DisplayProperty[];
   onPropertyChange: (property: DisplayProperty, visible: boolean) => void;
+  statuses: (string | null)[];
+  onStatusesChange: (statuses: (string | null)[]) => void;
+  filterOpen: boolean;
+  onFilterOpenChange: (open: boolean) => void;
+  onFilterClose: (event: Event) => void;
+  dragging: boolean;
+  visibleCount: number;
 };
 
 export function Toolbar({
@@ -43,6 +52,13 @@ export function Toolbar({
   onSearch,
   hiddenProperties,
   onPropertyChange,
+  statuses,
+  onStatusesChange,
+  filterOpen,
+  onFilterOpenChange,
+  onFilterClose,
+  dragging,
+  visibleCount,
 }: ToolbarProps) {
   const busy = busyLabel(status, !board);
   const feedback = footerText(status, board?.synced_at ?? null, Date.now(), error);
@@ -155,9 +171,36 @@ export function Toolbar({
             </button>
           ))}
         </fieldset>
+        <StatusFilter
+          options={
+            board?.columns.map((column) => ({
+              id: column.option_id,
+              name: column.name,
+              status: statusTone(column.color, column.name),
+            })) ?? []
+          }
+          selected={statuses}
+          onChange={onStatusesChange}
+          open={filterOpen}
+          onOpenChange={onFilterOpenChange}
+          onCloseAutoFocus={onFilterClose}
+          disabled={!board || dragging}
+        />
+        {statuses.length ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={dragging}
+            onClick={() => onStatusesChange([])}
+          >
+            Clear filters
+          </Button>
+        ) : null}
         <span className="flex-1" />
         {board ? (
-          <span className="mr-2 text-[12px] text-fg-3 tabular-nums">{count} issues</span>
+          <span className="mr-2 text-[12px] text-fg-3 tabular-nums">
+            {statuses.length ? `${visibleCount}/${count}` : count} issues
+          </span>
         ) : null}
         <DisplayMenu
           hidden={hiddenProperties}

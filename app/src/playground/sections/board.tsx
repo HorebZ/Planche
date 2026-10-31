@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Avatar, AvatarStack } from "@/components/ui/avatar";
 import { BoardColumn } from "@/components/ui/board-column";
+import { NoFilterResults } from "@/components/ui/board-states";
 import { DisplayMenu, type DisplayProperty } from "@/components/ui/display-menu";
 import { DragBubble, DragHelpBar } from "@/components/ui/drag";
 import {
@@ -13,6 +14,7 @@ import { IssueListGroup } from "@/components/ui/issue-list";
 import { LabelChip } from "@/components/ui/label-chip";
 import { PriorityGlyph, ProgressRing } from "@/components/ui/planche-glyph";
 import { StatusChip, type StatusKey, StatusSquare, statusLabels } from "@/components/ui/status";
+import { StatusFilter } from "@/components/ui/status-filter";
 import { Row, Section, State } from "../kit";
 
 const portrait =
@@ -188,6 +190,7 @@ export function BoardSection() {
             </div>
           </Row>
           <Row label="card">
+            <FilterPreview />
             <DisplayPreview />
             <State label="default">
               <IssueCard
@@ -515,6 +518,24 @@ function DisplayPreview() {
           labels.keyboard,
         ]}
       />
+    </div>
+  );
+}
+
+function FilterPreview() {
+  const [selected, setSelected] = useState<(string | null)[]>(["todo"]);
+
+  return (
+    <div className="flex w-[300px] flex-col gap-2">
+      <StatusFilter
+        selected={selected}
+        onChange={setSelected}
+        options={[
+          { id: "todo", name: "Todo", status: "todo" },
+          { id: null, name: "No Status", status: "draft" },
+        ]}
+      />
+      <NoFilterResults onReset={() => setSelected([])} />
     </div>
   );
 }

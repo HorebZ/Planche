@@ -9,12 +9,15 @@ export type Overlay =
   | { type: "assign" }
   | { type: "help" }
   | { type: "settings" }
+  | { type: "filters" }
   | { type: "draft"; column: OptionId | null; editor: string };
 
 type UiState = {
   /** The project the user picked in this session. `null` falls back to the last opened one. */
   projectId: ProjectId | null;
   viewId: ViewId | null;
+  statusFilter: (OptionId | null)[];
+  setStatusFilter: (statuses: (OptionId | null)[]) => void;
   /** The card the keyboard acts on. It holds the focus ring. */
   selectedId: ItemId | null;
   revealId: ItemId | null;
@@ -50,6 +53,12 @@ type UiState = {
 export const useUi = create<UiState>()((set, get) => ({
   projectId: null,
   viewId: null,
+  statusFilter: [],
+  setStatusFilter: (statusFilter) => {
+    if (!get().dragging) {
+      set({ statusFilter });
+    }
+  },
   selectedId: null,
   revealId: null,
   overlay: null,
@@ -63,6 +72,7 @@ export const useUi = create<UiState>()((set, get) => ({
       projectId,
       overlay: null,
       viewId: null,
+      statusFilter: [],
       selectedId: null,
       revealId: null,
       undo: null,
@@ -72,6 +82,7 @@ export const useUi = create<UiState>()((set, get) => ({
   selectView: (viewId) =>
     set((s) => ({
       viewId,
+      statusFilter: [],
       revealId: null,
       overlay: null,
       undo: null,
@@ -96,6 +107,7 @@ export const useUi = create<UiState>()((set, get) => ({
   },
   invalidateUndo: () =>
     set((s) => ({
+      statusFilter: [],
       revealId: null,
       overlay: null,
       undo: null,

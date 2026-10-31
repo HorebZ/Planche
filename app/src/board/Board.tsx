@@ -30,6 +30,7 @@ import { useUi } from "@/stores/ui";
 import { cardData } from "./Card";
 import { Column, type Landing } from "./Column";
 import { markDropFrame, startFrames, stopFrames } from "./dragPerf";
+import { dropPlacement } from "./filter";
 import { flip, type Rect } from "./flip";
 import { statusTone } from "./statusTone";
 import type { DispatchResult } from "./useActions";
@@ -68,6 +69,7 @@ const collision: CollisionDetection = (args) => {
 type BoardProps = {
   hiddenProperties?: DisplayProperty[];
   board: BoardData;
+  canonicalBoard: BoardData;
   onMove: (intent: Intent) => Promise<unknown>;
   /** A title typed in a column's new-draft field, and that column. */
   onCreateDraft: (
@@ -83,6 +85,7 @@ export const Board = memo(function Board({
   onMove,
   onCreateDraft,
   hiddenProperties,
+  canonicalBoard,
 }: BoardProps) {
   usePaintedMark();
 
@@ -94,8 +97,10 @@ export const Board = memo(function Board({
     setDragState(next);
   }, []);
   const boardRef = useRef(board);
+  const canonicalRef = useRef(canonicalBoard);
 
   boardRef.current = board;
+  canonicalRef.current = canonicalBoard;
 
   const manualOrder = board.view?.manual_order ?? true;
 
@@ -207,10 +212,23 @@ export const Board = memo(function Board({
 
       const b = boardRef.current;
       const overId = String(over.id);
+      const pointerY =
+        activatorEvent instanceof PointerEvent || activatorEvent instanceof MouseEvent
+          ? activatorEvent.clientY + delta.y
+          : (active.rect.current.translated?.top ?? 0);
       let to: Spot;
 
       if (overId.startsWith("column:")) {
         const column = Number(overId.slice("column:".length));
+        const placeholder =
+          column === current.to.column
+            ? document.querySelector('[data-slot="card-placeholder"]')?.getBoundingClientRect()
+            : null;
+
+        // The placeholder is not droppable; hovering it must not send the card to the end.
+        if (placeholder && pointerY >= placeholder.top && pointerY <= placeholder.bottom) {
+          return;
+        }
 
         to = { column, index: others(b, column, current.id).length };
       } else {
@@ -221,10 +239,6 @@ export const Board = memo(function Board({
         }
 
         const index = others(b, spot.column, current.id).findIndex((c) => c.item_id === overId);
-        const pointerY =
-          activatorEvent instanceof PointerEvent || activatorEvent instanceof MouseEvent
-            ? activatorEvent.clientY + delta.y
-            : (active.rect.current.translated?.top ?? 0);
         const below = pointerY > over.rect.top + over.rect.height / 2;
 
         to = { column: spot.column, index: below ? index + 1 : index };
@@ -260,7 +274,7 @@ export const Board = memo(function Board({
         return setDragging(false);
       }
 
-      const intent = intentFor(boardRef.current, current, manualOrder);
+      const intent = intentFor(boardRef.current, canonicalRef.current, current, manualOrder);
 
       if (!intent) {
         return setDragging(false);
@@ -373,14 +387,17 @@ export const Board = memo(function Board({
 });
 
 /** The move a drop asks for, or `null` when the card lands where it was. */
-function intentFor(board: BoardData, drag: Drag, manualOrder: boolean): Intent | null {
+function intentFor(
+  board: BoardData,
+  canonical: BoardData,
+  drag: Drag,
+  manualOrder: boolean,
+): Intent | null {
   const sameColumn = drag.to.column === drag.from.column;
 
   if (sameColumn && (!manualOrder || drag.to.index === drag.from.index)) {
     return null;
   }
-
-  const before = others(board, drag.to.column, drag.id)[drag.to.index - 1];
 
   return {
     type: "move_card",
@@ -388,7 +405,9 @@ function intentFor(board: BoardData, drag: Drag, manualOrder: boolean): Intent |
     item_id: drag.id,
     field_id: board.field.id,
     to: board.columns[drag.to.column].option_id,
-    placement: !manualOrder ? "keep" : before ? { after: before.item_id } : "top",
+    placement: !manualOrder
+      ? "keep"
+      : dropPlacement(canonical, board.columns[drag.to.column], drag.id, drag.to.index),
   };
 }
 

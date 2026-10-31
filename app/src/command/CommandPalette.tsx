@@ -27,10 +27,11 @@ type CommandPaletteProps = {
   /** The selected card, which the palette acts on until ⌫ clears it. */
   card: Card | null;
   commands: PaletteCommand[];
+  onReveal: (id: string) => void;
 };
 
 /** Screen 4: ⌘K. Runs every action, and finds a card to select. */
-export function CommandPalette({ board, card, commands }: CommandPaletteProps) {
+export function CommandPalette({ board, card, commands, onReveal }: CommandPaletteProps) {
   const scopeId = useId();
   const open = useUi((s) => s.overlay?.type === "palette");
   const [query, setQuery] = useState("");
@@ -171,7 +172,7 @@ export function CommandPalette({ board, card, commands }: CommandPaletteProps) {
                 query={query}
                 onPick={() => {
                   close();
-                  useUi.getState().revealCard(c.item_id);
+                  onReveal(c.item_id);
                 }}
               />
             ))}

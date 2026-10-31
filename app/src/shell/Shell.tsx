@@ -1,10 +1,11 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { useCallback } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import { AssigneePicker } from "@/board/AssigneePicker";
 import { Board } from "@/board/Board";
 import { EmptyBoard, LoadingBoard, SyncBar } from "@/board/BoardStates";
-import { cardData } from "@/board/Card";
+import { cardData, focusCard } from "@/board/Card";
+import { filterBoard, selectionAfterRemoval } from "@/board/filter";
 import { NewDraft } from "@/board/NewDraft";
 import { StatusMenu } from "@/board/StatusMenu";
 import { statusTone } from "@/board/statusTone";
@@ -20,7 +21,7 @@ import {
 } from "@/command/commands";
 import { ShortcutSheet } from "@/command/ShortcutSheet";
 import { Banner } from "@/components/ui/banner";
-import { BoardErrorCard } from "@/components/ui/board-states";
+import { BoardErrorCard, NoFilterResults } from "@/components/ui/board-states";
 import { Button } from "@/components/ui/button";
 import { IssueListGroup } from "@/components/ui/issue-list";
 import { defaultProjectTones } from "@/components/ui/sidebar";
@@ -59,8 +60,10 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   const selectedId = useUi((s) => s.selectedId);
   const revealId = useUi((s) => s.revealId);
   const overlay = useUi((s) => s.overlay);
+  const statuses = useUi((s) => s.statusFilter);
+  const dragging = useUi((s) => s.dragging);
   const drafting = overlay?.type === "draft";
-  const { selectProject, selectView, select, open: show } = useUi.getState();
+  const { selectProject, selectView, select, open: show, setStatusFilter } = useUi.getState();
   const board = useBoard(projectId, viewId);
   const project = useProject(projectId);
   const projects = useProjects();
@@ -77,6 +80,54 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   const layout = viewPreferences?.layout ?? "board";
   const setLayout = (layout: ProjectLayout) => usePreferences.getState().setLayout(context, layout);
   const card = data?.columns.flatMap((c) => c.cards).find((c) => c.item_id === selectedId) ?? null;
+  const visibleBoard = useMemo(() => (data ? filterBoard(data, statuses) : null), [data, statuses]);
+  const visibleIds = useMemo(
+    () =>
+      visibleBoard?.columns
+        .filter(
+          (column) =>
+            layout === "board" ||
+            !viewPreferences?.collapsedGroups.includes(column.option_id ?? "none"),
+        )
+        .flatMap((column) => column.cards.map((card) => card.item_id)) ?? [],
+    [visibleBoard, layout, viewPreferences?.collapsedGroups],
+  );
+  const visibleCount =
+    visibleBoard?.columns.reduce((count, column) => count + column.cards.length, 0) ?? 0;
+  const previousIds = useRef<string[]>([]);
+  const viewRef = useRef<HTMLElement>(null);
+
+  useLayoutEffect(() => {
+    if (!data || dragging) {
+      return;
+    }
+
+    const previous = previousIds.current;
+
+    previousIds.current = visibleIds;
+
+    if (revealId || !selectedId || visibleIds.includes(selectedId)) {
+      return;
+    }
+
+    const next = selectionAfterRemoval(previous, visibleIds, selectedId);
+
+    if (next) {
+      if (overlay) {
+        select(next);
+      } else {
+        useUi.getState().revealCard(next);
+        focusCard(next);
+      }
+    } else {
+      select(null);
+
+      if (!overlay) {
+        viewRef.current?.focus();
+      }
+    }
+  }, [data, visibleIds, selectedId, revealId, dragging, overlay, select]);
+
   const viewer: User | null = auth.data?.id
     ? { id: auth.data.id, login: auth.data.login ?? "", avatar_url: auth.data.avatar_url ?? "" }
     : null;
@@ -105,18 +156,20 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
       return;
     }
 
-    const column = card ? data.columns[columnIndexOf(data, card)] : data.columns[0];
+    const column = card
+      ? data.columns[columnIndexOf(data, card)]
+      : data.columns.find((column) => !statuses.length || statuses.includes(column.option_id));
 
     newDraft(column?.option_id ?? null);
   };
 
   const step = (direction: Direction) => {
-    if (!data) {
+    if (!visibleBoard) {
       return;
     }
 
     if (layout === "board") {
-      return select(navigate(data, selectedId, direction));
+      return select(navigate(visibleBoard, selectedId, direction));
     }
 
     const rows = [...document.querySelectorAll<HTMLElement>('[data-slot="issue-list-row"]')];
@@ -170,6 +223,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   };
 
   useShortcuts({
+    "filters.open": () => data && show({ type: "filters" }),
     "palette.open": showPalette,
     "settings.open": () => show({ type: "settings" }),
     "issue.new": newIssue,
@@ -301,6 +355,30 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
           layout={layout}
           onLayoutChange={setLayout}
           onSearch={showPalette}
+          statuses={statuses}
+          onStatusesChange={setStatusFilter}
+          filterOpen={overlay?.type === "filters"}
+          onFilterOpenChange={(open) => show(open ? { type: "filters" } : null)}
+          onFilterClose={(event) => {
+            event.preventDefault();
+
+            requestAnimationFrame(() => {
+              const { selectedId: id, overlay, dragging } = useUi.getState();
+
+              if (overlay || dragging) {
+                return;
+              }
+
+              if (id) {
+                useUi.getState().revealCard(id);
+                focusCard(id);
+              } else {
+                viewRef.current?.focus();
+              }
+            });
+          }}
+          dragging={dragging}
+          visibleCount={visibleCount}
           hiddenProperties={viewPreferences?.hiddenProperties}
           onPropertyChange={(property, visible) =>
             usePreferences.getState().setPropertyVisible(context, property, visible)
@@ -331,7 +409,12 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
             }
           />
         ) : null}
-        <div className="min-h-0 flex-1">
+        <section
+          ref={viewRef}
+          tabIndex={-1}
+          aria-label="Project view"
+          className="min-h-0 flex-1 outline-none"
+        >
           {data == null && failed ? (
             <div className="grid h-full place-items-center overflow-y-auto p-6">
               <BoardErrorCard
@@ -343,6 +426,8 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
             </div>
           ) : data == null ? (
             <LoadingBoard />
+          ) : statuses.length > 0 && visibleCount === 0 && !drafting ? (
+            <NoFilterResults onReset={() => setStatusFilter([])} />
           ) : cards === 0 && !drafting && layout === "board" ? (
             <EmptyBoard
               board={data}
@@ -354,7 +439,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
               data-slot="issue-list"
               className="h-full overflow-y-auto"
             >
-              {data.columns.map((column) => (
+              {visibleBoard?.columns.map((column) => (
                 <IssueListGroup
                   key={column.option_id ?? "none"}
                   name={column.name}
@@ -392,18 +477,34 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
             </div>
           ) : (
             <Board
-              board={data}
+              board={visibleBoard ?? data}
+              canonicalBoard={data}
               hiddenProperties={viewPreferences?.hiddenProperties}
               onMove={run}
               onCreateDraft={onCreateDraft}
             />
           )}
-        </div>
+        </section>
       </main>
       <CommandPalette
         board={data}
         card={card}
         commands={commands}
+        onReveal={(id) => {
+          if (
+            statuses.length &&
+            data?.columns.some(
+              (column) =>
+                !statuses.includes(column.option_id) &&
+                column.cards.some((card) => card.item_id === id),
+            )
+          ) {
+            setStatusFilter([]);
+            notify("Status filters cleared to show the search result");
+          }
+
+          useUi.getState().revealCard(id);
+        }}
       />
       <ShortcutSheet />
       {data && card ? (

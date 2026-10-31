@@ -12,6 +12,20 @@ const cardWidths = [
   ["58%", "62%"],
 ];
 
+export function NoFilterResults({ onReset }: { onReset: () => void }) {
+  return (
+    <div className="grid h-full place-items-center p-6">
+      <div
+        role="status"
+        className="flex flex-col items-center gap-3 text-fg-2"
+      >
+        <p>No issues match these filters</p>
+        <Button onClick={onReset}>Clear filters</Button>
+      </div>
+    </div>
+  );
+}
+
 export function BoardErrorCard({
   message,
   pending,
