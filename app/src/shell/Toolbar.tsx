@@ -13,9 +13,9 @@ import { type ProjectTone, projectTones } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SyncIndicator } from "@/components/ui/sync-indicator";
 import type { Board, ProjectMeta, SyncStatus, ViewId } from "@/ipc/bindings";
+import type { ProjectLayout } from "@/stores/preferences";
 import { busyLabel, footerText } from "./syncText";
 
-export type ProjectLayout = "board" | "list";
 type ToolbarProps = {
   tone: ProjectTone;
   board: Board | null | undefined;
@@ -60,9 +60,19 @@ export function Toolbar({
               data-slot="project-color"
               className={`size-2.5 rounded-[3px] ${projectTones[tone]}`}
             />
+            <span className="truncate font-medium">{board.project.title}</span>
+            <span
+              aria-hidden
+              className="text-fg-3"
+            >
+              /
+            </span>
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex h-7 items-center gap-2 rounded-md px-0.5 font-medium outline-none hover:bg-hover focus-visible:shadow-ring">
-                {board.project.title}
+              <DropdownMenuTrigger
+                aria-label={`GitHub view: ${board.view?.name ?? "No GitHub view"}`}
+                className="flex h-7 min-w-0 items-center gap-2 rounded-md px-0.5 text-fg-2 outline-none hover:bg-hover focus-visible:shadow-ring"
+              >
+                <span className="truncate">{board.view?.name ?? "No GitHub view"}</span>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-[240px]">
                 <DropdownMenuLabel>Project views</DropdownMenuLabel>
@@ -131,6 +141,7 @@ export function Toolbar({
               key={id}
               type="button"
               aria-pressed={layout === id}
+              disabled={!board}
               onClick={() => onLayoutChange(id)}
               className={`flex h-7 items-center gap-1.5 rounded-full px-3 font-medium focus-visible:shadow-ring ${layout === id ? "bg-active" : "text-fg-2 shadow-[inset_0_0_0_1px_var(--pl-border-strong)] hover:bg-hover"}`}
             >

@@ -174,6 +174,18 @@ export function BoardSection() {
               />
             </div>
           </Row>
+          <Row label="collapsed list group">
+            <div className="w-full">
+              <IssueListGroup
+                name="Todo"
+                status="todo"
+                expanded={false}
+                onExpandedChange={() => {}}
+                items={[{ ...openIssue, id: "collapsed-preview" }]}
+                onOpen={() => {}}
+              />
+            </div>
+          </Row>
           <Row label="card">
             <State label="default">
               <IssueCard

@@ -3,7 +3,7 @@ import { beforeEach, expect, test } from "vitest";
 import { usePreferences } from "./preferences";
 
 beforeEach(() =>
-  usePreferences.setState({ theme: "system", hiddenProjects: {}, projectColors: {} }),
+  usePreferences.setState({ theme: "system", hiddenProjects: {}, projectColors: {}, views: {} }),
 );
 
 test("project colors persist independently for each account and project", async () => {
@@ -41,5 +41,44 @@ test("existing preferences load without saved project colors", async () => {
     theme: "dark",
     hiddenProjects: { alice: ["board"] },
     projectColors: {},
+    views: {},
   });
+});
+
+test("layouts and collapsed groups persist per account, project and view", async () => {
+  const { setLayout, setGroupExpanded } = usePreferences.getState();
+  const contexts = [
+    ["alice", "project", 1],
+    ["bob", "project", 1],
+    ["alice", "other", 1],
+    ["alice", "project", 2],
+    ["alice", "project", null],
+  ].map((context) => JSON.stringify(context));
+
+  for (const context of contexts) {
+    setGroupExpanded(context, "todo", false);
+    setGroupExpanded(context, "todo", false);
+  }
+
+  setLayout(contexts[0], "list");
+  setGroupExpanded(contexts[0], "done", false);
+  setGroupExpanded(contexts[0], "todo", true);
+
+  const saved = localStorage.getItem("planche-ui-preferences");
+
+  if (!saved) {
+    throw new Error("Missing saved preferences");
+  }
+
+  usePreferences.setState({ views: {} });
+  localStorage.setItem("planche-ui-preferences", saved);
+  await usePreferences.persist.rehydrate();
+
+  const { views } = usePreferences.getState();
+
+  expect(views[contexts[0]]).toEqual({ layout: "list", collapsedGroups: ["done"] });
+
+  for (const context of contexts.slice(1)) {
+    expect(views[context]).toEqual({ layout: "board", collapsedGroups: ["todo"] });
+  }
 });
