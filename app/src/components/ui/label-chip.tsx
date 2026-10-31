@@ -35,7 +35,7 @@ export function LabelChip({ name, color, className, ...props }: LabelChipProps) 
         className="size-1.5 shrink-0 rounded-full"
         style={{ backgroundColor: githubColor(color) }}
       />
-      {name}
+      <span className="truncate">{name}</span>
     </span>
   );
 }

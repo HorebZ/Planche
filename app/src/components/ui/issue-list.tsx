@@ -1,8 +1,9 @@
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { AvatarStack } from "@/components/ui/avatar";
+import type { DisplayProperty } from "@/components/ui/display-menu";
 import type { IssueCardData } from "@/components/ui/issue-card";
-import { LabelChip } from "@/components/ui/label-chip";
+import { LabelSummary } from "@/components/ui/label-summary";
 import { type StatusKey, StatusSquare } from "@/components/ui/status";
 import { commandFor } from "@/keyboard/shortcuts";
 
@@ -18,6 +19,7 @@ export function IssueListGroup({
   onRevealed,
   expanded: controlledExpanded,
   onExpandedChange,
+  hiddenProperties = [],
 }: {
   name: string;
   status: StatusKey;
@@ -30,6 +32,7 @@ export function IssueListGroup({
   onRevealed?: (id: string) => void;
   expanded?: boolean;
   onExpandedChange?: (expanded: boolean) => void;
+  hiddenProperties?: DisplayProperty[];
 }) {
   const [localExpanded, setLocalExpanded] = useState(true);
   const expanded = controlledExpanded ?? localExpanded;
@@ -75,6 +78,7 @@ export function IssueListGroup({
       <div className="flex items-center bg-hover">
         <button
           type="button"
+          data-slot="issue-list-toggle"
           onClick={() => setExpanded(!expanded)}
           onKeyDown={(event) => {
             const command = commandFor(event.nativeEvent, "board");
@@ -113,39 +117,41 @@ export function IssueListGroup({
       {draft}
       {expanded
         ? items.map((item) => (
-            <button
+            <div
               key={item.id}
-              type="button"
-              onClick={() => onOpen(item.id)}
-              data-slot="issue-list-row"
-              data-item-id={item.id}
-              onFocus={() => onSelect?.(item.id)}
-              className="flex h-[38px] w-full items-center gap-2.5 border-line border-b px-4 text-left hover:bg-hover focus-visible:bg-active focus-visible:shadow-none"
+              className="flex h-[38px] w-full items-center gap-2.5 border-line border-b px-4 text-left focus-within:bg-active hover:bg-hover"
             >
-              <span className="w-4 shrink-0" />
-              <span className="w-[68px] shrink-0 truncate text-[12px] text-fg-3 tabular-nums">
-                {item.repo}
-                {item.number != null ? `#${item.number}` : "Draft"}
-              </span>
-              <StatusSquare status={item.status ?? status} />
-              <span className="min-w-0 flex-1 truncate font-medium">{item.title}</span>
-              {item.pending ? <span className="text-warning text-xs">Pending</span> : null}
-              <div className="flex max-w-1/3 gap-1 overflow-hidden">
-                {item.labels.map((label) => (
-                  <LabelChip
-                    key={label.name}
-                    {...label}
-                    className="h-[22px] shrink-0 rounded-full"
+              <button
+                type="button"
+                onClick={() => onOpen(item.id)}
+                onFocus={() => onSelect?.(item.id)}
+                data-slot="issue-list-row"
+                data-item-id={item.id}
+                className="flex h-full min-w-0 flex-1 items-center gap-2.5 text-left outline-none focus-visible:shadow-ring"
+              >
+                <span className="w-4 shrink-0" />
+                <span className="w-[68px] shrink-0 truncate text-[12px] text-fg-3 tabular-nums">
+                  {hiddenProperties.includes("repository") ? null : item.repo}
+                  {item.number != null ? `#${item.number}` : "Draft"}
+                </span>
+                <StatusSquare status={item.status ?? status} />
+                <span className="min-w-0 flex-1 truncate font-medium">{item.title}</span>
+                {item.pending ? <span className="text-warning text-xs">Pending</span> : null}
+              </button>
+              {!hiddenProperties.includes("labels") ? (
+                <div className="min-w-0 max-w-1/3">
+                  <LabelSummary labels={item.labels} />
+                </div>
+              ) : null}
+              {!hiddenProperties.includes("assignees") ? (
+                <div className="flex w-7 justify-end">
+                  <AvatarStack
+                    users={item.assignees}
+                    size={18}
                   />
-                ))}
-              </div>
-              <div className="flex w-7 justify-end">
-                <AvatarStack
-                  users={item.assignees}
-                  size={18}
-                />
-              </div>
-            </button>
+                </div>
+              ) : null}
+            </div>
           ))
         : null}
     </section>

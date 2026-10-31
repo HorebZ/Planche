@@ -1,6 +1,7 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Columns3, Link, List, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DisplayMenu, type DisplayProperty } from "@/components/ui/display-menu";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +27,8 @@ type ToolbarProps = {
   layout: ProjectLayout;
   onLayoutChange: (layout: ProjectLayout) => void;
   onSearch: () => void;
+  hiddenProperties?: DisplayProperty[];
+  onPropertyChange: (property: DisplayProperty, visible: boolean) => void;
 };
 
 export function Toolbar({
@@ -38,6 +41,8 @@ export function Toolbar({
   layout,
   onLayoutChange,
   onSearch,
+  hiddenProperties,
+  onPropertyChange,
 }: ToolbarProps) {
   const busy = busyLabel(status, !board);
   const feedback = footerText(status, board?.synced_at ?? null, Date.now(), error);
@@ -154,6 +159,11 @@ export function Toolbar({
         {board ? (
           <span className="mr-2 text-[12px] text-fg-3 tabular-nums">{count} issues</span>
         ) : null}
+        <DisplayMenu
+          hidden={hiddenProperties}
+          onChange={onPropertyChange}
+          disabled={!board}
+        />
         <Button
           variant="ghost"
           size="icon"

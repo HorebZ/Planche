@@ -46,7 +46,7 @@ test("existing preferences load without saved project colors", async () => {
 });
 
 test("layouts and collapsed groups persist per account, project and view", async () => {
-  const { setLayout, setGroupExpanded } = usePreferences.getState();
+  const { setLayout, setGroupExpanded, setPropertyVisible } = usePreferences.getState();
   const contexts = [
     ["alice", "project", 1],
     ["bob", "project", 1],
@@ -55,12 +55,18 @@ test("layouts and collapsed groups persist per account, project and view", async
     ["alice", "project", null],
   ].map((context) => JSON.stringify(context));
 
+  setPropertyVisible(contexts[0], "labels", false);
+
   for (const context of contexts) {
     setGroupExpanded(context, "todo", false);
     setGroupExpanded(context, "todo", false);
   }
 
   setLayout(contexts[0], "list");
+  setPropertyVisible(contexts[0], "labels", false);
+  setPropertyVisible(contexts[0], "labels", false);
+  setPropertyVisible(contexts[0], "repository", false);
+  setPropertyVisible(contexts[0], "repository", true);
   setGroupExpanded(contexts[0], "done", false);
   setGroupExpanded(contexts[0], "todo", true);
 
@@ -76,7 +82,11 @@ test("layouts and collapsed groups persist per account, project and view", async
 
   const { views } = usePreferences.getState();
 
-  expect(views[contexts[0]]).toEqual({ layout: "list", collapsedGroups: ["done"] });
+  expect(views[contexts[0]]).toEqual({
+    layout: "list",
+    collapsedGroups: ["done"],
+    hiddenProperties: ["labels"],
+  });
 
   for (const context of contexts.slice(1)) {
     expect(views[context]).toEqual({ layout: "board", collapsedGroups: ["todo"] });

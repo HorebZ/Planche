@@ -77,7 +77,7 @@ for (const colorScheme of ["light", "dark"] as const) {
       .locator('[data-slot="issue-list-group"]')
       .filter({ has: page.getByText("Todo", { exact: true }) });
 
-    await todo.locator("button[aria-expanded]").click();
+    await todo.locator('[data-slot="issue-list-toggle"]').click();
     await todo.getByRole("button", { name: "Add draft to Todo", exact: true }).click();
     await todo.getByLabel("Draft title").fill("From collapsed List");
     await page.screenshot({ path: testInfo.outputPath("list-draft.png") });

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Avatar, AvatarStack } from "@/components/ui/avatar";
 import { BoardColumn } from "@/components/ui/board-column";
+import { DisplayMenu, type DisplayProperty } from "@/components/ui/display-menu";
 import { DragBubble, DragHelpBar } from "@/components/ui/drag";
 import {
   CardPlaceholder,
@@ -187,6 +188,7 @@ export function BoardSection() {
             </div>
           </Row>
           <Row label="card">
+            <DisplayPreview />
             <State label="default">
               <IssueCard
                 {...openIssue}
@@ -486,5 +488,33 @@ function DraftColumnPreview() {
         />
       ) : null}
     </BoardColumn>
+  );
+}
+
+function DisplayPreview() {
+  const [hidden, setHidden] = useState<DisplayProperty[]>([]);
+
+  return (
+    <div className="flex w-[218px] flex-col gap-2">
+      <DisplayMenu
+        hidden={hidden}
+        onChange={(property, visible) =>
+          setHidden((current) =>
+            visible ? current.filter((item) => item !== property) : [...current, property],
+          )
+        }
+      />
+      <IssueCard
+        {...openIssue}
+        hiddenProperties={hidden}
+        labels={[
+          { ...labels.feature, name: "A long label name that needs truncation" },
+          labels.bug,
+          labels.design,
+          labels.docs,
+          labels.keyboard,
+        ]}
+      />
+    </div>
   );
 }

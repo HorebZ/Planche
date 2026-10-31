@@ -19,6 +19,7 @@ import type {
 } from "../src/ipc/bindings";
 
 export type Scenario =
+  | "labels"
   | "relations"
   | "board"
   | "locked"
@@ -186,6 +187,22 @@ function bigBoard(): Board {
 
 function boardFor(scenario: Scenario): Board | null {
   switch (scenario) {
+    case "labels": {
+      const board = mockupBoard();
+      const item = board.columns[1].cards[0];
+
+      if (item.kind === "issue") {
+        item.labels = [
+          { name: "A very long label name that needs truncation", color: labelColors.feature },
+          ...["bug", "design", "keyboard", "api"].map((name) => ({
+            name,
+            color: labelColors[name],
+          })),
+        ];
+      }
+
+      return board;
+    }
     case "relations": {
       const board = mockupBoard();
 

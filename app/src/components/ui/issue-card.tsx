@@ -9,8 +9,10 @@ import {
 } from "lucide-react";
 import type { ComponentProps } from "react";
 import { AvatarStack, type AvatarUser } from "@/components/ui/avatar";
+import type { DisplayProperty } from "@/components/ui/display-menu";
 import { Kbd } from "@/components/ui/kbd";
-import { type CardLabel, LabelChip } from "@/components/ui/label-chip";
+import type { CardLabel } from "@/components/ui/label-chip";
+import { LabelSummary } from "@/components/ui/label-summary";
 import {
   type Priority,
   PriorityGlyph,
@@ -62,6 +64,7 @@ export type IssueCardData = CardBase &
     | { kind: "pr"; state: "open" | "closed" | "merged" | "draft" }
   );
 export type IssueCardProps = IssueCardData & {
+  hiddenProperties?: DisplayProperty[];
   selected?: boolean;
   updated?: boolean;
   pending?: boolean;
@@ -89,6 +92,7 @@ export function IssueCard({
   updated = false,
   pending = false,
   dragState,
+  hiddenProperties = [],
   className,
   tabIndex = 0,
   ...props
@@ -120,7 +124,7 @@ export function IssueCard({
       <div className="flex h-[18px] min-w-0 items-center gap-1.5 text-[12px] text-fg-3 tabular-nums">
         <div className="flex min-w-0 flex-1 items-center gap-1.5">
           <span className={cn("truncate", parentTitle ? "max-w-3/5 shrink-0" : "min-w-0")}>
-            {repo}
+            {hiddenProperties.includes("repository") ? null : repo}
             {number != null ? `#${number}` : state === "draft" ? "Draft" : ""}
           </span>
           {parentTitle ? (
@@ -133,20 +137,22 @@ export function IssueCard({
           ) : null}
         </div>
         {pending ? <span className="shrink-0 font-medium text-warning">Pending</span> : null}
-        <span className="flex shrink-0 items-center">
-          {assignees.length ? (
-            <AvatarStack
-              users={assignees}
-              size={16}
-            />
-          ) : (
-            <span
-              role="img"
-              aria-label="Unassigned"
-              className="size-3.5 shrink-0 rounded-full opacity-60 shadow-[inset_0_0_0_1px_var(--pl-fg-3)]"
-            />
-          )}
-        </span>
+        {!hiddenProperties.includes("assignees") ? (
+          <span className="flex shrink-0 items-center">
+            {assignees.length ? (
+              <AvatarStack
+                users={assignees}
+                size={16}
+              />
+            ) : (
+              <span
+                role="img"
+                aria-label="Unassigned"
+                className="size-3.5 shrink-0 rounded-full opacity-60 shadow-[inset_0_0_0_1px_var(--pl-fg-3)]"
+              />
+            )}
+          </span>
+        ) : null}
       </div>
       <div className={cn("flex items-start gap-2 font-medium text-base", muted && "text-fg-3")}>
         <span className="mt-0.5 flex shrink-0 text-fg-3">
@@ -227,16 +233,7 @@ export function IssueCard({
           ) : null}
         </div>
       ) : null}
-      {labels.length ? (
-        <div className="flex flex-wrap items-center gap-1">
-          {labels.map((label) => (
-            <LabelChip
-              key={`${label.name}-${label.color}`}
-              {...label}
-            />
-          ))}
-        </div>
-      ) : null}
+      {!hiddenProperties.includes("labels") ? <LabelSummary labels={labels} /> : null}
       {createdAt ? (
         <span className="text-[12px] text-fg-3 tabular-nums">
           Created{" "}
