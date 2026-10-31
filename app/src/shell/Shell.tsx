@@ -124,7 +124,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
 
     if (direction === "left" || direction === "right") {
       const group = rows[at]?.closest('[data-slot="issue-list-group"]');
-      const header = group?.querySelector<HTMLButtonElement>("button[aria-expanded]");
+      const header = group?.querySelector<HTMLButtonElement>('[data-slot="issue-list-toggle"]');
 
       if (header && (header.getAttribute("aria-expanded") === "true") === (direction === "left")) {
         header.click();
@@ -301,6 +301,10 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
           layout={layout}
           onLayoutChange={setLayout}
           onSearch={showPalette}
+          hiddenProperties={viewPreferences?.hiddenProperties}
+          onPropertyChange={(property, visible) =>
+            usePreferences.getState().setPropertyVisible(context, property, visible)
+          }
         />
         {syncing ? <SyncBar /> : null}
         {data && offline && !error ? (
@@ -365,6 +369,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
                   onSelect={select}
                   revealId={revealId}
                   onRevealed={useUi.getState().finishReveal}
+                  hiddenProperties={viewPreferences?.hiddenProperties}
                   expanded={!viewPreferences?.collapsedGroups.includes(column.option_id ?? "none")}
                   onExpandedChange={(expanded) =>
                     usePreferences
@@ -388,6 +393,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
           ) : (
             <Board
               board={data}
+              hiddenProperties={viewPreferences?.hiddenProperties}
               onMove={run}
               onCreateDraft={onCreateDraft}
             />

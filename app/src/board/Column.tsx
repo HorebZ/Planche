@@ -3,6 +3,7 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useMemo, useRef } from "react";
 import { BoardColumn } from "@/components/ui/board-column";
+import type { DisplayProperty } from "@/components/ui/display-menu";
 import { CardPlaceholder } from "@/components/ui/issue-card";
 import type { Column as BoardColumnData, ItemId } from "@/ipc/bindings";
 import { useUi } from "@/stores/ui";
@@ -16,6 +17,7 @@ const GAP = 8;
 export type Landing = { index: number; height: number; fromHere: boolean };
 
 type ColumnProps = {
+  hiddenProperties?: DisplayProperty[];
   column: BoardColumnData;
   projectId: string;
   index: number;
@@ -37,6 +39,7 @@ export function Column({
   activeId,
   landing,
   onCreateDraft,
+  hiddenProperties,
 }: ColumnProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { setNodeRef } = useDroppable({ id: `column:${index}` });
@@ -134,6 +137,7 @@ export function Column({
                     <Card
                       status={statusTone(column.color, column.name)}
                       card={row.card}
+                      hiddenProperties={hiddenProperties}
                       ghost={row.card.item_id === activeId}
                       selected={row.card.item_id === selectedId}
                     />

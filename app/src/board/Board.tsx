@@ -15,6 +15,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { DisplayProperty } from "@/components/ui/display-menu";
 import { DragBubble, DragHelpBar } from "@/components/ui/drag";
 import { IssueCard } from "@/components/ui/issue-card";
 import {
@@ -65,6 +66,7 @@ const collision: CollisionDetection = (args) => {
 };
 
 type BoardProps = {
+  hiddenProperties?: DisplayProperty[];
   board: BoardData;
   onMove: (intent: Intent) => Promise<unknown>;
   /** A title typed in a column's new-draft field, and that column. */
@@ -76,7 +78,12 @@ type BoardProps = {
 };
 
 /** The board: one column per option, each scrolling on its own. Cards move by drag or keyboard. */
-export const Board = memo(function Board({ board, onMove, onCreateDraft }: BoardProps) {
+export const Board = memo(function Board({
+  board,
+  onMove,
+  onCreateDraft,
+  hiddenProperties,
+}: BoardProps) {
   usePaintedMark();
 
   const setDragging = useUi((s) => s.setDragging);
@@ -327,6 +334,7 @@ export const Board = memo(function Board({ board, onMove, onCreateDraft }: Board
             <Column
               key={column.option_id ?? "none"}
               column={column}
+              hiddenProperties={hiddenProperties}
               projectId={board.project.id}
               index={index}
               activeId={drag?.id ?? null}
@@ -342,6 +350,7 @@ export const Board = memo(function Board({ board, onMove, onCreateDraft }: Board
           <div className="relative">
             <IssueCard
               {...cardData(drag.card)}
+              hiddenProperties={hiddenProperties}
               status={
                 drag.card.kind === "draft"
                   ? "draft"

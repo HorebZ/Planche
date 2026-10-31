@@ -10,7 +10,7 @@ test("search reveals a result in a collapsed List group and releases focus after
     .locator('[data-slot="issue-list-group"]')
     .filter({ has: page.getByText("Todo", { exact: true }) });
 
-  await group.locator("button[aria-expanded]").click();
+  await group.locator('[data-slot="issue-list-toggle"]').click();
   await page.keyboard.press("Meta+k");
 
   const dialog = page.getByRole("dialog");
@@ -24,9 +24,12 @@ test("search reveals a result in a collapsed List group and releases focus after
 
   await expect(row).toBeFocused();
   await expect(row).toBeInViewport();
-  await expect(group.locator("button[aria-expanded]")).toHaveAttribute("aria-expanded", "true");
+  await expect(group.locator('[data-slot="issue-list-toggle"]')).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
 
-  await group.locator("button[aria-expanded]").click();
+  await group.locator('[data-slot="issue-list-toggle"]').click();
 
   await expect(row).toHaveCount(0);
 

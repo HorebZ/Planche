@@ -1,5 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { memo, useLayoutEffect, useRef } from "react";
+import type { DisplayProperty } from "@/components/ui/display-menu";
 import { IssueCard, type IssueCardData } from "@/components/ui/issue-card";
 import type { StatusKey } from "@/components/ui/status";
 import type { Card as BoardCard } from "@/ipc/bindings";
@@ -54,6 +55,7 @@ export function cardData(card: BoardCard): IssueCardData {
 }
 
 type CardProps = {
+  hiddenProperties?: DisplayProperty[];
   card: BoardCard;
   status?: StatusKey;
   /** The card is lifted, and this is the spot it left. */
@@ -68,13 +70,14 @@ export const Card = memo(function Card({
   status,
   ghost = false,
   selected = false,
+  hiddenProperties,
 }: CardProps) {
   const { setNodeRef, attributes, listeners } = useSortable({ id: card.item_id });
   const ref = useRef<HTMLDivElement | null>(null);
 
   // A selection made with the keyboard moves the focus here. An open overlay keeps it.
   useLayoutEffect(() => {
-    if (selected && !useUi.getState().overlay && document.activeElement !== ref.current) {
+    if (selected && !useUi.getState().overlay && !ref.current?.contains(document.activeElement)) {
       ref.current?.focus();
     }
   }, [selected]);
@@ -82,6 +85,7 @@ export const Card = memo(function Card({
   return (
     <IssueCard
       {...cardData(card)}
+      hiddenProperties={hiddenProperties}
       status={card.kind === "draft" ? "draft" : status}
       ref={(node) => {
         ref.current = node;
