@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { expect, test } from "vitest";
 import App from "@/App";
+import { emptyFilters } from "@/components/ui/board-filter";
 import { queryClient } from "@/ipc/queries";
 import { usePreferences } from "@/stores/preferences";
 import { useUi } from "@/stores/ui";
@@ -109,6 +110,7 @@ test("search clears status filters and reveals a result in a collapsed List grou
   key("f");
   await expect.poll(() => document.querySelector('[role="menuitemcheckbox"]')).not.toBeNull();
   click(menuItem("menuitemcheckbox", "Todo"));
+  click(menuItem("menuitemcheckbox", "bug"));
   key("Escape", get('[role="menu"]'));
   key("k", document, { metaKey: true });
 
@@ -120,12 +122,53 @@ test("search clears status filters and reveals a result in a collapsed List grou
     .not.toBeNull();
   click(get('[role="option"][data-value$="PVTI_220"]'));
 
-  expect(useUi.getState().statusFilter).toEqual([]);
+  expect(useUi.getState().filters).toEqual(emptyFilters);
   expect(get('[data-slot="issue-list-toggle"]', done).getAttribute("aria-expanded")).toBe("true");
   expect(document.activeElement).toBe(get('[data-item-id="PVTI_220"]'));
   await expect
     .poll(() => document.body.textContent)
-    .toContain("Status filters cleared to show the search result");
+    .toContain("Filters cleared to show the search result");
+});
+
+test("combined filters keep their options, share Board/List results and reset through chips", async () => {
+  const backend = await open();
+  const source = structuredClone(backend.getBoard());
+
+  key("f");
+  await expect.poll(() => document.querySelector('[role="menuitemcheckbox"]')).not.toBeNull();
+
+  for (const name of ["Me (camille-r)", "bug"]) {
+    click(menuItem("menuitemcheckbox", name));
+  }
+
+  expect(get("main header").textContent).toContain("0/17 issues");
+
+  for (const name of ["feature", "design", "planche/app"]) {
+    click(menuItem("menuitemcheckbox", name));
+  }
+
+  expect(menuItem("menuitemcheckbox", "planche/sync")).toBeDefined();
+  key("Escape", get('[role="menu"]'));
+
+  const ids = (slot: string) =>
+    [...document.querySelectorAll<HTMLElement>(`[data-slot="${slot}"]`)].map(
+      (card) => card.dataset.itemId,
+    );
+  const expected = ["PVTI_214", "PVTI_226", "PVTI_231", "PVTI_229"];
+
+  expect(get("main header").textContent).toContain("4/17 issues");
+  click(button("List"));
+
+  expect(ids("issue-list-row")).toEqual(expected);
+  click(button("Remove assignee filter: Me (camille-r)"));
+
+  expect(ids("issue-list-row")).toHaveLength(8);
+  click(button("Clear filters"));
+
+  expect(ids("issue-list-row")).toHaveLength(17);
+  expect(useUi.getState().filters).toEqual(emptyFilters);
+  expect(backend.getBoard()).toEqual(source);
+  expect(calls.dispatch_intent).toBeUndefined();
 });
 
 test.each(["board", "empty"] as const)(

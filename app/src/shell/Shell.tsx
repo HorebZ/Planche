@@ -21,6 +21,7 @@ import {
 } from "@/command/commands";
 import { ShortcutSheet } from "@/command/ShortcutSheet";
 import { Banner } from "@/components/ui/banner";
+import { emptyFilters } from "@/components/ui/board-filter";
 import { BoardErrorCard, NoFilterResults } from "@/components/ui/board-states";
 import { Button } from "@/components/ui/button";
 import { IssueListGroup } from "@/components/ui/issue-list";
@@ -60,10 +61,11 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   const selectedId = useUi((s) => s.selectedId);
   const revealId = useUi((s) => s.revealId);
   const overlay = useUi((s) => s.overlay);
-  const statuses = useUi((s) => s.statusFilter);
+  const filters = useUi((s) => s.filters);
+  const filtering = Object.values(filters).some((values) => values.length);
   const dragging = useUi((s) => s.dragging);
   const drafting = overlay?.type === "draft";
-  const { selectProject, selectView, select, open: show, setStatusFilter } = useUi.getState();
+  const { selectProject, selectView, select, open: show, setFilters } = useUi.getState();
   const board = useBoard(projectId, viewId);
   const project = useProject(projectId);
   const projects = useProjects();
@@ -80,7 +82,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   const layout = viewPreferences?.layout ?? "board";
   const setLayout = (layout: ProjectLayout) => usePreferences.getState().setLayout(context, layout);
   const card = data?.columns.flatMap((c) => c.cards).find((c) => c.item_id === selectedId) ?? null;
-  const visibleBoard = useMemo(() => (data ? filterBoard(data, statuses) : null), [data, statuses]);
+  const visibleBoard = useMemo(() => (data ? filterBoard(data, filters) : null), [data, filters]);
   const visibleIds = useMemo(
     () =>
       visibleBoard?.columns
@@ -158,7 +160,9 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
 
     const column = card
       ? data.columns[columnIndexOf(data, card)]
-      : data.columns.find((column) => !statuses.length || statuses.includes(column.option_id));
+      : data.columns.find(
+          (column) => !filters.statuses.length || filters.statuses.includes(column.option_id),
+        );
 
     newDraft(column?.option_id ?? null);
   };
@@ -355,8 +359,9 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
           layout={layout}
           onLayoutChange={setLayout}
           onSearch={showPalette}
-          statuses={statuses}
-          onStatusesChange={setStatusFilter}
+          filters={filters}
+          onFiltersChange={setFilters}
+          viewer={viewer}
           filterOpen={overlay?.type === "filters"}
           onFilterOpenChange={(open) => show(open ? { type: "filters" } : null)}
           onFilterClose={(event) => {
@@ -426,8 +431,8 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
             </div>
           ) : data == null ? (
             <LoadingBoard />
-          ) : statuses.length > 0 && visibleCount === 0 && !drafting ? (
-            <NoFilterResults onReset={() => setStatusFilter([])} />
+          ) : filtering && visibleCount === 0 && !drafting ? (
+            <NoFilterResults onReset={() => setFilters(emptyFilters)} />
           ) : cards === 0 && !drafting && layout === "board" ? (
             <EmptyBoard
               board={data}
@@ -492,15 +497,13 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
         commands={commands}
         onReveal={(id) => {
           if (
-            statuses.length &&
-            data?.columns.some(
-              (column) =>
-                !statuses.includes(column.option_id) &&
-                column.cards.some((card) => card.item_id === id),
+            filtering &&
+            !visibleBoard?.columns.some((column) =>
+              column.cards.some((card) => card.item_id === id),
             )
           ) {
-            setStatusFilter([]);
-            notify("Status filters cleared to show the search result");
+            setFilters(emptyFilters);
+            notify("Filters cleared to show the search result");
           }
 
           useUi.getState().revealCard(id);

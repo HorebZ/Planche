@@ -1,7 +1,10 @@
-import type { Board, Column, ItemId, OptionId, Placement } from "@/ipc/bindings.types";
+import type { BoardFilters } from "@/components/ui/board-filter";
+import type { Board, Column, ItemId, Placement } from "@/ipc/bindings.types";
 
-export function filterBoard(board: Board, statuses: (OptionId | null)[]): Board {
-  if (!statuses.length) {
+export function filterBoard(board: Board, filters: BoardFilters): Board {
+  const { statuses, assignees, labels, repositories } = filters;
+
+  if (!Object.values(filters).some((values) => values.length)) {
     return board;
   }
 
@@ -9,7 +12,18 @@ export function filterBoard(board: Board, statuses: (OptionId | null)[]): Board 
     ...board,
     columns: board.columns.map((column) => ({
       ...column,
-      cards: statuses.includes(column.option_id) ? column.cards : [],
+      cards:
+        statuses.length && !statuses.includes(column.option_id)
+          ? []
+          : column.cards.filter(
+              (card) =>
+                (!assignees.length ||
+                  ("assignees" in card &&
+                    card.assignees.some((user) => assignees.includes(user.id)))) &&
+                (!labels.length ||
+                  ("labels" in card && card.labels.some((label) => labels.includes(label.name)))) &&
+                (!repositories.length || ("repo" in card && repositories.includes(card.repo))),
+            ),
     })),
   };
 }

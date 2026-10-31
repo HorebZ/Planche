@@ -10,7 +10,7 @@ export const shortcuts = [
   { key: "Meta+k", command: "palette.open", scope: "global", label: "Command palette" },
   { key: "c", command: "issue.new", scope: "global", label: "New draft" },
   { key: "Meta+r", command: "sync.now", scope: "global", label: "Sync now" },
-  { key: "f", command: "filters.open", scope: "global", label: "Filter statuses" },
+  { key: "f", command: "filters.open", scope: "global", label: "Filter issues" },
   { key: "?", command: "help.open", scope: "global", label: "All shortcuts" },
   { key: "Meta+,", command: "settings.open", scope: "global", label: "Settings" },
   { key: "Meta+Shift+h", command: "sidebar.hide", scope: "sidebar", label: "Hide from sidebar" },

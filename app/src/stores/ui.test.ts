@@ -1,29 +1,40 @@
 import { beforeEach, expect, test } from "vitest";
+import { emptyFilters } from "@/components/ui/board-filter";
 import { useUi } from "./ui";
 
-beforeEach(() => useUi.setState({ statusFilter: [], dragging: false }));
+beforeEach(() => useUi.setState({ filters: emptyFilters, dragging: false }));
 
-test("status filters freeze during drag and reset with the project or view", () => {
+test("all filters freeze during drag and reset with the project or view", () => {
   const ui = useUi.getState();
 
-  ui.setStatusFilter(["todo", null]);
+  ui.setFilters({
+    statuses: ["todo", null],
+    assignees: ["me"],
+    labels: ["bug"],
+    repositories: ["owner/repo"],
+  });
   ui.setDragging(true);
-  ui.setStatusFilter([]);
+  ui.setFilters(emptyFilters);
 
-  expect(useUi.getState().statusFilter).toEqual(["todo", null]);
+  expect(useUi.getState().filters).toEqual({
+    statuses: ["todo", null],
+    assignees: ["me"],
+    labels: ["bug"],
+    repositories: ["owner/repo"],
+  });
 
   ui.setDragging(false);
   ui.selectView("other");
 
-  expect(useUi.getState().statusFilter).toEqual([]);
+  expect(useUi.getState().filters).toEqual(emptyFilters);
 
-  ui.setStatusFilter(["done"]);
+  ui.setFilters({ ...emptyFilters, labels: ["bug"] });
   ui.selectProject("other");
 
-  expect(useUi.getState().statusFilter).toEqual([]);
+  expect(useUi.getState().filters).toEqual(emptyFilters);
 
-  ui.setStatusFilter(["todo"]);
+  ui.setFilters({ ...emptyFilters, repositories: ["owner/repo"] });
   ui.invalidateUndo();
 
-  expect(useUi.getState().statusFilter).toEqual([]);
+  expect(useUi.getState().filters).toEqual(emptyFilters);
 });

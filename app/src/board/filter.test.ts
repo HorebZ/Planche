@@ -1,11 +1,14 @@
 import { expect, test } from "vitest";
+import { emptyFilters } from "@/components/ui/board-filter";
 import {
   boardField,
   board as boardFixture,
   boardProject,
   column,
 } from "@/ipc/_fixtures/board.fixtures";
-import { draft } from "@/ipc/_fixtures/card.fixtures";
+import { draft, redacted } from "@/ipc/_fixtures/card.fixtures";
+import { mockupBoard } from "@/ipc/_fixtures/scenarios.fixtures";
+import { user } from "@/ipc/_fixtures/user.fixtures";
 import type { Intent, Placement } from "@/ipc/bindings.types";
 import { inverse } from "@/undo/inverse";
 import { dropPlacement, filterBoard, selectionAfterRemoval } from "./filter";
@@ -33,18 +36,60 @@ const board = boardFixture({
 });
 
 test("status filtering preserves columns, server cards and canonical positions", () => {
-  const filtered = filterBoard(board, ["done", null]);
+  const filtered = filterBoard(board, { ...emptyFilters, statuses: ["done", null] });
 
-  expect(filterBoard(board, [])).toBe(board);
+  expect(filterBoard(board, emptyFilters)).toBe(board);
   expect(filtered.columns.map((column) => column.cards.map((card) => card.item_id))).toEqual([
     [],
     ["moving", "other"],
     [],
     ["unset"],
   ]);
-  expect(filtered.columns[1].cards).toBe(board.columns[1].cards);
+  expect(filtered.columns[1].cards[0]).toBe(board.columns[1].cards[0]);
   expect(board.columns[0].cards).toHaveLength(5);
   expect(filtered.columns[1].cards[0].position).toBe(5);
+});
+
+test("filters combine categories with AND and values within each category with OR", () => {
+  const source = mockupBoard();
+  const filters = {
+    statuses: ["doing", "done"],
+    assignees: ["U_AM", "U_LB"],
+    labels: ["bug", "design"],
+    repositories: ["planche/app", "planche/site"],
+  };
+
+  const filtered = filterBoard(source, filters);
+
+  expect(filtered.columns.flatMap((column) => column.cards.map((card) => card.item_id))).toEqual([
+    "PVTI_228",
+    "PVTI_215",
+  ]);
+  expect(source.columns.flatMap((column) => column.cards)).toHaveLength(17);
+  expect(filtered.columns[2].cards[0]).toBe(source.columns[2].cards[2]);
+});
+
+test("draft assignees are filterable while absent labels, repositories and redacted data cannot match", () => {
+  const source = boardFixture({
+    columns: [
+      column({
+        cards: [draft({ assignees: [user({ id: "me" })] }), redacted({ item_id: "hidden" })],
+      }),
+    ],
+  });
+
+  expect(filterBoard(source, emptyFilters)).toBe(source);
+  expect(filterBoard(source, { ...emptyFilters, assignees: ["me"] }).columns[0].cards).toEqual([
+    source.columns[0].cards[0],
+  ]);
+
+  for (const filter of [
+    { labels: ["bug"] },
+    { repositories: ["owner/repo"] },
+    { assignees: ["unknown"] },
+  ]) {
+    expect(filterBoard(source, { ...emptyFilters, ...filter }).columns[0].cards).toEqual([]);
+  }
 });
 
 test.each<[string, string[], string, number, Placement]>([
