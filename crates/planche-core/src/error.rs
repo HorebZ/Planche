@@ -10,10 +10,10 @@ pub enum Error {
     NotSignedIn,
     #[error("token rejected by GitHub (401)")]
     Unauthorized,
-    #[error("the token is missing the {} scope(s), create a classic token with repo, read:org and project", .0.join(", "))]
+    #[error("the token is missing the {} scope(s); reconnect GitHub or create a classic token with repo, read:org and project", .0.join(", "))]
     MissingScopes(Vec<String>),
     #[error(
-        "Planche needs a classic personal access token with repo, read:org and project. \
+        "Planche needs GitHub sign-in or a classic personal access token with repo, read:org and project. \
          A fine-grained token covers a single resource owner, so it cannot reach your account and your organizations at once"
     )]
     ClassicTokenRequired,
@@ -49,8 +49,10 @@ pub enum Error {
     },
     #[error("no column `{name}`, expected one of: {}", valid.join(", "))]
     UnknownColumn { name: String, valid: Vec<String> },
-    #[error("keychain error: {0}")]
-    Keychain(String),
+    #[error("credential storage error: {0}")]
+    Credentials(String),
+    #[error("GitHub sign-in: {0}")]
+    OAuth(String),
     #[error("cache error: {0}")]
     Cache(String),
     #[error(

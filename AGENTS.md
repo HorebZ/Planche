@@ -16,7 +16,7 @@ Native macOS client for GitHub Projects v2. Tauri 2 shell, React webview, all lo
 - `bun run check` runs fmt, clippy, Rust tests, Biome, the `app/` checks (`tsc`, Biome, the design check, Vitest), and GraphQL validation. It must pass before every push.
 - `cargo test -p planche-core` runs the core tests.
 - `cargo run -p planche-cli -- board @me/<number>` prints a board.
-- `cd app && bun run tauri dev` runs the app. In dev, `http://localhost:1420/playground` shows every UI component in every state.
+- `bun run dev` at the root loads the ignored root `.env` and runs the app. In dev, `http://localhost:1420/playground` shows every UI component in every state.
 - `cd app && bun run test:e2e` runs the focused WebKit e2e suite. Run `bunx playwright install webkit` once first. `test:visual`, `test:perf` and `test:video` run the optional browser checks and captures.
 - Live tests run against the real tracking project "Planche" (`@me/2`). A scenario that changes a card restores it at the end.
 
@@ -31,8 +31,8 @@ Native macOS client for GitHub Projects v2. Tauri 2 shell, React webview, all lo
 - Server data lives in TanStack Query only. Zustand holds UI state only, such as selection and open dialogs. Never copy query data into Zustand.
 - Keyboard shortcuts are declared only in `app/src/keyboard/shortcuts.ts`.
 - CSS targets WebKit, meaning WKWebView on macOS 15 and later. Check layout changes in the Playwright `webkit` project. Do not use Chromium-only features.
-- The token is a classic PAT with `repo`, `read:org`, and `project`. A fine-grained PAT is bound to one resource owner, so it cannot cover the viewer and several organizations at once.
-- Never log the token. `PLANCHE_TOKEN` overrides the keychain for dev and tests.
+- GitHub sign-in uses OAuth Device Flow with `repo`, `read:org`, and `project`; a classic PAT remains supported. A fine-grained PAT is bound to one resource owner, so it cannot cover the viewer and several organizations at once.
+- Never log the token. `PLANCHE_TOKEN` overrides the private local session for dev and tests. Never expose it through a `VITE_` variable. Session storage stays in `planche-core`, with directory mode `0700`, file mode `0600`, and atomic writes; no Keychain access is needed.
 - Tauri stays on 2.x. Do not upgrade to the 3.0 alphas.
 - Write a comment only for a non-obvious why.
 - Prefer unit and integration tests for behavior. Keep tests beside the implementation: `Name.test.ts(x)` for Vitest, `module.test.rs` or `module.integration.test.rs` for Rust, loaded with `#[cfg(test)]`. Reserve colocated `Name.e2e.ts` tests for critical browser interactions; rendering checks use `Name.visual.e2e.ts`. Repeat themes only for rendering checks. The production TypeScript config excludes test files; never import tests or `test-support` from application code.

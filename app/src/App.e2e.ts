@@ -3,10 +3,10 @@ import { expect, test } from "@playwright/test";
 test("the app is visible and locked during the single startup authentication", async ({ page }) => {
   await page.goto("/?mock=locked");
 
-  const lock = page.getByRole("dialog", { name: "Unlock Planche" });
+  const lock = page.getByRole("dialog", { name: "Open Planche" });
 
   await expect(lock).toBeVisible();
-  await expect(lock.getByRole("button", { name: "Unlocking…" })).toBeDisabled();
+  await expect(lock.getByRole("button", { name: "Opening…" })).toBeDisabled();
   await expect(page.locator('[data-slot="skeleton-column"]')).toHaveCount(5);
   await expect(page.locator('[data-slot="issue-card"]')).toHaveCount(0);
 

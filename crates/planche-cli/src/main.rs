@@ -80,7 +80,7 @@ enum Command {
 
 #[derive(Subcommand)]
 enum AuthCommand {
-    /// Read a classic personal access token from stdin and store it in the keychain
+    /// Read a classic personal access token from stdin and save the local session
     Login,
 }
 

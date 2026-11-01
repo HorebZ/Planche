@@ -7,7 +7,10 @@ import { Input } from "@/components/ui/input";
 import {
   AccountBlock,
   AppIcon,
+  GitHubSignIn,
   Logotype,
+  OnboardingIntro,
+  PersonalTokenOption,
   ProjectAccessState,
   ScopeRow,
 } from "@/components/ui/onboarding";
@@ -49,6 +52,14 @@ export function ShellSection() {
     >
       {() => (
         <div className="flex flex-col gap-5">
+          <Row label="onboarding intro">
+            <State
+              label="summary"
+              className="w-[210px]"
+            >
+              <OnboardingIntro />
+            </State>
+          </Row>
           <Row label="app lock">
             {["locked", "unlocking", "cancelled"].map((state) => (
               <State
@@ -67,6 +78,35 @@ export function ShellSection() {
                 />
               </State>
             ))}
+          </Row>
+          <Row label="GitHub sign-in">
+            {(["idle", "connecting", "waiting", "copied", "error"] as const).map((state) => (
+              <State
+                key={state}
+                label={state}
+                className="w-full rounded-xl bg-elevated p-5"
+              >
+                <GitHubSignIn
+                  pending={state === "connecting" || state === "waiting" || state === "copied"}
+                  code={state === "waiting" || state === "copied" ? "ABCD-EFGH" : undefined}
+                  copied={state === "copied"}
+                  error={state === "error" ? "Authorization declined. Try again." : undefined}
+                  connected={false}
+                  onSignIn={() => {}}
+                  onOpen={() => {}}
+                  onCopy={() => {}}
+                  onCancel={() => {}}
+                />
+              </State>
+            ))}
+          </Row>
+          <Row label="personal access token">
+            <State
+              label="alternative"
+              className="w-full"
+            >
+              <PersonalTokenOption onSelect={() => {}} />
+            </State>
           </Row>
           <Row label="sidebar">
             <Sidebar className="h-[360px] rounded-lg">

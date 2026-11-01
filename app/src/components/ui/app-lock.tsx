@@ -1,4 +1,4 @@
-import { Fingerprint } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { SkeletonColumn } from "@/components/ui/board-states";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -17,9 +17,10 @@ export function AppLockContent({ pending, error, onUnlock }: LockProps) {
     >
       <AppIcon size={48} />
       <div className="flex flex-col gap-1.5">
-        <h1 className="font-semibold text-lg">Planche is locked</h1>
-        <p className="text-fg-2 text-sm">Unlock with macOS to access your projects.</p>
-        <p className="text-fg-3 text-xs">Touch ID when available, or your Mac password.</p>
+        <h1 className="font-semibold text-lg">
+          {pending ? "Opening Planche" : "Could not open your session"}
+        </h1>
+        <p className="text-fg-2 text-sm">Restoring your GitHub account and projects.</p>
       </div>
       {error ? (
         <p
@@ -34,14 +35,14 @@ export function AppLockContent({ pending, error, onUnlock }: LockProps) {
         disabled={pending}
         onClick={onUnlock}
       >
-        {pending ? <Spinner size={16} /> : <Fingerprint />}
-        {pending ? "Unlocking…" : "Unlock Planche"}
+        {pending ? <Spinner size={16} /> : <RefreshCw />}
+        {pending ? "Opening…" : "Retry"}
       </Button>
     </div>
   );
 }
 
-/** The window is visible before macOS asks to read the protected credential. */
+/** Cached boards remain hidden until their account has been restored. */
 export function LockedApp(props: LockProps) {
   return (
     <>
@@ -86,9 +87,9 @@ export function LockedApp(props: LockProps) {
           onEscapeKeyDown={(event) => event.preventDefault()}
           onInteractOutside={(event) => event.preventDefault()}
         >
-          <DialogTitle className="sr-only">Unlock Planche</DialogTitle>
+          <DialogTitle className="sr-only">Open Planche</DialogTitle>
           <DialogDescription className="sr-only">
-            Authenticate with macOS to access your projects.
+            Restore your GitHub session to access your projects.
           </DialogDescription>
           <AppLockContent {...props} />
         </DialogContent>

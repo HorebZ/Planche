@@ -1,4 +1,4 @@
-import { CircleCheck, CircleX } from "lucide-react";
+import { ArrowUpRight, Check, CircleCheck, CircleX, Copy } from "lucide-react";
 import type { ComponentProps } from "react";
 import icon from "@/assets/brand/planche-icon-flat.svg";
 import smallIcon from "@/assets/brand/planche-icon-small.svg";
@@ -73,6 +73,18 @@ export function Logotype({ className, ...props }: ComponentProps<"svg">) {
   );
 }
 
+export function OnboardingIntro() {
+  return (
+    <div className="flex flex-col gap-3">
+      <Logotype />
+      <p className="text-pretty text-fg-2 leading-[19px]">
+        A blazingly fast client for GitHub projects &amp; issues.
+      </p>
+      <p className="text-fg-3 text-xs">GitHub API permitting.</p>
+    </div>
+  );
+}
+
 export type ScopeState = "idle" | "checking" | "ok" | "missing";
 
 type ScopeRowProps = ComponentProps<"div"> & { name: string; why: string; state: ScopeState };
@@ -96,6 +108,159 @@ export function ScopeRow({ name, why, state, className, ...props }: ScopeRowProp
       </span>
       <span className="w-[72px] font-sans text-xs">{name}</span>
       <span className="text-fg-3">{why}</span>
+    </div>
+  );
+}
+
+function GitHubLogo() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="currentColor"
+      aria-hidden
+    >
+      <path d="M6.766 11.328c-2.063-.25-3.516-1.734-3.516-3.656 0-.781.281-1.625.75-2.188-.203-.515-.172-1.609.063-2.062.625-.078 1.468.25 1.968.703.594-.187 1.219-.281 1.985-.281.765 0 1.39.094 1.953.265.484-.437 1.344-.765 1.969-.687.218.422.25 1.515.046 2.047.5.593.766 1.39.766 2.203 0 1.922-1.453 3.375-3.547 3.64.531.344.89 1.094.89 1.954v1.625c0 .468.391.734.86.547C13.781 14.359 16 11.53 16 8.03 16 3.61 12.406 0 7.984 0 3.563 0 0 3.61 0 8.031a7.88 7.88 0 0 0 5.172 7.422c.422.156.828-.125.828-.547v-1.25c-.219.094-.5.156-.75.156-1.031 0-1.64-.562-2.078-1.609-.172-.422-.36-.672-.719-.719-.187-.015-.25-.093-.25-.187 0-.188.313-.328.625-.328.453 0 .844.281 1.25.86.313.452.64.655 1.031.655s.641-.14 1-.5c.266-.265.47-.5.657-.656" />
+    </svg>
+  );
+}
+
+export function GitHubSignIn({
+  pending,
+  code,
+  copied,
+  error,
+  connected,
+  onSignIn,
+  onCopy,
+  onOpen,
+  onCancel,
+}: {
+  pending: boolean;
+  code?: string;
+  copied: boolean;
+  error?: string;
+  connected: boolean;
+  onSignIn: () => void;
+  onCopy: () => void;
+  onOpen: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div
+      data-slot="github-sign-in"
+      className="flex flex-col items-start gap-3"
+    >
+      {!connected ? (
+        <p className="text-pretty text-fg-2 leading-[19px]">
+          Connect through GitHub OAuth. Organizations using SSO may require additional authorization
+          or admin approval.
+        </p>
+      ) : null}
+      {code ? (
+        <div className="flex w-full flex-col gap-3 rounded-lg bg-bg-sunken p-4">
+          <div
+            className="flex items-center gap-2 text-fg-2 text-xs"
+            role="status"
+          >
+            <Spinner size={12} />
+            Waiting for GitHub…
+          </div>
+          <p className="text-fg-2 text-xs">Paste this code on GitHub.</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              className="h-7 gap-2 bg-card px-2.5"
+              aria-label="Copy code"
+              onClick={onCopy}
+            >
+              <output
+                className="select-text font-mono font-semibold text-sm tracking-wider"
+                aria-label="GitHub verification code"
+              >
+                {code}
+              </output>
+              {copied ? <Check className="text-success" /> : <Copy />}
+            </Button>
+            <span
+              className="text-fg-3 text-xs"
+              role="status"
+            >
+              {copied ? "Code copied" : "Click to copy"}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <Button
+              type="button"
+              size="sm"
+              onClick={onOpen}
+            >
+              <GitHubLogo />
+              Open GitHub
+              <ArrowUpRight />
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="text-fg-3"
+              onClick={onCancel}
+            >
+              Cancel sign-in
+            </Button>
+          </div>
+        </div>
+      ) : connected ? null : (
+        <div className="flex flex-col items-start gap-2.5">
+          <Button
+            type="button"
+            size="sm"
+            className="h-7 px-3"
+            variant="primary"
+            disabled={pending}
+            onClick={onSignIn}
+          >
+            {pending ? <Spinner size={14} /> : <GitHubLogo />}
+            {pending ? "Connecting…" : "Sign in with GitHub"}
+          </Button>
+          {pending ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={onCancel}
+            >
+              Cancel sign-in
+            </Button>
+          ) : null}
+        </div>
+      )}
+      {error ? (
+        <p
+          role="alert"
+          className="text-danger text-xs"
+        >
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+export function PersonalTokenOption({ onSelect }: { onSelect: () => void }) {
+  return (
+    <div className="flex flex-col items-start gap-2 border-line border-t pt-4">
+      <p className="text-fg-2 text-xs">
+        Or use Classic PAT with <code>repo</code>, <code>read:org</code> and <code>project</code>.
+      </p>
+      <p className="text-fg-3 text-xs">Saved unencrypted in a private file on this Mac.</p>
+      <Button
+        type="button"
+        size="sm"
+        onClick={onSelect}
+      >
+        Use a personal access token
+      </Button>
     </div>
   );
 }
@@ -169,7 +334,7 @@ export function ProjectAccessState({
         {state === "error"
           ? message
           : state === "sso"
-            ? `Authorize this token for ${message} using Configure SSO, then retry.`
+            ? `Sign in to ${message} through your organization's SSO, approve Planche if required, then reconnect your GitHub account. For a personal access token, use Configure SSO in GitHub's token settings.`
             : "Create a project on GitHub or check that this account can access one, then retry."}
       </p>
       <div className="flex flex-wrap gap-2">
@@ -178,7 +343,7 @@ export function ProjectAccessState({
             size="sm"
             onClick={onAuthorize}
           >
-            {state === "sso" ? "Configure SSO" : "Open GitHub Projects"}
+            {state === "sso" ? "Open organization SSO" : "Open GitHub Projects"}
           </Button>
         ) : null}
         <Button

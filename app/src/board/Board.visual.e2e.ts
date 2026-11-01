@@ -123,7 +123,7 @@ test.describe("screenshots", () => {
         await open(page, scenario);
 
         if (scenario === "locked") {
-          await page.getByRole("dialog", { name: "Unlock Planche" }).waitFor();
+          await page.getByRole("dialog", { name: "Open Planche" }).waitFor();
         } else if (scenario === "valid") {
           await page.setViewportSize({ width: 780, height: 540 });
           await page

@@ -16,6 +16,10 @@ fn builder() -> tauri_specta::Builder<tauri::Wry> {
         .commands(collect_commands![
             commands::auth_status,
             commands::auth_set_token,
+            commands::auth_oauth_start,
+            commands::auth_oauth_poll,
+            commands::auth_oauth_cancel,
+            commands::auth_oauth_copy_code,
             commands::auth_sign_out,
             commands::list_projects,
             commands::cached_projects,

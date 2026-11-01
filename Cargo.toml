@@ -15,8 +15,7 @@ all = { level = "warn", priority = -1 }
 
 [workspace.dependencies]
 clap = { version = "4", features = ["derive"] }
-keyring = "4.2"
-reqwest = { version = "0.13", default-features = false, features = ["rustls", "http2", "system-proxy", "json"] }
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "http2", "system-proxy", "json", "form"] }
 rpassword = "7"
 rusqlite = { version = "0.40", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }

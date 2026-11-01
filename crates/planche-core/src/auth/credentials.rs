@@ -1,110 +1,93 @@
-//! Use a user-presence protected item when the app's signing permits it. Ad-hoc
-//! development builds retain the legacy keychain, without a second auth dialog.
+use std::fs::{self, OpenOptions};
+use std::io::{Read, Write};
+use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
+use std::path::{Path, PathBuf};
 
-fn legacy() -> keyring::Result<keyring::Entry> {
-    keyring::Entry::new(super::KEYCHAIN_SERVICE, super::KEYCHAIN_ACCOUNT)
+use crate::error::{Error, Result};
+
+fn path() -> Result<PathBuf> {
+    let home =
+        std::env::var_os("HOME").ok_or_else(|| Error::Credentials("HOME is not set".into()))?;
+
+    Ok(PathBuf::from(home).join("Library/Application Support/dev.planche.app/auth/token"))
 }
 
-#[cfg(target_os = "macos")]
-fn protected() -> keyring::Result<keyring::Entry> {
-    use apple_native_keyring_store::protected::{AccessPolicy, Cred};
-
-    Cred::build(
-        super::KEYCHAIN_SERVICE,
-        super::KEYCHAIN_ACCOUNT,
-        AccessPolicy::RequireUserPresence,
-        None,
-        false,
-    )
-    .map(|inner| keyring::Entry { inner })
+pub(super) fn read() -> Result<String> {
+    read_from(&path()?)
 }
 
-#[cfg(target_os = "macos")]
-fn missing_entitlement(error: &keyring::Error) -> bool {
-    matches!(error, keyring::Error::PlatformFailure(source)
-        if source.downcast_ref::<security_framework::base::Error>()
-            .is_some_and(|error| error.code() == -34018))
-}
-
-pub(super) fn read() -> keyring::Result<String> {
-    #[cfg(target_os = "macos")]
-    return read_with(
-        || protected()?.get_password(),
-        || legacy()?.get_password(),
-        |token| match protected()?.set_password(token) {
-            Ok(()) => retire_legacy(),
-            // Do not rewrite the legacy item: it would ask for permission again.
-            Err(error) if missing_entitlement(&error) => Ok(()),
-            Err(error) => Err(error),
-        },
-    );
-
-    #[cfg(not(target_os = "macos"))]
-    legacy()?.get_password()
-}
-
-#[cfg(target_os = "macos")]
-fn read_with(
-    read_protected: impl FnOnce() -> keyring::Result<String>,
-    read_legacy: impl FnOnce() -> keyring::Result<String>,
-    migrate: impl FnOnce(&str) -> keyring::Result<()>,
-) -> keyring::Result<String> {
-    match read_protected() {
-        Ok(token) => Ok(token),
-        Err(keyring::Error::NoEntry) => {
-            let token = read_legacy()?;
-
-            migrate(&token)?;
-
-            Ok(token)
+fn read_from(path: &Path) -> Result<String> {
+    let mut file = match OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NOFOLLOW)
+        .open(path)
+    {
+        Ok(file) => file,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return Err(Error::NotSignedIn);
         }
-        Err(error) if missing_entitlement(&error) => read_legacy(),
-        // Cancellation must leave the app locked, never fall through to legacy storage.
-        Err(error) => Err(error),
+        Err(error) => return Err(storage_error(error)),
+    };
+    file.set_permissions(fs::Permissions::from_mode(0o600))
+        .map_err(storage_error)?;
+    let mut token = String::new();
+
+    file.read_to_string(&mut token).map_err(storage_error)?;
+
+    if token.trim().is_empty() {
+        return Err(Error::Credentials(
+            "saved token is empty; sign in again".into(),
+        ));
     }
+
+    Ok(token.trim().to_owned())
 }
 
-pub(super) fn write(token: &str) -> keyring::Result<()> {
-    #[cfg(target_os = "macos")]
-    match protected()?.set_password(token) {
-        Ok(()) => return retire_legacy(),
-        Err(error) if missing_entitlement(&error) => {}
-        Err(error) => return Err(error),
-    }
-
-    legacy()?.set_password(token)
+pub(super) fn write(token: &str) -> Result<()> {
+    write_to(&path()?, token)
 }
 
-#[cfg(target_os = "macos")]
-fn retire_legacy() -> keyring::Result<()> {
-    if let Err(error) = remove_missing_ok(legacy()?.delete_credential()) {
-        // Keep the old entry authoritative if migration could not remove it.
-        remove_missing_ok(protected()?.delete_credential())?;
+fn write_to(path: &Path, token: &str) -> Result<()> {
+    let dir = path
+        .parent()
+        .ok_or_else(|| Error::Credentials("invalid session path".into()))?;
 
-        return Err(error);
-    }
+    fs::DirBuilder::new()
+        .recursive(true)
+        .mode(0o700)
+        .create(dir)
+        .map_err(storage_error)?;
+    fs::set_permissions(dir, fs::Permissions::from_mode(0o700)).map_err(storage_error)?;
+
+    let mut file = tempfile::NamedTempFile::new_in(dir).map_err(storage_error)?;
+
+    file.as_file()
+        .set_permissions(fs::Permissions::from_mode(0o600))
+        .map_err(storage_error)?;
+    file.write_all(token.as_bytes()).map_err(storage_error)?;
+    file.as_file().sync_all().map_err(storage_error)?;
+    file.persist(path)
+        .map_err(|error| storage_error(error.error))?;
 
     Ok(())
 }
 
-pub(super) fn delete() -> keyring::Result<()> {
-    #[cfg(target_os = "macos")]
-    match remove_missing_ok(protected()?.delete_credential()) {
-        Ok(()) => {}
-        Err(error) if missing_entitlement(&error) => {}
-        Err(error) => return Err(error),
-    }
-
-    remove_missing_ok(legacy()?.delete_credential())
+pub(super) fn delete() -> Result<()> {
+    delete_from(&path()?)
 }
 
-fn remove_missing_ok(result: keyring::Result<()>) -> keyring::Result<()> {
-    match result {
-        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
-        Err(error) => Err(error),
+fn delete_from(path: &Path) -> Result<()> {
+    match fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(storage_error(error)),
     }
 }
 
-#[cfg(all(test, target_os = "macos"))]
+fn storage_error(error: std::io::Error) -> Error {
+    Error::Credentials(error.to_string())
+}
+
+#[cfg(test)]
 #[path = "credentials.test.rs"]
 mod tests;

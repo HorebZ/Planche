@@ -20,7 +20,7 @@ test.each(["locked", "unlock-cancelled"] as const)(
     await expect.poll(() => calls.auth_status).toBe(1);
     await expect
       .poll(() => document.querySelector('[role="dialog"]')?.textContent)
-      .toContain(scenario === "locked" ? "Unlocking…" : "Authentication cancelled");
+      .toContain(scenario === "locked" ? "Opening…" : "Authentication cancelled");
     expect(document.querySelectorAll('[data-slot="skeleton-column"]')).toHaveLength(5);
     expect(document.querySelectorAll('[data-slot="issue-card"]')).toHaveLength(0);
 
@@ -42,7 +42,7 @@ test.each(["locked", "unlock-cancelled"] as const)(
     if (scenario === "locked") {
       backend.unlock();
     } else {
-      click(button("Unlock Planche"));
+      click(button("Retry"));
     }
 
     await expect.poll(() => document.querySelector('[role="dialog"]')).toBeNull();

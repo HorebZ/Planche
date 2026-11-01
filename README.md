@@ -38,10 +38,17 @@ Planche shows your GitHub Projects (v2) boards in a native macOS window. Cards m
 git clone https://github.com/HorebZ/Planche.git
 cd Planche
 bun install
-cd app && bun run tauri dev
+cp .env.example .env
+# Optionally set PLANCHE_TOKEN in .env for local development.
+bun run dev
 ```
 
 `bun install` at the root installs the workspace tools and the `app/` dependencies.
+`bun run dev` at the root loads `.env` through Bun and passes its variables to Rust.
+The file is ignored by Git. Use a classic PAT in `PLANCHE_TOKEN` to skip GitHub
+sign-in during development; it never needs the macOS Keychain. Keep this file
+private (`chmod 600 .env`). Never name a credential `VITE_*`: those variables are
+exposed to the webview.
 
 ## Development
 
@@ -73,7 +80,7 @@ Separate logical steps with a blank line. In tests, keep setup, action, and asse
 
 ### Command-line client
 
-The command-line client runs from the root. It needs a classic personal access token with the `repo`, `read:org` and `project` scopes, stored in the macOS Keychain on sign-in.
+The command-line client runs from the root. It shares the desktop GitHub session, or accepts a classic personal access token with the `repo`, `read:org` and `project` scopes using `auth login`.
 
 ```sh
 cargo run -p planche-cli -- auth login              # paste the token
@@ -87,30 +94,62 @@ cargo run -p planche-cli -- sync @me/2              # send queued moves, then re
 cargo run -p planche-cli -- sync --watch @me/2 --interval 1m   # 1m, 5m, 15m or manual
 ```
 
-`PLANCHE_TOKEN` overrides the stored token.
+### GitHub sign-in and local sessions
 
-The desktop window opens locked before accessing the token. On macOS builds signed
-with a provisioning profile that permits Keychain access, the token is stored in
-the Data Protection Keychain with user presence required: macOS offers Touch ID
-with the Mac password as a fallback. The first unlock migrates an existing token
-from the legacy Keychain; macOS may ask for the old item's password permission
-during this one-time migration. The token is then kept in memory for the session.
-Cancelling authentication keeps the window locked until you choose to retry.
-Background commands use only the unlocked session and never open the Keychain.
-The remembered account is tied to a SHA-256 fingerprint of the verified token,
-including a token supplied through `PLANCHE_TOKEN`. After upgrading from an older
-cache or changing to an unknown token, one online identity check is required;
-subsequent launches with that token can use its saved identity offline.
-Sync starts after authentication succeeds; waiting, refocusing the window, or
-reconnecting the network does not launch another authentication request.
-The protected token belongs to the signed app's access group. An unsigned CLI
-uses a separate legacy entry; after desktop migration, sign in again with
-`planche auth login` or use `PLANCHE_TOKEN` for CLI commands.
+The desktop app uses GitHub OAuth Device Flow: choose **Sign in with GitHub** to copy
+the verification code and open GitHub, then paste the code and authorize Planche.
+Click the code to copy it again while waiting. Only Rust makes the OAuth
+and API requests; neither the access token nor the private device code reaches
+the webview. The scopes are `repo`, `read:org` and `project`. A classic PAT is still
+available through **Use a personal access token**.
 
-Ad-hoc development builds cannot access the protected store and use the legacy
-Keychain instead. They make one read at startup, after the window is visible;
-rebuilding can cause macOS to ask for permission again because the binary's
-signature changes. `PLANCHE_TOKEN` bypasses Keychain authentication for development.
+Register an [OAuth App](https://github.com/settings/applications/new) for Planche
+once (free; unrelated to Apple Developer membership):
+
+1. Set **Application name** to `Planche`, **Homepage URL** to
+   `https://github.com/HorebZ/Planche`, and **Authorization callback URL** to
+   `http://127.0.0.1` for the required
+   callback URL (Device Flow does not use the callback).
+2. Click **Register application**, then enable **Device Flow** in the app settings
+   and save. Keep token expiration disabled;
+   this version supports long-lived tokens and rejects expiring ones until token
+   refresh is implemented.
+3. Copy **Client ID** into `PLANCHE_GITHUB_CLIENT_ID` in the root `.env`. Leave
+   `PLANCHE_TOKEN` empty when testing OAuth and restart with `bun run dev`.
+   No client secret is needed. For distribution, set this variable while building:
+   it is embedded in the Rust executable, so installed apps need no `.env`.
+   For example, from the root: `bun run --cwd app --env-file=../.env tauri build`.
+
+For an organization using SAML SSO, establish its SSO session in the browser
+before authorizing Planche. An organization administrator may need to approve
+this OAuth App. If an organization is inaccessible, the project picker keeps
+other owners selectable and explains how to reconnect after authorization.
+See [GitHub's Device Flow documentation](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#device-flow)
+and [organization access rules](https://docs.github.com/en/apps/oauth-apps/using-oauth-apps/authorizing-oauth-apps#oauth-apps-and-organizations).
+
+The token is saved unencrypted at
+`~/Library/Application Support/dev.planche.app/auth/token`, in a `0700` directory
+with file mode `0600`. Writes replace the file atomically. This session is shared
+with the CLI and survives rebuilds and version changes without Apple signing,
+Touch ID or a Keychain password. Other programs running as your user can read it.
+GitHub can still expire or revoke the token; sign in again if that happens.
+Signing out removes the saved token but leaves the board cache intact.
+
+`PLANCHE_TOKEN` takes priority over the saved token. It is read at runtime, never
+embedded in the executable or webview, and startup does not copy it into the
+session file. With this override, remove it from `.env` and restart to switch
+accounts or stay signed out. Direct `cargo run` commands do not load `.env`;
+use `bun --env-file=.env exec 'cargo run -p planche-cli -- projects'` from the root, or export the
+variable in your terminal.
+
+Existing Keychain credentials are left untouched and are no longer read. After
+upgrading from the Keychain version, sign in once through GitHub or set
+`PLANCHE_TOKEN`. This avoids a migration prompt.
+
+The remembered account is tied to a SHA-256 fingerprint of the verified token.
+An unknown token requires one online identity check; subsequent launches can
+restore its saved identity offline. Cached boards remain hidden until the
+account is restored, and synchronization starts only after authentication.
 
 The board lives in a SQLite cache at `~/Library/Application Support/dev.planche.app/cache.sqlite`. `PLANCHE_CACHE` overrides the path. `board` prints the cached board at once, then refreshes it from GitHub. A move shows at once and goes into a queue. When GitHub is unreachable, the move stays queued, and the next `sync` sends it.
 

@@ -24,6 +24,9 @@ export type Scenario =
   | "rate-limited"
   | "uncached-sync-error"
   | "onboarding"
+  | "oauth-waiting"
+  | "oauth-denied"
+  | "oauth-copy-error"
   | "checking"
   | "valid"
   | "invalid"
@@ -325,6 +328,9 @@ export const signedIn = authStatus({ id: "U_CR", login: "camille-r" });
 export const signedOut = authStatus({ id: null, login: null });
 export const onboarding = (s: Scenario) =>
   s === "onboarding" ||
+  s === "oauth-waiting" ||
+  s === "oauth-denied" ||
+  s === "oauth-copy-error" ||
   s === "checking" ||
   s === "valid" ||
   s === "invalid" ||

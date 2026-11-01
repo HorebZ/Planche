@@ -60,7 +60,43 @@ export function installMockBackend(scenario: Scenario) {
   let descriptionError = scenario === "description-error";
   let descriptionDenied = scenario === "description-denied";
   let unlock: (() => void) | undefined;
+  let oauthActive = false;
   const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
+    auth_oauth_start: () => {
+      oauthActive = true;
+
+      return { user_code: "ABCD-EFGH", interval: 1 };
+    },
+    auth_oauth_copy_code: () => {
+      if (scenario === "oauth-copy-error") {
+        throw {
+          kind: "Auth",
+          message: "Could not copy the code. Select and copy it manually.",
+        } satisfies AppError;
+      }
+
+      return null;
+    },
+    auth_oauth_poll: () => {
+      if (!oauthActive || scenario === "oauth-denied") {
+        throw {
+          kind: "Auth",
+          message: "GitHub sign-in: authorization was declined; start sign-in again",
+        } satisfies AppError;
+      }
+
+      if (scenario === "oauth-waiting") {
+        return null;
+      }
+      auth = structuredClone(signedIn);
+
+      return auth;
+    },
+    auth_oauth_cancel: () => {
+      oauthActive = false;
+
+      return null;
+    },
     auth_status: async () => {
       if (scenario === "locked") {
         await new Promise<void>((resolve) => {

@@ -4,6 +4,7 @@
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
+use planche_core::auth::oauth::{DeviceCode, DeviceFlow};
 use planche_core::auth::{self, AuthStatus};
 use planche_core::cache::Cache;
 use planche_core::description::Descriptions;
@@ -48,7 +49,8 @@ impl From<&Error> for AppError {
             | Error::Unauthorized
             | Error::MissingScopes(_)
             | Error::ClassicTokenRequired
-            | Error::Keychain(_) => ErrorKind::Auth,
+            | Error::Credentials(_)
+            | Error::OAuth(_) => ErrorKind::Auth,
             Error::Network(_) => ErrorKind::Network,
             Error::RateLimited { .. } => ErrorKind::RateLimited,
             Error::ProjectNotFound { .. }
@@ -93,6 +95,7 @@ pub struct Core {
     /// The last list from GitHub, to find the owner of a project not cached yet.
     projects: Mutex<Option<ProjectList>>,
     token: Mutex<Option<String>>,
+    oauth: DeviceFlow,
     descriptions: Descriptions,
     engine: tokio::sync::Mutex<Option<Engine>>,
 }
@@ -109,6 +112,7 @@ impl Core {
             reader: Mutex::new(reader),
             projects: Mutex::default(),
             token: Mutex::default(),
+            oauth: DeviceFlow::default(),
             descriptions: Descriptions::default(),
             engine: tokio::sync::Mutex::default(),
         }
@@ -118,7 +122,7 @@ impl Core {
         self.reader.lock().expect("cache lock")
     }
 
-    // Background commands must never open the keychain or wait on its prompt.
+    // Background commands use only the authenticated session.
     fn client(&self) -> Result<GithubClient> {
         let token = self.token.lock().expect("token lock").clone();
 
@@ -236,12 +240,11 @@ impl Core {
 #[tauri::command]
 #[specta::specta]
 pub async fn auth_status(core: State<'_, Core>) -> Result<AuthStatus> {
-    // A keychain prompt can wait for the user; keep the window's event loop free.
     let token = tauri::async_runtime::spawn_blocking(auth::load_token)
         .await
         .map_err(|_| AppError {
             kind: ErrorKind::Auth,
-            message: "Could not unlock the macOS Keychain. Try again.".into(),
+            message: "Could not read the saved session. Try again.".into(),
         })?;
     let token = match token {
         Ok(token) => token,
@@ -293,13 +296,56 @@ fn remember_account(core: &Core, status: &AuthStatus, token: &str) -> Result<()>
 pub async fn auth_set_token(core: State<'_, Core>, token: String) -> Result<AuthStatus> {
     let status = auth::set_token(&token).await?;
 
+    accept_account(&core, &status)?;
+
+    Ok(status)
+}
+
+fn accept_account(core: &Core, status: &AuthStatus) -> Result<()> {
+    let token = auth::load_token()?;
+
     core.descriptions.lock();
-    remember_account(&core, &status, &token)?;
-    *core.token.lock().expect("token lock") = Some(auth::load_token()?);
+    remember_account(core, status, &token)?;
+    *core.token.lock().expect("token lock") = Some(token);
     core.descriptions
         .unlock(status.id.clone().ok_or(Error::NotSignedIn)?);
 
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn auth_oauth_start(core: State<'_, Core>) -> Result<DeviceCode> {
+    Ok(core.oauth.start().await?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn auth_oauth_poll(
+    core: State<'_, Core>,
+    user_code: String,
+) -> Result<Option<AuthStatus>> {
+    let status = core.oauth.poll(&user_code).await?;
+
+    if let Some(status) = &status {
+        accept_account(&core, status)?;
+    }
+
     Ok(status)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn auth_oauth_cancel(core: State<'_, Core>, user_code: String) -> Result<()> {
+    core.oauth.cancel(&user_code).await;
+
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn auth_oauth_copy_code(core: State<'_, Core>, user_code: String) -> Result<()> {
+    Ok(core.oauth.copy_code(&user_code).await?)
 }
 
 #[tauri::command]

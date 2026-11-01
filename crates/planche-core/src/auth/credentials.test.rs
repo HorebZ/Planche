@@ -1,80 +1,52 @@
+use std::os::unix::fs::symlink;
+
 use super::*;
 
-fn platform_error(code: i32) -> keyring::Error {
-    keyring::Error::PlatformFailure(Box::new(security_framework::base::Error::from(code)))
-}
-
 #[test]
-fn only_missing_entitlement_allows_legacy_fallback() {
-    assert!(missing_entitlement(&platform_error(-34018)));
+fn session_survives_reopening_and_replacement_with_private_permissions() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("auth/token");
 
-    for code in [-128, -25293, -25308, -25291] {
-        assert!(!missing_entitlement(&platform_error(code)));
-    }
+    assert!(matches!(read_from(&path), Err(Error::NotSignedIn)));
+    write_to(&path, "first-token").unwrap();
 
-    assert!(!missing_entitlement(&keyring::Error::NoEntry));
-}
-
-#[test]
-fn protected_read_never_touches_legacy_or_migration() {
+    assert_eq!(read_from(&path).unwrap(), "first-token");
     assert_eq!(
-        read_with(
-            || Ok("protected".into()),
-            || panic!("legacy read"),
-            |_| panic!("migration")
-        )
-        .unwrap(),
-        "protected"
+        fs::metadata(path.parent().unwrap())
+            .unwrap()
+            .permissions()
+            .mode()
+            & 0o777,
+        0o700
     );
-    assert!(
-        read_with(
-            || Err(platform_error(-128)),
-            || panic!("cancel fell through"),
-            |_| panic!("migration")
-        )
-        .is_err()
+    assert_eq!(
+        fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+        0o600
     );
+
+    write_to(&path, "next-token").unwrap();
+
+    assert_eq!(read_from(&path).unwrap(), "next-token");
+
+    delete_from(&path).unwrap();
+    delete_from(&path).unwrap();
+
+    assert!(matches!(read_from(&path), Err(Error::NotSignedIn)));
 }
 
 #[test]
-fn development_fallback_reads_once_without_rewriting() {
-    assert_eq!(
-        read_with(
-            || Err(platform_error(-34018)),
-            || Ok("legacy".into()),
-            |_| panic!("rewrote legacy")
-        )
-        .unwrap(),
-        "legacy"
-    );
-}
+fn redirects_are_not_read_and_atomic_writes_do_not_overwrite_their_target() {
+    let dir = tempfile::tempdir().unwrap();
+    let target = dir.path().join("unrelated");
+    let path = dir.path().join("auth/token");
+    fs::create_dir(path.parent().unwrap()).unwrap();
+    fs::write(&target, "untouched").unwrap();
+    symlink(&target, &path).unwrap();
 
-#[test]
-fn migration_must_succeed_before_releasing_the_token() {
-    use std::cell::Cell;
+    assert!(read_from(&path).is_err());
+    write_to(&path, "token").unwrap();
 
-    let migrated = Cell::new(false);
-
-    assert_eq!(
-        read_with(
-            || Err(keyring::Error::NoEntry),
-            || Ok("legacy".into()),
-            |token| {
-                assert_eq!(token, "legacy");
-                migrated.set(true);
-                Ok(())
-            }
-        )
-        .unwrap(),
-        "legacy"
-    );
-    assert!(migrated.get());
-    assert!(
-        read_with(
-            || Err(keyring::Error::NoEntry),
-            || Ok("legacy".into()),
-            |_| Err(platform_error(-128))
-        )
-        .is_err()
-    );
+    assert_eq!(fs::read_to_string(target).unwrap(), "untouched");
+    assert_eq!(read_from(&path).unwrap(), "token");
+    assert!(!fs::symlink_metadata(path).unwrap().file_type().is_symlink());
 }

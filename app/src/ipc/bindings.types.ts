@@ -13,6 +13,16 @@ export const commands = {
 	 */
 	authStatus: () => __TAURI_INVOKE<AuthStatus>("auth_status"),
 	authSetToken: (token: string) => __TAURI_INVOKE<AuthStatus>("auth_set_token", { token }),
+	authOauthStart: () => __TAURI_INVOKE<DeviceCode>("auth_oauth_start"),
+	authOauthPoll: (userCode: string) => __TAURI_INVOKE<{
+	/**  The viewer's node ID, for "assign me". */
+	id: UserId | null,
+	login: string | null,
+	avatar_url: string | null,
+	missing_scopes: string[],
+} | null>("auth_oauth_poll", { userCode }),
+	authOauthCancel: (userCode: string) => __TAURI_INVOKE<null>("auth_oauth_cancel", { userCode }),
+	authOauthCopyCode: (userCode: string) => __TAURI_INVOKE<null>("auth_oauth_copy_code", { userCode }),
 	authSignOut: () => __TAURI_INVOKE<null>("auth_sign_out"),
 	/**  GitHub's list, or the cached projects when GitHub is unreachable. */
 	listProjects: () => __TAURI_INVOKE<ProjectList>("list_projects"),
@@ -163,6 +173,11 @@ export type Column = {
 
 /**  Node ID of the item content, an `Issue`, `PullRequest` or `DraftIssue`. */
 export type ContentId = string;
+
+export type DeviceCode = {
+	user_code: string,
+	interval: number,
+};
 
 export type DispatchOutcome = { type: "accepted"; seq: number } | { type: "rejected"; error: AppError };
 

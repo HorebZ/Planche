@@ -10,12 +10,8 @@ use crate::error::{Error, Result};
 use crate::github::{GithubClient, ops};
 
 mod credentials;
+pub mod oauth;
 
-const KEYCHAIN_SERVICE: &str = "dev.planche.app";
-const KEYCHAIN_ACCOUNT: &str = "github-token";
-
-// Each dev rebuild changes the binary's ad-hoc signature, so macOS forgets "Always allow"
-// and prompts on every keychain read. One read per process keeps that to one prompt.
 static TOKEN: Mutex<Option<String>> = Mutex::new(None);
 
 pub const REQUIRED_SCOPES: [&str; 3] = ["repo", "read:org", "project"];
@@ -42,7 +38,7 @@ pub fn remember_status(cache: &Cache, token: &str, status: &AuthStatus) -> Resul
     cache.set(&identity_key(token), &json)
 }
 
-/// The token from `PLANCHE_TOKEN`, else from the macOS keychain, read once per process.
+/// The token from `PLANCHE_TOKEN`, else from the private session file, read once per process.
 pub fn load_token() -> Result<String> {
     if let Some(token) = std::env::var("PLANCHE_TOKEN")
         .ok()
@@ -51,15 +47,11 @@ pub fn load_token() -> Result<String> {
         return Ok(token.trim().to_owned());
     }
 
-    cached(|| match credentials::read() {
-        Ok(token) => Ok(token),
-        Err(keyring::Error::NoEntry) => Err(Error::NotSignedIn),
-        Err(e) => Err(Error::Keychain(e.to_string())),
-    })
+    cached(credentials::read)
 }
 
 /// The cached token, else the token `read` returns. Only a success is cached. The lock
-/// is held during `read` so concurrent first calls share one keychain prompt.
+/// is held during `read` so concurrent first calls share one disk read.
 fn cached(read: impl FnOnce() -> Result<String>) -> Result<String> {
     let mut cache = TOKEN.lock().unwrap_or_else(PoisonError::into_inner);
 
@@ -78,10 +70,18 @@ fn remember(token: Option<String>) {
     *TOKEN.lock().unwrap_or_else(PoisonError::into_inner) = token;
 }
 
-/// Checks the token against GitHub and its scopes, then stores it in the keychain.
-/// The keychain is left untouched when any check fails.
+/// Checks the token against GitHub and its scopes before replacing the saved session.
 pub async fn login(token: &str) -> Result<Viewer> {
     let token = token.trim();
+
+    if std::env::var("PLANCHE_TOKEN")
+        .is_ok_and(|value| !value.trim().is_empty() && value.trim() != token)
+    {
+        return Err(Error::Credentials(
+            "PLANCHE_TOKEN overrides sign-in; unset it and restart to change accounts".into(),
+        ));
+    }
+
     let client = GithubClient::new(token)?;
     let (viewer, scopes) = ops::viewer(&client).await?;
 
@@ -95,7 +95,7 @@ pub async fn login(token: &str) -> Result<Viewer> {
         return Err(Error::MissingScopes(missing));
     }
 
-    credentials::write(token).map_err(|e| Error::Keychain(e.to_string()))?;
+    credentials::write(token)?;
     remember(Some(token.to_owned()));
 
     Ok(viewer)
@@ -144,14 +144,14 @@ pub async fn set_token(token: &str) -> Result<AuthStatus> {
 
 /// Deletes the stored token. Deleting a missing token succeeds.
 pub fn sign_out() -> Result<()> {
-    credentials::delete().map_err(|e| Error::Keychain(e.to_string()))?;
+    credentials::delete()?;
     remember(None);
 
     Ok(())
 }
 
 /// Required scopes absent from an `x-oauth-scopes` header. A missing header means a
-/// fine-grained token, which Planche refuses.
+/// fine-grained token, which Planche refuses. OAuth tokens use the same scopes as classic PATs.
 pub fn missing_scopes(header: Option<&str>) -> Result<Vec<String>> {
     let header = header.ok_or(Error::ClassicTokenRequired)?;
     let granted: Vec<&str> = header

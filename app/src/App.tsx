@@ -48,7 +48,7 @@ function Root() {
   const auth = useQuery({ ...authQuery, enabled: ready });
 
   useEffect(() => {
-    // Leave a painted lock screen behind the native macOS prompt, even in StrictMode.
+    // Paint the loading screen before restoring the saved session.
     let frame = requestAnimationFrame(() => {
       frame = requestAnimationFrame(() => setReady(true));
     });

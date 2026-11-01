@@ -9,14 +9,16 @@ import { Kbd } from "@/components/ui/kbd";
 import {
   AccountBlock,
   AppIcon,
-  Logotype,
+  GitHubSignIn,
+  OnboardingIntro,
+  PersonalTokenOption,
   ProjectAccessState,
   ScopeRow,
   type ScopeState,
 } from "@/components/ui/onboarding";
 import { SidebarGroup, SidebarItem } from "@/components/ui/sidebar";
 import { Spinner } from "@/components/ui/spinner";
-import { type AuthStatus, commands, type ProjectId } from "@/ipc/bindings.types";
+import { type AuthStatus, commands, type DeviceCode, type ProjectId } from "@/ipc/bindings.types";
 import {
   authQuery,
   currentProjectQuery,
@@ -42,7 +44,7 @@ type Check =
   | { state: "valid"; auth: AuthStatus }
   | { state: "error"; message: string };
 
-/** The first launch: a token, then a project. The window grows to the board size at the end. */
+/** The first launch: a GitHub account, then a project. */
 export function Onboarding({ signedIn }: { signedIn: boolean }) {
   const [step, setStep] = useState<1 | 2>(signedIn ? 2 : 1);
 
@@ -53,17 +55,12 @@ export function Onboarding({ signedIn }: { signedIn: boolean }) {
         className="flex flex-col gap-[18px] px-[30px] pt-[72px] pb-[26px]"
       >
         <AppIcon size={64} />
-        <div className="flex flex-col gap-1.5">
-          <Logotype />
-          <p className="text-pretty text-fg-2 leading-[18px]">
-            Your GitHub Projects, keyboard-first.
-          </p>
-        </div>
+        <OnboardingIntro />
         <span className="flex-1" />
         <span className="text-[11.5px] text-fg-3 tabular-nums">v{pkg.version} · macOS 15+</span>
       </aside>
       {step === 1 ? (
-        <TokenStep onDone={() => setStep(2)} />
+        <SignInStep onDone={() => setStep(2)} />
       ) : (
         <ProjectStep onBack={() => setStep(1)} />
       )}
@@ -71,12 +68,14 @@ export function Onboarding({ signedIn }: { signedIn: boolean }) {
   );
 }
 
-function StepHeader({ step, title, children }: { step: 1 | 2; title: string; children: string }) {
+function StepHeader({ step, title, children }: { step: 1 | 2; title: string; children?: string }) {
   return (
     <div className="flex flex-col gap-2">
       <div className="font-medium text-[12px] text-fg-3">Step {step} of 2</div>
       <h1 className="font-semibold text-xl tracking-[-0.018em]">{title}</h1>
-      <p className="max-w-[440px] text-pretty text-fg-2 leading-[19px]">{children}</p>
+      {children ? (
+        <p className="max-w-[440px] text-pretty text-fg-2 leading-[19px]">{children}</p>
+      ) : null}
     </div>
   );
 }
@@ -84,7 +83,214 @@ function StepHeader({ step, title, children }: { step: 1 | 2; title: string; chi
 const panelClass =
   "my-2 mr-2 flex min-h-0 min-w-0 flex-col gap-4 overflow-y-auto rounded-xl bg-bg px-10 pt-9 pb-[18px] shadow-panel";
 
-function TokenStep({ onDone }: { onDone: () => void }) {
+function SignInStep({ onDone }: { onDone: () => void }) {
+  const [manual, setManual] = useState(false);
+
+  return manual ? (
+    <TokenStep
+      onDone={onDone}
+      onBack={() => setManual(false)}
+    />
+  ) : (
+    <GitHubStep
+      onDone={onDone}
+      onManual={() => setManual(true)}
+    />
+  );
+}
+
+function GitHubStep({ onDone, onManual }: { onDone: () => void; onManual: () => void }) {
+  const client = useQueryClient();
+  const [device, setDevice] = useState<DeviceCode | null>(null);
+  const [starting, setStarting] = useState(false);
+  const [auth, setAuth] = useState<AuthStatus | null>(null);
+  const [error, setError] = useState<string>();
+  const [copied, setCopied] = useState(false);
+  const generation = useRef(0);
+  const continueButton = useRef<HTMLButtonElement>(null);
+  const pending = starting || device !== null;
+
+  useEffect(
+    () => () => {
+      generation.current++;
+    },
+    [],
+  );
+  useEffect(() => {
+    if (auth) {
+      continueButton.current?.focus();
+    }
+  }, [auth]);
+  useEffect(() => {
+    if (!device) {
+      return;
+    }
+
+    let active = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      try {
+        const status = await commands.authOauthPoll(device.user_code);
+
+        if (!active) {
+          return;
+        }
+        if (status) {
+          await client.cancelQueries({ queryKey: projectsQuery.queryKey });
+
+          if (!active) {
+            return;
+          }
+          client.removeQueries({ queryKey: projectsQuery.queryKey });
+          client.setQueryData(authQuery.queryKey, status);
+          setAuth(status);
+          setDevice(null);
+        } else {
+          timer = setTimeout(poll, device.interval * 1000);
+        }
+      } catch (error) {
+        if (!active) {
+          return;
+        }
+        setError(errorMessage(error));
+        setDevice(null);
+      }
+    };
+
+    timer = setTimeout(poll, device.interval * 1000);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+      void commands.authOauthCancel(device.user_code).catch(() => {});
+    };
+  }, [device, client]);
+
+  async function start() {
+    if (pending) {
+      return;
+    }
+
+    const attempt = ++generation.current;
+    setStarting(true);
+    setError(undefined);
+    setCopied(false);
+
+    try {
+      const code = await commands.authOauthStart();
+
+      if (generation.current !== attempt) {
+        await commands.authOauthCancel(code.user_code);
+        return;
+      }
+
+      setDevice(code);
+      await copyCode(code.user_code);
+
+      if (generation.current === attempt) {
+        await openGitHub();
+      }
+    } catch (error) {
+      if (generation.current === attempt) {
+        setError(errorMessage(error));
+      }
+    } finally {
+      if (generation.current === attempt) {
+        setStarting(false);
+      }
+    }
+  }
+
+  function cancel() {
+    generation.current++;
+    setStarting(false);
+    setDevice(null);
+    setCopied(false);
+  }
+
+  async function copyCode(code: string) {
+    const attempt = generation.current;
+
+    try {
+      await commands.authOauthCopyCode(code);
+
+      if (generation.current === attempt) {
+        setCopied(true);
+        setError(undefined);
+      }
+    } catch (error) {
+      if (generation.current === attempt) {
+        setCopied(false);
+        setError(errorMessage(error));
+      }
+    }
+  }
+
+  async function openGitHub() {
+    try {
+      await openUrl("https://github.com/login/device");
+    } catch (error) {
+      setError(errorMessage(error));
+    }
+  }
+
+  return (
+    <form
+      className={panelClass}
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (auth) {
+          onDone();
+        }
+      }}
+    >
+      <StepHeader
+        step={1}
+        title="Connect to GitHub"
+      />
+      <GitHubSignIn
+        pending={pending}
+        code={device?.user_code}
+        copied={copied}
+        error={error}
+        connected={auth !== null}
+        onSignIn={() => void start()}
+        onCopy={() => {
+          if (device) {
+            void copyCode(device.user_code);
+          }
+        }}
+        onOpen={() => {
+          if (device) {
+            void copyCode(device.user_code).then(openGitHub);
+          }
+        }}
+        onCancel={cancel}
+      />
+      {!auth && !pending ? <PersonalTokenOption onSelect={onManual} /> : null}
+      {auth ? (
+        <AccountBlock
+          login={auth.login ?? ""}
+          avatarUrl={auth.avatar_url ?? undefined}
+        />
+      ) : null}
+      <span className="flex-1" />
+      <Footer>
+        {auth ? (
+          <Button
+            type="submit"
+            variant="primary"
+            ref={continueButton}
+          >
+            Continue<Kbd variant="onAccent">↵</Kbd>
+          </Button>
+        ) : null}
+      </Footer>
+    </form>
+  );
+}
+
+function TokenStep({ onDone, onBack }: { onDone: () => void; onBack: () => void }) {
   const queryClient = useQueryClient();
   const [token, setToken] = useState("");
   const [check, setCheck] = useState<Check>({ state: "idle" });
@@ -141,8 +347,7 @@ function TokenStep({ onDone }: { onDone: () => void }) {
         step={1}
         title="Connect your GitHub account"
       >
-        Paste a personal access token. Planche stores it in your macOS Keychain and only talks to
-        api.github.com.
+        Use a classic PAT. It is saved locally in a private, unencrypted file.
       </StepHeader>
       <Field className="gap-1.5">
         <label
@@ -222,6 +427,13 @@ function TokenStep({ onDone }: { onDone: () => void }) {
       </div>
       <span className="flex-1" />
       <Footer>
+        <Button
+          type="button"
+          disabled={check.state === "checking"}
+          onClick={onBack}
+        >
+          Use GitHub sign-in
+        </Button>
         <Button
           type="submit"
           variant={check.state === "valid" ? "primary" : "secondary"}
@@ -333,7 +545,9 @@ function ProjectStep({ onBack }: { onBack: () => void }) {
             message={blocked.join(", ")}
             pending={projects.isFetching}
             onRetry={retry}
-            onAuthorize={() => void openUrl("https://github.com/settings/tokens")}
+            onAuthorize={() =>
+              void openUrl(`https://github.com/orgs/${encodeURIComponent(blocked[0])}/sso`)
+            }
           />
         ) : null}
         {projects.isSuccess && available.length === 0 && blocked.length === 0 ? (

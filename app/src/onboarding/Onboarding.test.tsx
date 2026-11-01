@@ -14,9 +14,94 @@ import {
 } from "@/test-support";
 import { Onboarding } from "./Onboarding";
 
+test("GitHub sign-in displays the code and continues after authorization", async () => {
+  installMockBackend("onboarding");
+  render(<Onboarding signedIn={false} />);
+
+  click(button("Sign in with GitHub"));
+
+  await expect.poll(() => document.querySelector("output")?.textContent).toBe("ABCD-EFGH");
+  await expect.poll(() => calls.auth_oauth_copy_code).toBe(1);
+  await expect.poll(() => calls["plugin:opener|open_url"]).toBe(1);
+  expect(document.querySelector('button[type="submit"]')).toBeNull();
+  expect(document.body.textContent).not.toContain("Use a personal access token");
+  expect(calls.auth_oauth_start).toBe(1);
+  expect(calls.list_projects).toBeUndefined();
+
+  await expect
+    .poll(() => document.querySelector('[data-slot="account-block"]')?.textContent)
+    .toContain("camille-r");
+
+  expect(calls.auth_oauth_poll).toBe(1);
+  expect(calls.auth_set_token).toBeUndefined();
+  expect(button("Continue↵").disabled).toBe(false);
+
+  click(button("Continue↵"));
+
+  await expect.poll(() => document.body.textContent).toContain("Pick a project");
+});
+
+test("cancelling GitHub sign-in stops polling and permits a new attempt", async () => {
+  installMockBackend("oauth-waiting");
+  render(<Onboarding signedIn={false} />);
+  click(button("Sign in with GitHub"));
+
+  await expect.poll(() => document.querySelector("output")?.textContent).toBe("ABCD-EFGH");
+  click(button("Cancel sign-in"));
+
+  expect(document.querySelector("output")).toBeNull();
+  await expect.poll(() => calls.auth_oauth_cancel).toBe(1);
+  expect(calls.auth_oauth_poll).toBeUndefined();
+  click(button("Sign in with GitHub"));
+
+  await expect.poll(() => calls.auth_oauth_start).toBe(2);
+});
+
+test("a declined GitHub authorization is announced and can be retried", async () => {
+  installMockBackend("oauth-denied");
+  render(<Onboarding signedIn={false} />);
+  click(button("Sign in with GitHub"));
+
+  await expect
+    .poll(() => document.querySelector('[role="alert"]')?.textContent)
+    .toContain("authorization was declined");
+
+  expect(document.querySelector('button[type="submit"]')).toBeNull();
+  expect(button("Sign in with GitHub").disabled).toBe(false);
+  expect(calls.auth_set_token).toBeUndefined();
+});
+
+test("the verification code can be copied again while waiting", async () => {
+  installMockBackend("oauth-waiting");
+  render(<Onboarding signedIn={false} />);
+  click(button("Sign in with GitHub"));
+
+  await expect.poll(() => calls.auth_oauth_copy_code).toBe(1);
+  await expect.poll(() => document.body.textContent).toContain("Code copied");
+  click(button("Copy code"));
+
+  await expect.poll(() => calls.auth_oauth_copy_code).toBe(2);
+  expect(calls.auth_oauth_start).toBe(1);
+});
+
+test("clipboard failure leaves the code available to copy manually", async () => {
+  installMockBackend("oauth-copy-error");
+  render(<Onboarding signedIn={false} />);
+  click(button("Sign in with GitHub"));
+
+  await expect
+    .poll(() => document.querySelector('[role="alert"]')?.textContent)
+    .toContain("Select and copy it manually");
+
+  expect(get("output").textContent).toBe("ABCD-EFGH");
+  expect(document.body.textContent).not.toContain("Code copied");
+  expect(calls["plugin:opener|open_url"]).toBe(1);
+});
+
 test("the token field starts empty, masked and focused, with the required scopes", () => {
   installMockBackend("onboarding");
   render(<Onboarding signedIn={false} />);
+  click(button("Use a personal access token"));
 
   const input = get<HTMLInputElement>("#token");
 
@@ -36,6 +121,7 @@ test("the token field starts empty, masked and focused, with the required scopes
 test("validation disables resubmission, announces success and opens the selected project", async () => {
   installMockBackend("valid");
   const { client } = render(<Onboarding signedIn={false} />);
+  click(button("Use a personal access token"));
   const input = get<HTMLInputElement>("#token");
 
   fill(input, "  ghp_example  ");
@@ -65,6 +151,7 @@ test("validation disables resubmission, announces success and opens the selected
 test("a rejected token has an accessible error which clears on edit", async () => {
   installMockBackend("invalid");
   render(<Onboarding signedIn={false} />);
+  click(button("Use a personal access token"));
   const input = get<HTMLInputElement>("#token");
 
   fill(input, "ghp_wrong");
@@ -108,7 +195,7 @@ test.each([
 
   if (state === "sso") {
     expect(notice.textContent).toContain("acme-sso");
-    expect(button("Configure SSO", notice).disabled).toBe(false);
+    expect(button("Open organization SSO", notice).disabled).toBe(false);
   }
 
   backend.restoreProjects();
@@ -124,6 +211,7 @@ test.each([
 test("a project-list failure preserves a validated token and Back starts fresh", async () => {
   const backend = installMockBackend("valid-projects-error");
   render(<Onboarding signedIn={false} />);
+  click(button("Use a personal access token"));
   const input = get<HTMLInputElement>("#token");
 
   fill(input, "ghp_valid");
@@ -142,6 +230,8 @@ test("a project-list failure preserves a validated token and Back starts fresh",
 
   await expect.poll(() => document.querySelector('[data-slot="project-access-state"]')).toBeNull();
   click(button("Back"));
+
+  click(button("Use a personal access token"));
 
   expect(get<HTMLInputElement>("#token").value).toBe("");
   expect(document.activeElement).toBe(get("#token"));
@@ -164,6 +254,7 @@ test("SSO guidance leaves projects from other owners selectable", async () => {
 test("a pending token check cannot list projects or open the board", () => {
   installMockBackend("checking");
   render(<Onboarding signedIn={false} />);
+  click(button("Use a personal access token"));
 
   fill(get("#token"), "ghp_example");
   submit(get("#token"));

@@ -9,7 +9,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-keyring.workspace = true
+libc = "0.2"
 reqwest.workspace = true
 rusqlite.workspace = true
 serde.workspace = true
@@ -18,10 +18,7 @@ sha2 = "0.11"
 specta.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["sync", "time"] }
-
-[target.'cfg(target_os = "macos")'.dependencies]
-apple-native-keyring-store = { version = "1.0.2", features = ["protected"] }
-security-framework = "3.7"
+tempfile = "3.27"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }
