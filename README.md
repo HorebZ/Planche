@@ -108,17 +108,31 @@ once (free; unrelated to Apple Developer membership):
 
 1. Set **Application name** to `Planche`, **Homepage URL** to
    `https://github.com/HorebZ/Planche`, and **Authorization callback URL** to
-   `http://127.0.0.1` for the required
-   callback URL (Device Flow does not use the callback).
+   `http://127.0.0.1`. GitHub requires this field, but Device Flow does not use it.
 2. Click **Register application**, then enable **Device Flow** in the app settings
    and save. Keep token expiration disabled;
    this version supports long-lived tokens and rejects expiring ones until token
    refresh is implemented.
 3. Copy **Client ID** into `PLANCHE_GITHUB_CLIENT_ID` in the root `.env`. Leave
    `PLANCHE_TOKEN` empty when testing OAuth and restart with `bun run dev`.
-   No client secret is needed. For distribution, set this variable while building:
-   it is embedded in the Rust executable, so installed apps need no `.env`.
-   For example, from the root: `bun run --cwd app --env-file=../.env tauri build`.
+   No client secret is needed.
+
+Development and packaged releases use the same OAuth App and Client ID. Keep
+Device Flow enabled and the callback URL at `http://127.0.0.1`; no GitHub
+configuration change is needed for a release. Authorization happens on
+`https://github.com/login/device`, and Planche polls GitHub for the result.
+There is no redirect to a local IP, no local authentication server and no port
+to open.
+
+To package the macOS app, load the Client ID from the root `.env` at build time:
+
+```sh
+bun run --cwd app --env-file=../.env tauri build
+```
+
+Only the public Client ID is embedded in the Rust executable. The `.env` file
+and `PLANCHE_TOKEN` are not bundled. Installed apps need no `.env`; each user
+authorizes their own GitHub account.
 
 For an organization using SAML SSO, establish its SSO session in the browser
 before authorizing Planche. An organization administrator may need to approve
