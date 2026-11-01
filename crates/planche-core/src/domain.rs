@@ -73,6 +73,40 @@ pub struct IssueDescription {
     pub fetched_at: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct IssuePermissions {
+    pub assign: bool,
+    pub close: bool,
+    pub reopen: bool,
+    pub label: bool,
+    pub update: bool,
+    pub delete: bool,
+}
+
+/// Shared GitHub content, without a Project's fields, position or item ID.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct Issue {
+    pub content: ItemContent,
+    /// Project summaries can contain only the first page of labels or assignees.
+    pub complete: bool,
+    /// Unknown until the issue itself has been fetched; Project access grants no issue rights.
+    pub permissions: Option<IssuePermissions>,
+    pub fetched_at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
+#[serde(tag = "status", rename_all = "snake_case")]
+pub enum IssueLoad {
+    Ready {
+        issue: Issue,
+    },
+    Offline {
+        issue: Option<Issue>,
+    },
+    /// GitHub does not distinguish a deleted issue from one the token cannot see.
+    Unavailable,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
 pub struct ProjectList {
     /// The viewer first, then organizations by login.

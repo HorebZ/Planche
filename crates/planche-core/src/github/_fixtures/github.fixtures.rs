@@ -1,7 +1,9 @@
 use std::future::{Future, ready};
 use std::sync::{Arc, Mutex};
 
-use crate::domain::{ContentId, Item, ItemContent, ItemId, ProjectId, ProjectMeta, RateUsage};
+use crate::domain::{
+    ContentId, Item, ItemContent, ItemId, ProjectId, ProjectMeta, RateUsage, UserId,
+};
 use crate::error::{Error, GraphqlError, Result};
 use crate::github::ops::{ItemsPage, decode_project_items, decode_project_meta};
 use crate::intent::Operation;
@@ -61,6 +63,7 @@ impl FakeGithub {
             let end = (start + PAGE).min(s.items.len());
 
             Ok(ItemsPage {
+                account: Some(UserId("U_viewer".into())),
                 items: s.items[start..end].to_vec(),
                 next_cursor: (end < s.items.len()).then(|| (n + 1).to_string()),
                 total_count: s.items.len() as u32,

@@ -29,6 +29,8 @@ fn builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::get_board,
             commands::cached_issue_description,
             commands::refresh_issue_description,
+            commands::cached_issue,
+            commands::refresh_issue,
             commands::refresh_project,
             commands::dispatch_intent,
             commands::list_assignable_users,

@@ -1,0 +1,29 @@
+query Issue($id: ID!, $assigneesAfter: String, $labelsAfter: String) {
+  viewer { id }
+  node(id: $id) {
+    __typename
+    id
+    ... on Issue {
+      number title url body issueState: state createdAt
+      repository { nameWithOwner }
+      assignees(first: 100, after: $assigneesAfter) {
+        pageInfo { hasNextPage endCursor }
+        nodes { id login avatarUrl }
+      }
+      labels(first: 100, after: $labelsAfter) {
+        pageInfo { hasNextPage endCursor }
+        nodes { name color }
+      }
+      parent { title }
+      subIssuesSummary { completed total }
+      issueDependenciesSummary { blockedBy blocking }
+      closedByPullRequestsReferences(first: 1, includeClosedPrs: true) {
+        totalCount
+        nodes { number title prState: state isDraft }
+      }
+      viewerCanAssign viewerCanClose viewerCanReopen
+      viewerCanLabel viewerCanUpdate viewerCanDelete
+    }
+  }
+  rateLimit { cost remaining resetAt }
+}

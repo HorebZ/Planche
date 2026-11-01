@@ -2,6 +2,87 @@ use crate::github::fixtures::{ITEM_PAGES, PROJECT_META};
 use crate::github::ops::{decode_project_items, decode_project_meta};
 use serde_json::{Value, json};
 
+#[tokio::test]
+async fn independent_issue_load_checks_identity_and_paginates_both_connections() {
+    use super::{issue_from_wire, load_issue};
+    use crate::domain::{ContentId, ItemContent, UserId};
+
+    let mut base: Value = serde_json::from_str(ITEM_PAGES[0]).unwrap();
+    let mut node = base["data"]["node"]["items"]["nodes"][0]["content"].take();
+    node["body"] = json!("Shared body");
+    for permission in [
+        "viewerCanAssign",
+        "viewerCanClose",
+        "viewerCanReopen",
+        "viewerCanLabel",
+        "viewerCanUpdate",
+        "viewerCanDelete",
+    ] {
+        node[permission] = json!(true);
+    }
+    let content = ContentId(node["id"].as_str().unwrap().into());
+    let account = UserId("A".into());
+    let mut requests = Vec::new();
+    let result = load_issue(&account, &content, |users_after, labels_after| {
+        let page = requests.len();
+        requests.push((users_after, labels_after));
+        let mut node = node.clone();
+        node["assignees"] = json!({ "nodes": [{ "id": format!("U_{page}"), "login": format!("user{page}"), "avatarUrl": "https://github.com/avatar" }], "pageInfo": { "hasNextPage": page != 1, "endCursor": "users-next" } });
+        node["labels"] = json!({ "nodes": [{ "name": format!("label{page}"), "color": "ffffff" }], "pageInfo": { "hasNextPage": page < 2, "endCursor": format!("labels-{}", page + 1) } });
+
+        std::future::ready(Ok(serde_json::from_value(json!({ "viewer": { "id": "A" }, "node": node })).unwrap()))
+    }).await.unwrap().unwrap();
+    let ItemContent::Issue {
+        assignees, labels, ..
+    } = result.0.content
+    else {
+        panic!("issue");
+    };
+
+    assert_eq!(
+        assignees
+            .iter()
+            .map(|user| user.login.as_str())
+            .collect::<Vec<_>>(),
+        ["user0", "user1"]
+    );
+    assert_eq!(
+        labels
+            .iter()
+            .map(|label| label.name.as_str())
+            .collect::<Vec<_>>(),
+        ["label0", "label1", "label2"]
+    );
+    assert_eq!(
+        requests,
+        [
+            (None, None),
+            (Some("users-next".into()), Some("labels-1".into())),
+            (None, Some("labels-2".into()))
+        ]
+    );
+    assert_eq!(result.1, "Shared body");
+    assert!(result.0.permissions.unwrap().delete);
+
+    let data = || serde_json::from_value(json!({ "viewer": { "id": "A" }, "node": node })).unwrap();
+
+    assert!(issue_from_wire(data(), &UserId("B".into()), &content).is_err());
+    assert!(
+        issue_from_wire(data(), &account, &ContentId("other".into()))
+            .unwrap()
+            .is_none()
+    );
+    node["__typename"] = json!("PullRequest");
+    let wrong_type =
+        serde_json::from_value(json!({ "viewer": { "id": "A" }, "node": node })).unwrap();
+
+    assert!(
+        issue_from_wire(wrong_type, &account, &content)
+            .unwrap()
+            .is_none()
+    );
+}
+
 #[test]
 fn every_fixture_decodes() {
     let meta = decode_project_meta(PROJECT_META).unwrap();

@@ -13,7 +13,7 @@ use tokio::sync::{broadcast, mpsc};
 
 use crate::board::project_board;
 use crate::cache::{Cache, Mutation};
-use crate::domain::{Board, ItemId, ProjectId, ProjectMeta, RateUsage};
+use crate::domain::{Board, ItemId, ProjectId, ProjectMeta, RateUsage, UserId};
 use crate::error::{Error, GraphqlError, Result};
 use crate::github::GithubClient;
 use crate::github::ops::{self, ItemsPage};
@@ -103,8 +103,11 @@ pub async fn full_sync<R: Remote>(
     number: u32,
     mut progress: impl FnMut(u32, u32, u32),
 ) -> Result<SyncReport> {
+    // A fetch started before an access refusal must not restore the protected content.
+    let revision = cache.issue_revision()?;
     let cost_before = remote.usage().cost_total;
     let (meta, mut page) = remote.board_page(owner, number).await?;
+    let account = page.account.clone();
     let total = page.total_count;
     let pages = total.div_ceil(100).max(1);
 
@@ -130,7 +133,7 @@ pub async fn full_sync<R: Remote>(
         .snapshot(&meta.id)?
         .and_then(|(meta, items)| project_board(&meta, None, &items).ok());
 
-    cache.write_snapshot(&meta, &items, owner == "@me")?;
+    cache.write_snapshot_at(&meta, &items, owner == "@me", revision, account.as_ref())?;
 
     let after = project_board(&meta, None, &items).ok();
     let usage = remote.usage();
@@ -242,6 +245,41 @@ pub async fn flush<R: Remote>(
             Err(error) => {
                 cache.remove(mutation.seq)?;
                 sent(Sent::Failed(mutation, error));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// The caller authenticates `remote` as `account` before draining this account's queue.
+/// Unlike Project mutations, issue actions need neither a board nor a cached Project.
+pub(crate) async fn flush_issues<R: Remote>(
+    cache: &mut Cache,
+    remote: &R,
+    account: &UserId,
+) -> Result<()> {
+    while let Some(mutation) = cache.claim_issue(account)? {
+        let mut failure = None;
+
+        for operation in mutation.intent.to_operations() {
+            if let Err(error) = remote.execute(&operation).await {
+                failure = Some(error);
+                break;
+            }
+        }
+
+        match failure {
+            None => cache.ack(mutation.seq)?,
+            Some(error) if error.is_transient() => {
+                cache.release(mutation.seq, &error.to_string())?;
+
+                return Err(error);
+            }
+            Some(error) => {
+                cache.remove(mutation.seq)?;
+
+                return Err(error);
             }
         }
     }

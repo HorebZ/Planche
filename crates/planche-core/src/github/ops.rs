@@ -5,8 +5,8 @@ use serde_json::json;
 
 use super::{GithubClient, decode, wire};
 use crate::domain::{
-    CardDetails, ContentId, Field, FieldId, IssueState, Item, ItemContent, ItemId, Label,
-    LinkedPullRequest, OptionId, OwnerProjects, ProjectId, ProjectList, ProjectMeta,
+    CardDetails, ContentId, Field, FieldId, Issue, IssuePermissions, IssueState, Item, ItemContent,
+    ItemId, Label, LinkedPullRequest, OptionId, OwnerProjects, ProjectId, ProjectList, ProjectMeta,
     ProjectSummary, PullRequestState, SelectOption, User, UserId, View, ViewId, ViewLayout, Viewer,
 };
 use crate::error::{Error, Result};
@@ -14,6 +14,129 @@ use crate::intent::Operation;
 
 const QUERIES: &str = include_str!("../../graphql/queries.graphql");
 const MUTATIONS: &str = include_str!("../../graphql/mutations.graphql");
+
+/// Loaded on demand, never as an additional query in the Project sync loop.
+pub async fn issue(
+    client: &GithubClient,
+    account: &UserId,
+    content: &ContentId,
+) -> Result<Option<(Issue, String)>> {
+    load_issue(account, content, |assignees_after, labels_after| async move {
+        Ok(client.query::<wire::IssueData>(
+            include_str!("../../graphql/issue.graphql"),
+            "Issue",
+            json!({ "id": content, "assigneesAfter": assignees_after, "labelsAfter": labels_after }),
+        ).await?.data)
+    }).await
+}
+
+async fn load_issue<F: std::future::Future<Output = Result<wire::IssueData>>>(
+    account: &UserId,
+    content: &ContentId,
+    mut fetch: impl FnMut(Option<String>, Option<String>) -> F,
+) -> Result<Option<(Issue, String)>> {
+    let mut assignees_after = None;
+    let mut labels_after = None;
+    let mut assignees_done = false;
+    let mut labels_done = false;
+    let mut result: Option<(Issue, String)> = None;
+
+    loop {
+        let data = fetch(assignees_after, labels_after).await?;
+        let Some(mut node) = issue_from_wire(data, account, content)? else {
+            return Ok(None);
+        };
+        let wire::Content::Issue {
+            assignees, labels, ..
+        } = &mut node.content
+        else {
+            return Ok(None);
+        };
+        let cursor = |info: Option<wire::PageInfo>| -> Result<Option<String>> {
+            let info = info.ok_or_else(|| Error::Decode("missing issue pageInfo".into()))?;
+
+            if info.has_next_page && info.end_cursor.is_none() {
+                return Err(Error::Decode("missing issue pagination cursor".into()));
+            }
+
+            Ok(next_cursor(info))
+        };
+        let next_assignees = cursor(assignees.page_info.take())?.filter(|_| !assignees_done);
+        let next_labels = cursor(labels.page_info.take())?.filter(|_| !labels_done);
+        let page_content = content_from_wire(node.content);
+
+        if let Some((issue, _)) = &mut result {
+            let ItemContent::Issue {
+                assignees: saved_users,
+                labels: saved_labels,
+                ..
+            } = &mut issue.content
+            else {
+                unreachable!("issue validated on the first page");
+            };
+
+            if let ItemContent::Issue {
+                assignees, labels, ..
+            } = page_content
+            {
+                if !assignees_done {
+                    saved_users.extend(assignees);
+                }
+
+                if !labels_done {
+                    saved_labels.extend(labels);
+                }
+            }
+        } else {
+            result = Some((
+                Issue {
+                    content: page_content,
+                    complete: true,
+                    permissions: Some(IssuePermissions {
+                        assign: node.viewer_can_assign,
+                        close: node.viewer_can_close,
+                        reopen: node.viewer_can_reopen,
+                        label: node.viewer_can_label,
+                        update: node.viewer_can_update,
+                        delete: node.viewer_can_delete,
+                    }),
+                    fetched_at: String::new(),
+                },
+                node.body,
+            ));
+        }
+
+        assignees_after = next_assignees;
+        labels_after = next_labels;
+        assignees_done = assignees_after.is_none();
+        labels_done = labels_after.is_none();
+
+        if assignees_after.is_none() && labels_after.is_none() {
+            return Ok(result);
+        }
+    }
+}
+
+fn issue_from_wire(
+    data: wire::IssueData,
+    account: &UserId,
+    content: &ContentId,
+) -> Result<Option<wire::IssueNode>> {
+    if data.viewer.id != account.as_str() {
+        return Err(Error::Unauthorized);
+    }
+
+    let Some(node) = data
+        .node
+        .filter(|node| node["__typename"] == "Issue" && node["id"] == content.as_str())
+    else {
+        return Ok(None);
+    };
+
+    serde_json::from_value(node)
+        .map(Some)
+        .map_err(|error| Error::Decode(error.to_string()))
+}
 
 pub async fn issue_description(
     client: &GithubClient,
@@ -203,10 +326,11 @@ pub async fn board_page(
         .and_then(|o| o.project_v2)
         .ok_or_else(not_found)?;
 
-    Ok((
-        meta_from_wire(project.meta)?,
-        items_page_from_wire(project.items),
-    ))
+    let mut page = items_page_from_wire(project.items);
+
+    page.account = Some(UserId(reply.data.account.id));
+
+    Ok((meta_from_wire(project.meta)?, page))
 }
 
 /// The 100 items after `cursor`.
@@ -336,6 +460,8 @@ pub fn decode_project_meta(body: &str) -> Result<ProjectMeta> {
 }
 
 pub struct ItemsPage {
+    /// Authenticated viewer of a ProjectBoard response; following pages share its client.
+    pub account: Option<UserId>,
     pub items: Vec<Item>,
     pub next_cursor: Option<String>,
     /// Items in the whole project, archived ones included.
@@ -422,6 +548,7 @@ fn meta_from_wire(p: wire::Project) -> Result<ProjectMeta> {
 
 fn items_page_from_wire(page: wire::Connection<wire::Item>) -> ItemsPage {
     ItemsPage {
+        account: None,
         total_count: page.total_count.unwrap_or_default(),
         items: page
             .nodes

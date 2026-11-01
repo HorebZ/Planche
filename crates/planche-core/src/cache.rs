@@ -13,17 +13,19 @@ use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, 
 
 use crate::board::{self, project_board};
 use crate::domain::{
-    Board, ContentId, Field, FieldId, IssueDescription, IssueState, Item, ItemContent, ItemId,
-    Label, OptionId, OwnerProjects, ProjectId, ProjectList, ProjectMeta, ProjectSummary,
-    PullRequestState, SelectOption, User, UserId, View, ViewId, ViewLayout,
+    Board, ContentId, Field, FieldId, Issue, IssueDescription, IssuePermissions, IssueState, Item,
+    ItemContent, ItemId, Label, OptionId, OwnerProjects, ProjectId, ProjectList, ProjectMeta,
+    ProjectSummary, PullRequestState, SelectOption, User, UserId, View, ViewId, ViewLayout,
 };
 use crate::error::{Error, Result};
 use crate::intent::{self, Intent, Placement};
+use crate::issue::IssueIntent;
 
 const MIGRATIONS: &[&str] = &[
     include_str!("../migrations/0001_init.sql"),
     include_str!("../migrations/0002_card_details.sql"),
     include_str!("../migrations/0003_issue_description.sql"),
+    include_str!("../migrations/0004_issues.sql"),
 ];
 
 /// An acked row stays replayed until the snapshot reflects it, or for this many syncs.
@@ -41,6 +43,12 @@ pub struct Cache {
 pub struct Mutation {
     pub seq: i64,
     pub intent: Intent,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IssueMutation {
+    pub seq: i64,
+    pub intent: IssueIntent,
 }
 
 impl Cache {
@@ -123,14 +131,169 @@ impl Cache {
         revision: i64,
         body: Option<&str>,
     ) -> Result<Option<IssueDescription>> {
+        let tx = self.conn.unchecked_transaction()?;
+
         // A refusal must also supersede an older successful request still in flight.
-        self.conn.execute(&format!(
+        let updated = tx.execute(&format!(
             "UPDATE issue_description SET body = ?5, fetched_at = CASE WHEN ?5 IS NULL THEN NULL ELSE {NOW} END
              WHERE host = ?1 AND account_id = ?2 AND content_id = ?3 AND revision = ?4"),
             params![host, account.as_str(), content.as_str(), revision, body],
         )?;
 
+        if updated == 1 && body.is_none() {
+            self.invalidate_issue(host, account, content)?;
+        }
+
+        tx.commit()?;
+
         self.issue_description(host, account, content)
+    }
+
+    pub fn issue(
+        &self,
+        host: &str,
+        account: &UserId,
+        content: &ContentId,
+    ) -> Result<Option<Issue>> {
+        let row: Option<(String, Option<String>, String, bool)> = self.conn.query_row(
+            "SELECT content, permissions, fetched_at, complete FROM issue WHERE host = ?1 AND account_id = ?2 AND content_id = ?3 AND content IS NOT NULL",
+            params![host, account.as_str(), content.as_str()],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+        ).optional()?;
+
+        row.map(|(json, permissions, fetched_at, complete)| {
+            let mut issue = Issue {
+                content: serde_json::from_str(&json)
+                    .map_err(|error| Error::Cache(error.to_string()))?,
+                complete,
+                permissions: permissions
+                    .map(|json| serde_json::from_str::<IssuePermissions>(&json))
+                    .transpose()
+                    .map_err(|error| Error::Cache(error.to_string()))?,
+                fetched_at,
+            };
+
+            for intent in self.issue_intents(account)? {
+                intent.apply(&mut issue.content);
+            }
+
+            Ok(issue)
+        })
+        .transpose()
+    }
+
+    pub fn begin_issue(&self, host: &str, account: &UserId, content: &ContentId) -> Result<i64> {
+        let revision = Self::next_issue_revision(&self.conn)?;
+
+        self.conn.execute(
+            "INSERT INTO issue (host, account_id, content_id, revision) VALUES (?1, ?2, ?3, ?4)
+             ON CONFLICT (host, account_id, content_id) DO UPDATE SET revision = MAX(revision, excluded.revision)",
+            params![host, account.as_str(), content.as_str(), revision],
+        )?;
+
+        Ok(revision)
+    }
+
+    pub(crate) fn issue_revision(&self) -> Result<i64> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT CAST(value AS INTEGER) FROM kv WHERE key = 'issue_revision'",
+                [],
+                |row| row.get(0),
+            )
+            .optional()?
+            .unwrap_or(0))
+    }
+
+    fn next_issue_revision(conn: &Connection) -> Result<i64> {
+        Ok(conn.query_row(
+            "INSERT INTO kv (key, value) VALUES ('issue_revision', '1') ON CONFLICT (key) DO UPDATE SET value = CAST(value AS INTEGER) + 1 RETURNING CAST(value AS INTEGER)", [], |row| row.get(0),
+        )?)
+    }
+
+    pub fn finish_issue(
+        &mut self,
+        host: &str,
+        account: &UserId,
+        content: &ContentId,
+        revision: i64,
+        issue: Option<(&Issue, &str)>,
+    ) -> Result<Option<Issue>> {
+        let tx = self.write()?;
+        let (json, permissions, body) = match issue {
+            Some((issue, body)) => {
+                if !matches!(&issue.content, ItemContent::Issue { id, .. } if id == content) {
+                    return Err(Error::Decode(
+                        "issue identity does not match the request".into(),
+                    ));
+                }
+
+                (
+                    Some(serde_json::to_string(&issue.content).expect("content serializes")),
+                    issue.permissions.as_ref().map(|permissions| {
+                        serde_json::to_string(permissions).expect("permissions serialize")
+                    }),
+                    Some(body),
+                )
+            }
+            None => (None, None, None),
+        };
+        let updated = tx.execute(&format!(
+            "UPDATE issue SET content = ?5, complete = 1, permissions = ?6, fetched_at = CASE WHEN ?5 IS NULL THEN NULL ELSE {NOW} END
+             WHERE host = ?1 AND account_id = ?2 AND content_id = ?3 AND revision = ?4"),
+            params![host, account.as_str(), content.as_str(), revision, json, permissions],
+        )?;
+
+        if updated == 1 {
+            tx.execute(&format!(
+                "INSERT INTO issue_description (host, account_id, content_id, revision, body, fetched_at) VALUES (?1, ?2, ?3, 1, ?4, CASE WHEN ?4 IS NULL THEN NULL ELSE {NOW} END)
+                 ON CONFLICT (host, account_id, content_id) DO UPDATE SET revision = revision + 1, body = excluded.body, fetched_at = excluded.fetched_at"),
+                params![host, account.as_str(), content.as_str(), body],
+            )?;
+
+            if let Some((issue, _)) = issue {
+                let acked: Vec<(i64, String, i64)> = tx.prepare_cached(
+                    "SELECT seq, intent, acked_at_sync FROM pending_mutation WHERE account_id = ?1 AND content_id = ?2 AND project_id IS NULL AND status = 'acked' ORDER BY seq",
+                )?.query_map(params![account.as_str(), content.as_str()], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?.collect::<rusqlite::Result<_>>()?;
+
+                for (seq, json, syncs) in acked {
+                    let intent: IssueIntent = serde_json::from_str(&json)
+                        .map_err(|error| Error::Cache(error.to_string()))?;
+                    let mut projected = issue.content.clone();
+
+                    intent.apply(&mut projected);
+
+                    if projected == issue.content || syncs + 1 >= ACKED_SYNCS {
+                        tx.execute("DELETE FROM pending_mutation WHERE seq = ?1", [seq])?;
+                    } else {
+                        tx.execute("UPDATE pending_mutation SET acked_at_sync = acked_at_sync + 1 WHERE seq = ?1", [seq])?;
+                    }
+                }
+            } else {
+                let revision = Self::next_issue_revision(&tx)?;
+
+                tx.execute("UPDATE issue SET revision = ?4 WHERE host = ?1 AND account_id = ?2 AND content_id = ?3", params![host, account.as_str(), content.as_str(), revision])?;
+                tx.execute("DELETE FROM pending_mutation WHERE account_id = ?1 AND content_id = ?2 AND project_id IS NULL", params![account.as_str(), content.as_str()])?;
+            }
+        }
+
+        tx.commit()?;
+
+        self.issue(host, account, content)
+    }
+
+    fn invalidate_issue(&self, host: &str, account: &UserId, content: &ContentId) -> Result<()> {
+        let revision = Self::next_issue_revision(&self.conn)?;
+
+        self.conn.execute(
+            "INSERT INTO issue (host, account_id, content_id, revision) VALUES (?1, ?2, ?3, ?4)
+             ON CONFLICT (host, account_id, content_id) DO UPDATE SET content = NULL, permissions = NULL, fetched_at = NULL, revision = excluded.revision",
+            params![host, account.as_str(), content.as_str(), revision],
+        )?;
+        self.conn.execute("DELETE FROM pending_mutation WHERE account_id = ?1 AND content_id = ?2 AND project_id IS NULL", params![account.as_str(), content.as_str()])?;
+
+        Ok(())
     }
 
     /// The cached project `<owner>/<number>`, where `@me` is the viewer of the last sync.
@@ -188,13 +351,38 @@ impl Cache {
             Some(json) => serde_json::from_str(&json).map_err(|e| Error::Cache(e.to_string()))?,
             None => Vec::new(),
         };
+        let account = self.get("account_id")?.map(UserId);
+        let issue_intents = account
+            .as_ref()
+            .map(|account| self.issue_intents(account))
+            .transpose()?
+            .unwrap_or_default();
+        let pending_issues: HashMap<ContentId, u32> = if let Some(account) = &account {
+            self.conn.prepare_cached(
+                "SELECT content_id, count(*) FROM pending_mutation WHERE account_id = ?1 AND project_id IS NULL AND status IN ('pending', 'in_flight', 'unknown') GROUP BY content_id",
+            )?.query_map([account.as_str()], |row| Ok((ContentId(row.get(0)?), row.get(1)?)))?.collect::<rusqlite::Result<_>>()?
+        } else {
+            HashMap::new()
+        };
+        let mut issue_pending = 0;
 
         for card in board.columns.iter_mut().flat_map(|c| &mut c.cards) {
+            for intent in &issue_intents {
+                intent.apply(&mut card.content);
+            }
+
             card.pending = unacked.contains(&card.item_id);
             card.updated_by_sync = changed.contains(&card.item_id);
+
+            if let ItemContent::Issue { id, .. } = &card.content {
+                let pending = pending_issues.get(id).copied().unwrap_or(0);
+
+                card.pending |= pending > 0;
+                issue_pending += pending;
+            }
         }
 
-        board.pending_count = self.pending_count(project)?;
+        board.pending_count = self.pending_count(project)? + issue_pending;
         board.synced_at = self.synced_at(project)?;
 
         Ok(Some(board))
@@ -334,6 +522,31 @@ impl Cache {
         Ok(seq)
     }
 
+    pub fn enqueue_issue(&mut self, account: &UserId, intent: &IssueIntent) -> Result<i64> {
+        let tx = self.write()?;
+
+        tx.execute(&format!(
+            "INSERT INTO pending_mutation (account_id, content_id, intent, created_at) VALUES (?1, ?2, ?3, {NOW})"),
+            params![account.as_str(), intent.content_id().as_str(), serde_json::to_string(intent).expect("intent serializes")],
+        )?;
+        let seq = tx.last_insert_rowid();
+
+        tx.commit()?;
+
+        Ok(seq)
+    }
+
+    pub fn issue_intents(&self, account: &UserId) -> Result<Vec<IssueIntent>> {
+        let mut statement = self.conn.prepare_cached("SELECT intent FROM pending_mutation WHERE account_id = ?1 AND project_id IS NULL ORDER BY seq")?;
+
+        statement
+            .query_map([account.as_str()], |row| row.get::<_, String>(0))?
+            .map(|json| {
+                serde_json::from_str(&json?).map_err(|error| Error::Cache(error.to_string()))
+            })
+            .collect()
+    }
+
     /// Puts rows a dead process left in flight back in the queue. Sending a move or an
     /// assignment twice converges. A `CreateDraft` is not idempotent: it waits as `unknown`
     /// for the next snapshot, which shows whether GitHub created the draft.
@@ -350,13 +563,40 @@ impl Cache {
     /// Marks the oldest pending row of the project in flight and returns it. The update only
     /// matches a pending row, so two processes never claim the same one.
     pub fn claim_next(&self, project: &ProjectId) -> Result<Option<Mutation>> {
+        self.claim(Some(project), None)?
+            .map(|(seq, json)| {
+                Ok(Mutation {
+                    seq,
+                    intent: decode_intent(&json)?,
+                })
+            })
+            .transpose()
+    }
+
+    pub fn claim_issue(&self, account: &UserId) -> Result<Option<IssueMutation>> {
+        self.claim(None, Some(account))?
+            .map(|(seq, json)| {
+                Ok(IssueMutation {
+                    seq,
+                    intent: serde_json::from_str(&json)
+                        .map_err(|error| Error::Cache(error.to_string()))?,
+                })
+            })
+            .transpose()
+    }
+
+    fn claim(
+        &self,
+        project: Option<&ProjectId>,
+        account: Option<&UserId>,
+    ) -> Result<Option<(i64, String)>> {
         loop {
             let Some((seq, json)) = self
                 .conn
                 .query_row(
                     "SELECT seq, intent FROM pending_mutation
-                     WHERE project_id = ?1 AND status = 'pending' ORDER BY seq LIMIT 1",
-                    [project.as_str()],
+                     WHERE project_id IS ?1 AND account_id IS ?2 AND status = 'pending' ORDER BY seq LIMIT 1",
+                    params![project.map(ProjectId::as_str), account.map(UserId::as_str)],
                     |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?)),
                 )
                 .optional()?
@@ -371,10 +611,7 @@ impl Cache {
             )?;
 
             if claimed == 1 {
-                return Ok(Some(Mutation {
-                    seq,
-                    intent: decode_intent(&json)?,
-                }));
+                return Ok(Some((seq, json)));
             }
         }
     }
@@ -416,6 +653,25 @@ impl Cache {
         meta: &ProjectMeta,
         items: &[Item],
         viewer: bool,
+    ) -> Result<()> {
+        let account = self.get("account_id")?.map(UserId);
+
+        self.write_snapshot_at(
+            meta,
+            items,
+            viewer,
+            self.issue_revision()?,
+            account.as_ref(),
+        )
+    }
+
+    pub(crate) fn write_snapshot_at(
+        &mut self,
+        meta: &ProjectMeta,
+        items: &[Item],
+        viewer: bool,
+        revision: i64,
+        account: Option<&UserId>,
     ) -> Result<()> {
         let before: HashMap<ItemId, Item> = self
             .items(&meta.id)?
@@ -463,6 +719,19 @@ impl Cache {
 
         write_meta(&tx, meta)?;
         write_items(&tx, meta, items)?;
+
+        if let Some(account) = account {
+            for item in items {
+                if let ItemContent::Issue { id, .. } = &item.content {
+                    tx.execute(&format!(
+                        "INSERT INTO issue (host, account_id, content_id, content, fetched_at, revision) VALUES (?1, ?2, ?3, ?4, {NOW}, ?5)
+                         ON CONFLICT (host, account_id, content_id) DO UPDATE SET content = excluded.content, complete = 0, fetched_at = excluded.fetched_at, revision = excluded.revision
+                         WHERE issue.revision <= excluded.revision"),
+                        params![crate::description::HOST, account.as_str(), id.as_str(), serde_json::to_string(&item.content).expect("content serializes"), revision],
+                    )?;
+                }
+            }
+        }
 
         if viewer {
             set_kv(&tx, "viewer_login", &meta.owner)?;
@@ -691,7 +960,45 @@ impl Cache {
             rows[index[&item]].labels.push(label);
         }
 
-        rows.into_iter().map(ItemRow::into_item).collect()
+        let shared: HashMap<ContentId, Option<ItemContent>> =
+            if let Some(account) = self.get("account_id")? {
+                let mut statement = self.conn.prepare_cached(
+                    "SELECT content_id, content FROM issue WHERE host = ?1 AND account_id = ?2
+                 AND content_id IN (SELECT content_id FROM item WHERE project_id = ?3)",
+                )?;
+
+                statement
+                    .query_map(params![crate::description::HOST, account, id], |row| {
+                        Ok((ContentId(row.get(0)?), row.get::<_, Option<String>>(1)?))
+                    })?
+                    .map(|row| {
+                        let (id, json) = row?;
+
+                        Ok((
+                            id,
+                            json.map(|json| serde_json::from_str(&json))
+                                .transpose()
+                                .map_err(|error| Error::Cache(error.to_string()))?,
+                        ))
+                    })
+                    .collect::<Result<_>>()?
+            } else {
+                HashMap::new()
+            };
+
+        rows.into_iter()
+            .map(|row| {
+                let mut item = row.into_item()?;
+
+                if let ItemContent::Issue { id, .. } = &item.content
+                    && let Some(content) = shared.get(id)
+                {
+                    item.content = content.clone().unwrap_or(ItemContent::Redacted);
+                }
+
+                Ok(item)
+            })
+            .collect()
     }
 }
 

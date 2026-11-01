@@ -8,6 +8,7 @@ import {
   type Board,
   commands,
   events,
+  type IssueLoad,
   type ProjectId,
   type SyncPrefs,
   type SyncStatus,
@@ -178,6 +179,8 @@ export function createQueryClient() {
     client.removeQueries({ queryKey: ["board"] });
     void client.cancelQueries({ queryKey: ["issue-description"] }, { revert: false, silent: true });
     client.removeQueries({ queryKey: ["issue-description"] });
+    void client.cancelQueries({ queryKey: ["issue"] }, { revert: false, silent: true });
+    client.removeQueries({ queryKey: ["issue"] });
 
     for (const gate of current.gates.values()) {
       for (const wake of gate.wake) {
@@ -262,6 +265,65 @@ export const descriptionQuery = (account: string, content: string) =>
 
       signal.throwIfAborted();
       client.setQueryData(cachedDescriptionQuery(account, content).queryKey, result);
+
+      if (result === null) {
+        void client.cancelQueries(
+          { queryKey: ["issue", "github.com", account, content] },
+          { revert: false, silent: true },
+        );
+        client.setQueryData(cachedIssueQuery(account, content).queryKey, null);
+        client.setQueryData<IssueLoad>(["issue", "github.com", account, content, "fresh"], {
+          status: "unavailable",
+        });
+        void client.invalidateQueries({ queryKey: ["board"] });
+      }
+
+      return result;
+    },
+  });
+
+export const cachedIssueQuery = (account: string, content: string) =>
+  queryOptions({
+    queryKey: ["issue", "github.com", account, content, "cached"],
+    networkMode: "always",
+    refetchOnMount: "always",
+    queryFn: async ({ signal }) => {
+      const issue = await commands.cachedIssue(account, content);
+
+      signal.throwIfAborted();
+
+      return issue;
+    },
+  });
+
+export const issueQuery = (account: string, content: string) =>
+  queryOptions({
+    queryKey: ["issue", "github.com", account, content, "fresh"],
+    networkMode: "always",
+    refetchOnMount: "always",
+    queryFn: async ({ client, signal }) => {
+      const result = await commands.refreshIssue(account, content);
+
+      signal.throwIfAborted();
+      client.setQueryData(
+        cachedIssueQuery(account, content).queryKey,
+        result.status === "unavailable" ? null : result.issue,
+      );
+
+      if (result.status === "unavailable") {
+        void client.cancelQueries(
+          { queryKey: ["issue-description", "github.com", account, content] },
+          { revert: false, silent: true },
+        );
+        client.setQueryData(cachedDescriptionQuery(account, content).queryKey, null);
+        client.setQueryData(descriptionQuery(account, content).queryKey, null);
+      } else if (result.status === "ready") {
+        void client.invalidateQueries({
+          queryKey: ["issue-description", "github.com", account, content],
+        });
+      }
+
+      void client.invalidateQueries({ queryKey: ["board"] });
 
       return result;
     },

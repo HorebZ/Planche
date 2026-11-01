@@ -9,7 +9,8 @@ use planche_core::auth::{self, AuthStatus};
 use planche_core::cache::Cache;
 use planche_core::description::Descriptions;
 use planche_core::domain::{
-    Board, ContentId, IssueDescription, ProjectId, ProjectList, ProjectMeta, User, UserId, ViewId,
+    Board, ContentId, Issue, IssueDescription, IssueLoad, ProjectId, ProjectList, ProjectMeta,
+    User, UserId, ViewId,
 };
 use planche_core::error::Error;
 use planche_core::github::{GithubClient, ops};
@@ -254,6 +255,7 @@ pub async fn auth_status(core: State<'_, Core>) -> Result<AuthStatus> {
     let cached = auth::cached_status(&core.cache(), &token)?;
 
     if let Some(status) = cached {
+        remember_account(&core, &status, &token)?;
         *core.token.lock().expect("token lock") = Some(token);
         core.descriptions
             .unlock(status.id.clone().ok_or(Error::NotSignedIn)?);
@@ -446,6 +448,38 @@ pub async fn refresh_issue_description(
             &account,
             &content,
             ops::issue_description(&client, &account, &content),
+        )
+        .await?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn cached_issue(
+    core: State<'_, Core>,
+    account: UserId,
+    content: ContentId,
+) -> Result<Option<Issue>> {
+    Ok(core
+        .descriptions
+        .cached_issue(&core.reader, &account, &content)?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn refresh_issue(
+    core: State<'_, Core>,
+    account: UserId,
+    content: ContentId,
+) -> Result<IssueLoad> {
+    let client = core.client()?;
+
+    Ok(core
+        .descriptions
+        .refresh_issue(
+            &core.reader,
+            &account,
+            &content,
+            ops::issue(&client, &account, &content),
         )
         .await?)
 }

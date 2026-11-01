@@ -21,6 +21,7 @@ fragment ProjectSummaryPage on ProjectV2Connection {
 # One round trip for `<owner>/<number>`: resolves the owner, then returns the metadata and the
 # first page of items. `repositoryOwner` covers users and organizations alike.
 query ProjectBoard($login: String!, $viewer: Boolean!, $number: Int!) {
+  account: viewer { id }
   viewer @include(if: $viewer) {
     projectV2(number: $number) { ...ProjectMetaFields items(first: 100) { ...ProjectItemPage } }
   }

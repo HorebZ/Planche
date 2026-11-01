@@ -6,6 +6,7 @@ pub mod domain;
 pub mod error;
 pub mod github;
 pub mod intent;
+pub mod issue;
 pub mod sync;
 
 pub use error::{Error, Result};

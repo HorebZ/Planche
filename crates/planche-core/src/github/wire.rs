@@ -3,6 +3,26 @@
 use serde::Deserialize;
 
 #[derive(Deserialize)]
+pub(super) struct IssueData {
+    pub viewer: DescriptionViewer,
+    pub node: Option<serde_json::Value>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct IssueNode {
+    #[serde(flatten)]
+    pub content: Content,
+    pub body: String,
+    pub viewer_can_assign: bool,
+    pub viewer_can_close: bool,
+    pub viewer_can_reopen: bool,
+    pub viewer_can_label: bool,
+    pub viewer_can_update: bool,
+    pub viewer_can_delete: bool,
+}
+
+#[derive(Deserialize)]
 pub(super) struct IssueDescriptionData {
     pub viewer: DescriptionViewer,
     pub node: Option<DescriptionNode>,
@@ -40,6 +60,8 @@ pub(super) struct Connection<T> {
 #[derive(Deserialize)]
 pub(super) struct Nodes<T> {
     pub nodes: Vec<Option<T>>,
+    #[serde(default, rename = "pageInfo")]
+    pub page_info: Option<PageInfo>,
 }
 
 #[derive(Deserialize)]
@@ -86,6 +108,7 @@ pub(super) struct ProjectSummary {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct ProjectBoardData {
+    pub account: DescriptionViewer,
     pub viewer: Option<BoardOwner>,
     pub repository_owner: Option<BoardOwner>,
 }

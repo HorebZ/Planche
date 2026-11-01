@@ -64,6 +64,15 @@ export const commands = {
 	body: string,
 	fetched_at: string,
 } | null>("refresh_issue_description", { account, content }),
+	cachedIssue: (account: UserId, content: ContentId) => __TAURI_INVOKE<{
+	content: ItemContent,
+	/**  Project summaries can contain only the first page of labels or assignees. */
+	complete: boolean,
+	/**  Unknown until the issue itself has been fetched; Project access grants no issue rights. */
+	permissions: IssuePermissions | null,
+	fetched_at: string,
+} | null>("cached_issue", { account, content }),
+	refreshIssue: (account: UserId, content: ContentId) => __TAURI_INVOKE<IssueLoad>("refresh_issue", { account, content }),
 	/**  Syncs now and waits for the result. */
 	refreshProject: (projectId: ProjectId) => __TAURI_INVOKE<SyncReport>("refresh_project", { projectId }),
 	/**  Accepted confirms the local enqueue commit, not synchronization with GitHub. */
@@ -207,9 +216,32 @@ to: OptionId | null; placement: Placement } | { type: "set_assignees"; project_i
  */
 { type: "create_draft"; project_id: ProjectId; item_id: ItemId; field_id: FieldId; column: OptionId | null; title: string };
 
+/**  Shared GitHub content, without a Project's fields, position or item ID. */
+export type Issue = {
+	content: ItemContent,
+	/**  Project summaries can contain only the first page of labels or assignees. */
+	complete: boolean,
+	/**  Unknown until the issue itself has been fetched; Project access grants no issue rights. */
+	permissions: IssuePermissions | null,
+	fetched_at: string,
+};
+
 export type IssueDescription = {
 	body: string,
 	fetched_at: string,
+};
+
+export type IssueLoad = { status: "ready"; issue: Issue } | { status: "offline"; issue: Issue | null } | 
+/**  GitHub does not distinguish a deleted issue from one the token cannot see. */
+{ status: "unavailable" };
+
+export type IssuePermissions = {
+	assign: boolean,
+	close: boolean,
+	reopen: boolean,
+	label: boolean,
+	update: boolean,
+	delete: boolean,
 };
 
 export type IssueState = "open" | "closed";

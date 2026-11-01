@@ -4,11 +4,105 @@ import { onlineManager, QueryObserver } from "@tanstack/react-query";
 import { emit } from "@tauri-apps/api/event";
 import { clearMocks, mockIPC } from "@tauri-apps/api/mocks";
 import { afterEach, expect, test } from "vitest";
+import { issueDescription } from "@/ipc/_fixtures/description.fixtures";
+import { issueRecord } from "@/ipc/_fixtures/issue.fixtures";
 import { authStatus } from "@/ipc/_fixtures/user.fixtures";
 import { useUi } from "@/stores/ui";
-import { authQuery, beginBoardWrite, boardQuery, createQueryClient, listenToCore } from "./queries";
+import {
+  authQuery,
+  beginBoardWrite,
+  boardQuery,
+  cachedDescriptionQuery,
+  cachedIssueQuery,
+  createQueryClient,
+  descriptionQuery,
+  issueQuery,
+  listenToCore,
+} from "./queries";
 
 afterEach(() => clearMocks());
+
+test("the same GitHub issue uses one query without Project or item IDs", async () => {
+  const issue = issueRecord();
+  const calls: unknown[] = [];
+
+  mockIPC((command, args) => {
+    calls.push({ command, args });
+
+    return { status: "ready", issue };
+  });
+
+  const client = createQueryClient();
+  const result = await client.fetchQuery(issueQuery("A", "I_standalone"));
+
+  expect(result).toEqual({ status: "ready", issue });
+  expect(client.getQueryData(cachedIssueQuery("A", "I_standalone").queryKey)).toEqual(issue);
+  expect(calls).toEqual([
+    { command: "refresh_issue", args: { account: "A", content: "I_standalone" } },
+  ]);
+  client.clear();
+});
+
+test("an unavailable issue clears its shared description and leaves other accounts isolated", async () => {
+  const client = createQueryClient();
+
+  client.setQueryData(
+    cachedDescriptionQuery("A", "I_standalone").queryKey,
+    issueDescription({ body: "private" }),
+  );
+  client.setQueryData(
+    descriptionQuery("A", "I_standalone").queryKey,
+    issueDescription({ body: "private" }),
+  );
+  client.setQueryData(cachedIssueQuery("B", "I_standalone").queryKey, issueRecord());
+  mockIPC(() => ({ status: "unavailable" }));
+
+  await client.fetchQuery(issueQuery("A", "I_standalone"));
+
+  expect(client.getQueryData(cachedIssueQuery("A", "I_standalone").queryKey)).toBeNull();
+  expect(client.getQueryData(cachedDescriptionQuery("A", "I_standalone").queryKey)).toBeNull();
+  expect(client.getQueryData(descriptionQuery("A", "I_standalone").queryKey)).toBeNull();
+  expect(client.getQueryData(cachedIssueQuery("B", "I_standalone").queryKey)).toEqual(
+    issueRecord(),
+  );
+  client.clear();
+});
+
+test("switching accounts cancels a late issue response before it can populate shared caches", async () => {
+  const client = createQueryClient();
+  let finish = (_result: unknown) => {};
+
+  client.setQueryData(authQuery.queryKey, authStatus({ id: "A" }));
+  mockIPC(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const pending = client.fetchQuery(issueQuery("A", "I_standalone")).catch(() => null);
+
+  client.setQueryData(authQuery.queryKey, authStatus({ id: "B" }));
+  finish({ status: "ready", issue: issueRecord() });
+  await pending;
+
+  expect(client.getQueriesData({ queryKey: ["issue"] })).toEqual([]);
+  client.clear();
+});
+
+test("a refused description invalidates previously loaded issue content", async () => {
+  const client = createQueryClient();
+
+  client.setQueryData(cachedIssueQuery("A", "I_standalone").queryKey, issueRecord());
+  mockIPC(() => null);
+
+  await client.fetchQuery(descriptionQuery("A", "I_standalone"));
+
+  expect(client.getQueryData(cachedIssueQuery("A", "I_standalone").queryKey)).toBeNull();
+  expect(client.getQueryData(issueQuery("A", "I_standalone").queryKey)).toEqual({
+    status: "unavailable",
+  });
+  client.clear();
+});
 
 test("cancelled authentication retries only on an explicit request", async () => {
   let attempts = 0;
