@@ -146,6 +146,76 @@ fn issue_migration_preserves_legacy_intents_and_the_queue_sequence() {
 }
 
 #[test]
+fn issue_completeness_migration_preserves_both_version_four_schemas() {
+    for had_complete in [false, true] {
+        let conn = Connection::open_in_memory().unwrap();
+
+        for migration in &MIGRATIONS[..4] {
+            let sql = if had_complete {
+                migration.to_string()
+            } else {
+                migration.replace("    complete INTEGER NOT NULL DEFAULT 0,\n", "")
+            };
+
+            conn.execute_batch(&sql).unwrap();
+        }
+
+        conn.pragma_update(None, "user_version", 4).unwrap();
+        let mut cache = Cache { conn };
+        let account = UserId("A".into());
+        let issue = crate::fixtures::issue_record();
+        let content = ContentId("I_standalone".into());
+        let intent = IssueIntent::SetAssignees {
+            content_id: content.clone(),
+            add: vec![],
+            remove: vec![],
+        };
+
+        cache.conn.execute(
+            "INSERT INTO issue (host, account_id, content_id, content, permissions, fetched_at, revision) VALUES ('github.com', 'A', ?1, ?2, ?3, 'saved', 42)",
+            params![content.as_str(), serde_json::to_string(&issue.content).unwrap(), serde_json::to_string(&issue.permissions).unwrap()],
+        ).unwrap();
+
+        if had_complete {
+            cache
+                .conn
+                .execute("UPDATE issue SET complete = 1", [])
+                .unwrap();
+        }
+
+        let seq = cache.enqueue_issue(&account, &intent).unwrap();
+
+        migrate(&mut cache.conn).unwrap();
+        migrate(&mut cache.conn).unwrap();
+        let restored = cache
+            .issue("github.com", &account, &content)
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(restored.content, issue.content);
+        assert_eq!(restored.permissions, issue.permissions);
+        assert_eq!(restored.fetched_at, "saved");
+        assert_eq!(restored.complete, had_complete);
+        assert_eq!(cache.issue_intents(&account).unwrap(), vec![intent.clone()]);
+        assert!(cache.enqueue_issue(&account, &intent).unwrap() > seq);
+        assert_eq!(
+            cache
+                .conn
+                .query_row("SELECT revision FROM issue", [], |row| row.get::<_, i64>(0))
+                .unwrap(),
+            42
+        );
+        assert_eq!(
+            cache
+                .conn
+                .pragma_query_value(None, "user_version", |row| row.get::<_, u32>(0))
+                .unwrap(),
+            MIGRATIONS.len() as u32
+        );
+    }
+}
+
+#[test]
 fn shared_content_keeps_each_projects_status_and_replays_global_actions_in_both() {
     use crate::fixtures::{issue_record, user};
     use crate::github::{

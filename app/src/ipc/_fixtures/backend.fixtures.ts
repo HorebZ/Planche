@@ -27,6 +27,7 @@ import {
   signedOut,
   statusFor,
 } from "./scenarios.fixtures";
+import { updateStatus } from "./update.fixtures";
 import { user } from "./user.fixtures";
 
 /** Counts calls per command, for tests that check a refetch. */
@@ -61,7 +62,18 @@ export function installMockBackend(scenario: Scenario) {
   let descriptionDenied = scenario === "description-denied";
   let unlock: (() => void) | undefined;
   let oauthActive = false;
+  let update = updateStatus();
   const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
+    check_updates: () => update,
+    download_update: async () => {
+      update = { ...update, phase: "downloading", received: 1024, total: 2048 };
+      await emit("update-changed", update);
+      update = { ...update, phase: "ready", received: 2048 };
+      await emit("update-changed", update);
+
+      return update;
+    },
+    install_update: () => null,
     auth_oauth_start: () => {
       oauthActive = true;
 
@@ -305,6 +317,13 @@ export function installMockBackend(scenario: Scenario) {
     { shouldMockEvents: true },
   );
   const backend = {
+    offerUpdate: async () => {
+      update = updateStatus({
+        phase: "available",
+        release: { version: "0.1.0-alpha.2", notes: "Alpha fixes and improvements." },
+      });
+      await emit("update-changed", update);
+    },
     emit,
     calls,
     getBoard: () => board,

@@ -8,6 +8,7 @@ use tauri_specta::{ErrorHandlingMode, collect_commands, collect_events};
 
 use crate::commands::Core;
 
+#[cfg(any(debug_assertions, test))]
 const BINDINGS: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../src/ipc/bindings.types.ts");
 
 fn builder() -> tauri_specta::Builder<tauri::Wry> {
@@ -37,15 +38,20 @@ fn builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::sync_status,
             commands::get_sync_prefs,
             commands::set_sync_prefs,
+            commands::check_updates,
+            commands::download_update,
+            commands::install_update,
             commands::perf_mark,
         ])
         .events(collect_events![
             events::BoardChanged,
             events::MutationFailed,
-            events::SyncStatusChanged
+            events::SyncStatusChanged,
+            events::UpdateChanged
         ])
 }
 
+#[cfg(any(debug_assertions, test))]
 fn export_bindings(builder: &tauri_specta::Builder<tauri::Wry>) {
     builder
         .export(

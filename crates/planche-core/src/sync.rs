@@ -464,6 +464,7 @@ pub enum SyncCommand {
     Configure(SyncPrefs),
     /// Send the queue now, without a sync: a user action was just queued.
     Flush,
+    Stop,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, Type)]
@@ -522,6 +523,11 @@ pub struct SyncHandle {
 }
 
 impl SyncHandle {
+    pub async fn shutdown(&self) {
+        self.send(SyncCommand::Stop).await;
+        self.commands.closed().await;
+    }
+
     pub async fn send(&self, command: SyncCommand) {
         // The engine only stops once every handle is gone, so this cannot fail.
         let _ = self.commands.send(command).await;
@@ -605,7 +611,7 @@ impl<R: Remote> Engine<R> {
         loop {
             tokio::select! {
                 command = commands.recv() => match command {
-                    None => return,
+                    None | Some(SyncCommand::Stop) => return,
                     Some(SyncCommand::Now) => self.cycle().await,
                     Some(SyncCommand::Focus) => {
                         let stale = self

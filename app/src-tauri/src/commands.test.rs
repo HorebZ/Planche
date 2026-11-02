@@ -3,6 +3,39 @@ use serde_json::json;
 
 use super::*;
 
+#[test]
+fn installation_gate_refuses_new_actions_without_changing_the_outbox() {
+    let (core, project) = core_with_fixtures("update-gate");
+    let intent = Intent::Archive {
+        project_id: project.clone(),
+        item_id: core
+            .board(&project, None)
+            .unwrap()
+            .unwrap()
+            .columns
+            .iter()
+            .flat_map(|column| &column.cards)
+            .next()
+            .unwrap()
+            .item_id
+            .clone(),
+    };
+    *core.installing.lock().unwrap() = true;
+
+    assert!(matches!(
+        core.dispatch_intent(&intent),
+        DispatchOutcome::Rejected { .. }
+    ));
+    assert_eq!(core.cache().pending_count(&project).unwrap(), 0);
+
+    *core.installing.lock().unwrap() = false;
+
+    assert!(matches!(
+        core.dispatch_intent(&intent),
+        DispatchOutcome::Accepted { .. }
+    ));
+}
+
 fn core_with_fixtures(name: &str) -> (Core, ProjectId) {
     let dir = std::env::temp_dir().join(format!("planche-app-{}-{name}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);

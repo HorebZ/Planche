@@ -53,6 +53,8 @@ pub enum Error {
     Credentials(String),
     #[error("GitHub sign-in: {0}")]
     OAuth(String),
+    #[error("update: {0}")]
+    Update(String),
     #[error("cache error: {0}")]
     Cache(String),
     #[error(

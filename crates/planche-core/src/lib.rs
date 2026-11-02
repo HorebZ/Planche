@@ -8,6 +8,7 @@ pub mod github;
 pub mod intent;
 pub mod issue;
 pub mod sync;
+pub mod update;
 
 pub use error::{Error, Result};
 

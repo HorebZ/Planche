@@ -26,6 +26,9 @@ pub struct MutationFailed {
 #[tauri_specta(event_name = "sync-status")]
 pub struct SyncStatusChanged(pub SyncStatus);
 
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+pub struct UpdateChanged(pub planche_core::update::UpdateStatus);
+
 /// Forwards one engine's events until the engine stops. It also logs each cycle on stdout,
 /// like `planche sync --watch`, for the live scenarios.
 pub fn relay(app: AppHandle, project: ProjectId, mut events: Receiver<SyncEvent>) {

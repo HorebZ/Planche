@@ -19,6 +19,12 @@ specta.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["sync", "time"] }
 tempfile = "3.27"
+minisign-verify = "0.3"
+base64 = "0.23"
+semver = "1"
+flate2 = "1"
+tar = "0.4"
+plist = "1"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }

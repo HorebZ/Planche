@@ -2,6 +2,7 @@
 node_modules/
 dist/
 target/
+.local/
 *.log
 .env*
 !.env.example

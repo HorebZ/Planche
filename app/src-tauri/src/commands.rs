@@ -19,9 +19,11 @@ use planche_core::sync::{
     self, SyncCommand, SyncConfig, SyncEvent, SyncHandle, SyncPrefs, SyncReport, SyncStatus,
     SystemClock,
 };
+use planche_core::update::{UpdateStatus, Updater};
 use serde::Serialize;
 use specta::Type;
 use tauri::{AppHandle, State};
+use tauri_specta::Event;
 use tokio::sync::broadcast::error::RecvError;
 
 use crate::events;
@@ -98,6 +100,8 @@ pub struct Core {
     token: Mutex<Option<String>>,
     oauth: DeviceFlow,
     descriptions: Descriptions,
+    updates: Arc<Updater>,
+    installing: Mutex<bool>,
     engine: tokio::sync::Mutex<Option<Engine>>,
 }
 
@@ -115,6 +119,8 @@ impl Core {
             token: Mutex::default(),
             oauth: DeviceFlow::default(),
             descriptions: Descriptions::default(),
+            updates: Arc::new(Updater::new(env!("CARGO_PKG_VERSION"))),
+            installing: Mutex::new(false),
             engine: tokio::sync::Mutex::default(),
         }
     }
@@ -145,6 +151,17 @@ impl Core {
     }
 
     pub fn dispatch_intent(&self, intent: &Intent) -> DispatchOutcome {
+        let installing = self.installing.lock().expect("installation gate");
+
+        if *installing {
+            return DispatchOutcome::Rejected {
+                error: AppError {
+                    kind: ErrorKind::Invalid,
+                    message: "Planche is installing an update. Try again after restart.".into(),
+                },
+            };
+        }
+
         match self.cache().enqueue(intent) {
             Ok(seq) => DispatchOutcome::Accepted { seq },
             Err(error) => DispatchOutcome::Rejected {
@@ -164,6 +181,13 @@ impl Core {
     /// Starts the sync engine on `project`, unless it already runs there.
     pub async fn open(&self, app: &AppHandle, project: &ProjectId) -> Result<SyncHandle> {
         let mut engine = self.engine.lock().await;
+
+        if *self.installing.lock().expect("installation gate") {
+            return Err(AppError {
+                kind: ErrorKind::Invalid,
+                message: "Planche is installing an update".into(),
+            });
+        }
 
         if let Some(engine) = engine.as_ref().filter(|e| &e.project == project) {
             return Ok(engine.handle.clone());
@@ -566,6 +590,85 @@ pub async fn set_sync_prefs(core: State<'_, Core>, prefs: SyncPrefs) -> Result<S
     }
 
     Ok(prefs)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn check_updates(app: AppHandle, core: State<'_, Core>) -> Result<UpdateStatus> {
+    Ok(core
+        .updates
+        .check(|status| {
+            let _ = events::UpdateChanged(status).emit(&app);
+        })
+        .await?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn download_update(app: AppHandle, core: State<'_, Core>) -> Result<UpdateStatus> {
+    Ok(core
+        .updates
+        .download(|status| {
+            let _ = events::UpdateChanged(status).emit(&app);
+        })
+        .await?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn install_update(app: AppHandle, core: State<'_, Core>) -> Result<()> {
+    {
+        let mut installing = core.installing.lock().expect("installation gate");
+
+        if *installing {
+            return Err(AppError {
+                kind: ErrorKind::Invalid,
+                message: "An update is already being installed".into(),
+            });
+        }
+
+        *installing = true;
+    }
+
+    let previous = core.engine.lock().await.take();
+
+    if let Some(engine) = &previous {
+        engine.handle.shutdown().await;
+    }
+
+    core.descriptions.lock();
+    drop(core.cache());
+    let updater = core.updates.clone();
+    let progress = app.clone();
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        updater.install(|status| {
+            let _ = events::UpdateChanged(status).emit(&progress);
+        })
+    })
+    .await
+    .map_err(|_| AppError {
+        kind: ErrorKind::Invalid,
+        message: "The update installer stopped unexpectedly".into(),
+    })
+    .and_then(|result| result.map_err(AppError::from));
+
+    if let Err(error) = result {
+        *core.installing.lock().expect("installation gate") = false;
+
+        if core.token.lock().expect("token lock").is_some()
+            && let Some(account) = core.cache().get("account_id")?
+        {
+            core.descriptions.unlock(UserId(account));
+        }
+
+        if let Some(engine) = previous {
+            let _ = core.open(&app, &engine.project).await;
+        }
+
+        return Err(error);
+    }
+
+    app.restart();
 }
 
 /// Logs a webview timing next to the time since `setup`, for the perf budget.

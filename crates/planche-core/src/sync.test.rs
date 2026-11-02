@@ -1,5 +1,33 @@
 use super::*;
 
+#[tokio::test]
+async fn shutdown_finishes_a_queued_sync_before_closing_the_database() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("cache.sqlite");
+    let cache = crate::cache::Cache::open(&path).unwrap();
+    let remote = crate::github::fixtures::FakeGithub::new();
+    let handle = super::spawn(
+        cache,
+        remote,
+        super::SyncConfig {
+            owner: "@me".into(),
+            number: 2,
+            interval: super::SyncInterval::Manual,
+            sync_on_wake: false,
+        },
+        std::sync::Arc::new(super::SystemClock),
+    );
+    handle.send(super::SyncCommand::Now).await;
+
+    tokio::time::timeout(std::time::Duration::from_secs(5), handle.shutdown())
+        .await
+        .unwrap();
+
+    let cache = crate::cache::Cache::open(path).unwrap();
+    assert!(cache.project_id("@me", 2).unwrap().is_some());
+    assert!(handle.commands.is_closed());
+}
+
 #[test]
 fn next_interval_cases() {
     let hour = Duration::from_secs(3600);

@@ -14,6 +14,7 @@ import { Onboarding } from "@/onboarding/Onboarding";
 import { Shell } from "@/shell/Shell";
 import { usePreferences } from "@/stores/preferences";
 import { useUi } from "@/stores/ui";
+import { Updates } from "@/update/Updates";
 
 export default function App() {
   const theme = usePreferences((s) => s.theme);
@@ -38,6 +39,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Root />
+      <Updates />
       <Toaster />
     </QueryClientProvider>
   );

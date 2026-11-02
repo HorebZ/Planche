@@ -1,6 +1,7 @@
 import { CircleUserRound, Keyboard, Monitor, Moon, Sun } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
 import { Switch } from "@/components/ui/switch";
@@ -17,6 +18,7 @@ export type SettingsProps = {
   theme: "system" | "light" | "dark";
   onThemeChange: (theme: "system" | "light" | "dark") => void;
   onSignOut: () => void;
+  onCheckUpdates: () => void;
   shortcuts: { label: string; keys: string }[];
 };
 
@@ -31,6 +33,7 @@ export function SettingsDialog({
   theme,
   onThemeChange,
   onSignOut,
+  onCheckUpdates,
   shortcuts,
 }: SettingsProps) {
   const [section, setSection] = useState<"general" | "shortcuts">("general");
@@ -148,6 +151,9 @@ export function SettingsDialog({
                     </button>
                   ))}
                 </fieldset>
+              </SettingsGroup>
+              <SettingsGroup title="Updates">
+                <Button onClick={onCheckUpdates}>Check for updates…</Button>
               </SettingsGroup>
             </div>
           ) : (

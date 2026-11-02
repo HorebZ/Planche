@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/*", "app/src-tauri"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 edition = "2024"
 publish = false
 
@@ -33,3 +33,7 @@ lto = true
 opt-level = 3
 panic = "abort"
 strip = true
+
+# macOS 27 rejects stripped proc-macro dylibs; build tools are not bundled.
+[profile.release.build-override]
+strip = "none"

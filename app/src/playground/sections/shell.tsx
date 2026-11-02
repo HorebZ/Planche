@@ -384,6 +384,7 @@ function SettingsPreview() {
     <>
       <Button onClick={() => setOpen(true)}>Open settings</Button>
       <SettingsDialog
+        onCheckUpdates={() => {}}
         open={open}
         onOpenChange={setOpen}
         login="camille-r"

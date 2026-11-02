@@ -14,6 +14,8 @@ export type Overlay =
   | { type: "draft"; column: OptionId | null; editor: string };
 
 type UiState = {
+  updatesOpen: boolean;
+  setUpdatesOpen: (open: boolean) => void;
   /** The project the user picked in this session. `null` falls back to the last opened one. */
   projectId: ProjectId | null;
   viewId: ViewId | null;
@@ -55,6 +57,8 @@ type UiState = {
 };
 
 export const useUi = create<UiState>()((set, get) => ({
+  updatesOpen: false,
+  setUpdatesOpen: (updatesOpen) => set({ updatesOpen }),
   projectId: null,
   viewId: null,
   filters: emptyFilters,

@@ -5,6 +5,7 @@ import { ControlsSection } from "./sections/controls";
 import { OverlaysSection } from "./sections/overlays";
 import { ShellSection } from "./sections/shell";
 import { TokensSection } from "./sections/tokens";
+import { UpdatesSection } from "./sections/updates";
 
 const sections = [
   { id: "tokens", Component: TokensSection },
@@ -14,6 +15,7 @@ const sections = [
   { id: "overlays", Component: OverlaysSection },
   { id: "board", Component: BoardSection },
   { id: "shell", Component: ShellSection },
+  { id: "updates", Component: UpdatesSection },
 ];
 
 export default function Playground() {

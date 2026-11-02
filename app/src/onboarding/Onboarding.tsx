@@ -27,6 +27,7 @@ import {
   useProjects,
 } from "@/ipc/queries";
 import { useUi } from "@/stores/ui";
+import { showUpdates } from "@/update/Updates";
 import pkg from "../../package.json";
 
 const TOKEN_URL =
@@ -58,6 +59,14 @@ export function Onboarding({ signedIn }: { signedIn: boolean }) {
         <OnboardingIntro />
         <span className="flex-1" />
         <span className="text-[11.5px] text-fg-3 tabular-nums">v{pkg.version} · macOS 15+</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="self-start"
+          onClick={showUpdates}
+        >
+          Check for updates…
+        </Button>
       </aside>
       {step === 1 ? (
         <SignInStep onDone={() => setStep(2)} />

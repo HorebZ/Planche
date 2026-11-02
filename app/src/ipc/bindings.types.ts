@@ -82,6 +82,9 @@ export const commands = {
 	syncStatus: () => __TAURI_INVOKE<SyncStatus>("sync_status"),
 	getSyncPrefs: () => __TAURI_INVOKE<SyncPrefs>("get_sync_prefs"),
 	setSyncPrefs: (prefs: SyncPrefs) => __TAURI_INVOKE<SyncPrefs>("set_sync_prefs", { prefs }),
+	checkUpdates: () => __TAURI_INVOKE<UpdateStatus>("check_updates"),
+	downloadUpdate: () => __TAURI_INVOKE<UpdateStatus>("download_update"),
+	installUpdate: () => __TAURI_INVOKE<null>("install_update"),
 	/**  Logs a webview timing next to the time since `setup`, for the perf budget. */
 	perfMark: (name: string, ms: number | null) => __TAURI_INVOKE<void>("perf_mark", { name, ms }),
 };
@@ -91,6 +94,7 @@ export const events = {
 	boardChanged: makeEvent<BoardChanged>("board-changed"),
 	mutationFailed: makeEvent<MutationFailed>("mutation-failed"),
 	syncStatus: makeEvent<SyncStatusChanged>("sync-status"),
+	updateChanged: makeEvent<UpdateChanged>("update-changed"),
 };
 
 /* Types */
@@ -369,6 +373,24 @@ export type SyncStatus = {
 };
 
 export type SyncStatusChanged = SyncStatus;
+
+export type UpdateChanged = UpdateStatus;
+
+export type UpdatePhase = "idle" | "checking" | "current" | "available" | "downloading" | "ready" | "installing" | "error";
+
+export type UpdateRelease = {
+	version: string,
+	notes: string,
+};
+
+export type UpdateStatus = {
+	current_version: string,
+	phase: UpdatePhase,
+	release: UpdateRelease | null,
+	received: number,
+	total: number | null,
+	error: string | null,
+};
 
 export type User = {
 	id: UserId,

@@ -26,6 +26,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../migrations/0002_card_details.sql"),
     include_str!("../migrations/0003_issue_description.sql"),
     include_str!("../migrations/0004_issues.sql"),
+    include_str!("../migrations/0005_issue_complete.sql"),
 ];
 
 /// An acked row stays replayed until the snapshot reflects it, or for this many syncs.
@@ -1017,7 +1018,18 @@ fn migrate(conn: &mut Connection) -> Result<()> {
 
     // Another process may have migrated while this one waited for the lock.
     for (sql, next) in MIGRATIONS.iter().zip(1u32..).skip(version(&tx)?) {
-        tx.execute_batch(sql)?;
+        // Development builds shipped two versions of schema 4, with and without complete.
+        let already_complete = next == 5
+            && tx.query_row(
+                "SELECT EXISTS(SELECT 1 FROM pragma_table_info('issue') WHERE name = 'complete')",
+                [],
+                |row| row.get::<_, bool>(0),
+            )?;
+
+        if !already_complete {
+            tx.execute_batch(sql)?;
+        }
+
         tx.pragma_update(None, "user_version", next)?;
     }
 

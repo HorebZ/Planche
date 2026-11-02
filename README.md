@@ -23,7 +23,7 @@
 Planche shows your GitHub Projects (v2) boards in a native macOS window. Cards move between columns with drag and drop or the keyboard, a command palette (⌘K) reaches every action, and a local cache keeps the board usable offline.
 
 > [!NOTE]
-> Planche is in early development. The design system is done; the board is next. See the [roadmap](https://github.com/HorebZ/Planche/issues/1).
+> Planche is in alpha. See the [roadmap](https://github.com/HorebZ/Planche/issues/1) for implemented features and remaining validations.
 
 ## Requirements
 
@@ -51,6 +51,63 @@ private (`chmod 600 .env`). Never name a credential `VITE_*`: those variables ar
 exposed to the webview.
 
 ## Development
+
+### Installable alpha
+
+The alpha requires macOS 15 or later. A DMG installs `Planche.app` into Applications;
+the installed app needs neither Bun, Rust, a development server nor an `.env` file.
+On first launch, sign in with GitHub. The session, preferences, cache and queued
+actions stay outside the application bundle and survive replacement of the app.
+
+For the first small tester group, the release script uses an ad hoc macOS signature
+when `APPLE_SIGNING_IDENTITY` is absent. This is free, but the downloaded app is not
+notarized: after trying to open it, testers may need **System Settings → Privacy &
+Security → Open Anyway**. Managed Macs can prohibit that exception. A Developer ID
+certificate and notarization credentials can be supplied later to the same build.
+
+Build locally from the root:
+
+```sh
+bun run release:alpha
+```
+
+The command checks the repository, builds a native bundle with the public OAuth
+Client ID, verifies its macOS signature, signs and verifies an updater archive,
+tests replacing an isolated copy of the app, and creates and verifies a simple
+DMG. Files are written to `target/release/alpha/<version>/`. The build is for the
+current Mac's architecture: Apple Silicon produces `aarch64`, Intel `x86_64`.
+Universal archives are not supported by the updater yet.
+
+The original update key is kept locally at `.local/release/alpha.key`, excluded
+from Git, with directory permissions `0700` and file permissions `0600`. **Back up
+that private key in a password manager before sharing the alpha.** Never commit
+it or regenerate the public key for an existing installed alpha. To use a restored
+or CI key, provide `TAURI_SIGNING_PRIVATE_KEY_PATH` or `TAURI_SIGNING_PRIVATE_KEY`,
+and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` if needed. Only the public key in
+`crates/planche-core/alpha-updater.pub` is bundled. The private update key is
+independent of Apple signing and of Git commit signing.
+
+The app checks the public `alpha/latest.json` release feed after startup without
+waiting for GitHub sign-in. **Check for updates** is available in onboarding and
+Settings. A downloaded update is verified before installation; **Later** keeps
+the current app running. Installation waits for the sync writer to stop, blocks
+new actions, refuses to restart while an unsent draft exists, replaces only the
+app bundle and then restarts. Failed downloads or signatures leave the app intact.
+
+To publish a prepared release, commit and push its code, rebuild from that clean
+commit, then run:
+
+```sh
+bun run publish:alpha
+```
+
+This publishes a versioned prerelease with the DMG and signed archive, then updates
+`latest.json` on the rolling `alpha` prerelease. Downloads are public and never use
+the app user's GitHub token. Existing versioned releases are not overwritten; bump
+the alpha version in the workspace Cargo manifest, Tauri Cargo manifest, Tauri
+config and `app/package.json` for the next release. The updater accepts only newer
+versions signed by the embedded key and checks the signed version against the
+manifest. The first unpublished alpha treats a missing feed as no update.
 
 Run these commands from `app/`.
 

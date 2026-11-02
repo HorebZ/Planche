@@ -24,6 +24,7 @@ import { useAuth, useProjects, useSetSyncPrefs, useSyncPrefs, useSyncStatus } fr
 import { keysOf, shortcuts } from "@/keyboard/shortcuts";
 import { usePreferences } from "@/stores/preferences";
 import { useUi } from "@/stores/ui";
+import { showUpdates } from "@/update/Updates";
 import { footerText } from "./syncText";
 
 type AppSidebarProps = {
@@ -168,6 +169,10 @@ function SyncFooter({ syncedAt, error }: { syncedAt: string | null; error?: stri
         </Button>
       </SidebarFooter>
       <SettingsDialog
+        onCheckUpdates={() => {
+          setSettingsOpen(false);
+          showUpdates();
+        }}
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         login={auth.data?.login ?? ""}
