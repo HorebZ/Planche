@@ -55,7 +55,9 @@ test.describe("screenshots", () => {
       await open(page, "rollback");
       await lift(page, card(page, 226), card(page, 220));
       await page.mouse.up();
-      await page.getByText("Reverted.").waitFor();
+      await expect(
+        page.getByText("Could not apply: #226 moved to Done. Reverted.", { exact: true }),
+      ).toBeVisible();
       await page.waitForTimeout(400);
       await page.screenshot({
         path: `screenshots/window-rollback-${colorScheme}.png`,

@@ -1063,6 +1063,30 @@ test("late rejection from previous account cannot erase shared optimistic refere
   }
 });
 
+test("a preparation failure keeps the readable card reference and requested status", async () => {
+  const h = harness();
+
+  try {
+    vi.spyOn(h.client, "cancelQueries").mockRejectedValueOnce(new Error("Cannot prepare move"));
+
+    const result = await h.actions.run(first.intent);
+    const notification = toast.getHistory().at(-1);
+
+    expect(result.type).toBe("rejected");
+
+    if (!notification || !("jsx" in notification) || !notification.jsx) {
+      throw new Error("missing preparation failure toast");
+    }
+
+    const rendered = renderToStaticMarkup(notification.jsx);
+
+    expect(rendered).toContain("&quot;Card C&quot; moved to In Progress");
+    expect(rendered).not.toContain(first.intent.item_id);
+  } finally {
+    h.close();
+  }
+});
+
 test("a certain Undo rejection reports its cause and consumes Undo once", async () => {
   const h = harness();
 

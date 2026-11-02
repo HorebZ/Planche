@@ -158,8 +158,9 @@ export function useActions(projectId: ProjectId, viewId: ViewId | null) {
       const account = identity();
       const epoch = boardAccountEpoch(client);
       const context = useUi.getState().contextVersion;
+      const before = client.getQueryData<Board | null>(boardQuery(projectId, viewId).queryKey);
       let undo: Intent | null = null;
-      let label = `${verbs[intent.type]} ${intent.item_id}`;
+      let label = before ? describe(before, intent) : `${verbs[intent.type]} the card`;
 
       return dispatchIntent(
         client,

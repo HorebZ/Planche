@@ -3,7 +3,11 @@
 import { onlineManager, QueryObserver } from "@tanstack/react-query";
 import { emit } from "@tauri-apps/api/event";
 import { clearMocks, mockIPC } from "@tauri-apps/api/mocks";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, expect, test } from "vitest";
+import { toast } from "@/components/ui/toast";
+import { board, boardField, column } from "@/ipc/_fixtures/board.fixtures";
+import { issue } from "@/ipc/_fixtures/card.fixtures";
 import { issueDescription } from "@/ipc/_fixtures/description.fixtures";
 import { issueRecord } from "@/ipc/_fixtures/issue.fixtures";
 import { authStatus } from "@/ipc/_fixtures/user.fixtures";
@@ -21,6 +25,58 @@ import {
 } from "./queries";
 
 afterEach(() => clearMocks());
+
+test("a failed move names the issue number and target status from its Project field", async () => {
+  mockIPC(() => null, { shouldMockEvents: true });
+
+  const client = createQueryClient();
+  const card = issue({ item_id: "PVTI_internal", number: 226 });
+
+  client.setQueryData(
+    boardQuery("PVT_1", "other-field").queryKey,
+    board({
+      field: boardField({ id: "F_other" }),
+      columns: [column({ option_id: "done", name: "Wrong status", cards: [card] })],
+    }),
+  );
+  client.setQueryData(
+    boardQuery("PVT_1", null).queryKey,
+    board({
+      columns: [column({ option_id: "done", name: "Done", cards: [card] })],
+    }),
+  );
+
+  const stop = await listenToCore(client);
+
+  try {
+    await emit("mutation-failed", {
+      intent: {
+        type: "move_card",
+        project_id: "PVT_1",
+        field_id: "F_status",
+        item_id: card.item_id,
+        to: "done",
+        placement: "keep",
+      },
+      message: "Denied",
+    });
+
+    const notification = toast.getHistory().at(-1);
+
+    if (!notification || !("jsx" in notification) || !notification.jsx) {
+      throw new Error("missing mutation failure toast");
+    }
+
+    const rendered = renderToStaticMarkup(notification.jsx);
+
+    expect(rendered).toContain("Could not apply: #226 moved to Done. Reverted.");
+    expect(rendered).not.toContain("PVTI_internal");
+    expect(rendered).not.toContain("Wrong status");
+  } finally {
+    stop();
+    client.clear();
+  }
+});
 
 test("the same GitHub issue uses one query without Project or item IDs", async () => {
   const issue = issueRecord();

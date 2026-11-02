@@ -2,12 +2,13 @@ import { QueryClient, queryOptions, useMutation, useQuery } from "@tanstack/reac
 import { cardRect } from "@/board/flip";
 import { notify } from "@/components/ui/toast";
 import { useUi } from "@/stores/ui";
-import { verbs } from "@/undo/inverse";
+import { describe, verbs } from "@/undo/inverse";
 import {
   type AuthStatus,
   type Board,
   commands,
   events,
+  type Intent,
   type IssueLoad,
   type ProjectId,
   type SyncPrefs,
@@ -419,17 +420,16 @@ export function errorMessage(error: unknown) {
     : String(error);
 }
 
-/** The title of a card in any cached board, for a toast. */
-function cardTitle(client: QueryClient, itemId: string) {
-  for (const [, board] of client.getQueriesData<Board | null>({ queryKey: ["board"] })) {
-    const card = board?.columns.flatMap((c) => c.cards).find((c) => c.item_id === itemId);
-
-    if (card) {
-      return card.kind === "redacted" ? "Redacted item" : card.title;
+function actionDescription(client: QueryClient, intent: Intent) {
+  for (const [, board] of client.getQueriesData<Board | null>({
+    queryKey: ["board", intent.project_id],
+  })) {
+    if (board && (intent.type !== "move_card" || board.field.id === intent.field_id)) {
+      return describe(board, intent);
     }
   }
 
-  return "the card";
+  return `${verbs[intent.type]} the card`;
 }
 
 /** Keeps the queries in step with the events Rust emits. Returns the unsubscribe function. */
@@ -471,9 +471,7 @@ export async function listenToCore(client: QueryClient) {
         useUi.getState().setReverting({ id, from });
       }
 
-      const verb = verbs[payload.intent.type];
-
-      notify(`Couldn't ${verb} "${cardTitle(client, payload.intent.item_id)}". Reverted.`, "error");
+      notify(`Could not apply: ${actionDescription(client, payload.intent)}. Reverted.`, "error");
     }),
   ]);
 
