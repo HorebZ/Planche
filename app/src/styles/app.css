@@ -120,6 +120,7 @@
   --default-transition-timing-function: var(--pl-ease);
 
   --animate-pl-in: pl-in var(--pl-dur-base) var(--pl-ease);
+  --animate-pl-dialog: pl-in var(--pl-dur-slow) var(--pl-ease);
   --animate-pl-panel: pl-panel var(--pl-dur-slow) var(--pl-ease);
   --animate-pl-spin: pl-spin 800ms linear infinite;
   --animate-pl-shimmer: pl-shimmer 1.4s ease-in-out infinite;

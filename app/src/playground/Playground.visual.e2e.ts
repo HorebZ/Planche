@@ -127,6 +127,20 @@ test("a live dialog opened from the dark panel is dark", async ({ page }) => {
   await expect(dialog).toHaveCount(0);
 });
 
+test("dialogs use the slow motion token and respect reduced motion", async ({ page }) => {
+  const panel = scope(page, "overlays", "light");
+
+  await panel.getByRole("button", { name: "Open dialog" }).click();
+
+  const dialog = panel.locator('[data-slot="dialog-content"]').filter({ visible: true });
+
+  await expect(dialog).toHaveCSS("animation-name", "pl-in");
+  await expect(dialog).toHaveCSS("animation-duration", "0.2s");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+
+  await expect(dialog).toHaveCSS("animation-duration", "0s");
+});
+
 test("cards resolve the card token per theme", async ({ page }) => {
   const card = (theme: Theme) =>
     scope(page, "board", theme).locator('[data-slot="issue-card"]').first();
