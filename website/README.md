@@ -18,6 +18,9 @@ under a subdirectory. Deployment and domain configuration are not set up yet.
 - `tokens.css`: the marketing site's colors, shadows and motion values.
 - `assets/`: local Inter / Inter Tight fonts, SVG icons and static demo images.
 
+The interface SVG symbols are embedded in `index.html` so icons also render when
+opening the HTML file directly, without an HTTP server.
+
 Download buttons point to the repository's releases page, which includes alpha
 prereleases. Update these links if a dedicated download destination is introduced.
 The changelog is maintained manually; update its entries when shipping changes.

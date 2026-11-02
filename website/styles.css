@@ -63,6 +63,9 @@ article[id] {
   width: min(1200px, calc(100% - 48px));
   margin-inline: auto;
 }
+.icon-definitions {
+  position: absolute;
+}
 .icon {
   width: 20px;
   height: 20px;
