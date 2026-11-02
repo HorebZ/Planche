@@ -1,6 +1,5 @@
 import { strict as assert } from "node:assert";
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 
 export function releaseManifest(version: string, arch: string, signature: string, notes: string) {
@@ -40,6 +39,11 @@ async function build() {
     "Set the public PLANCHE_GITHUB_CLIENT_ID before building",
   );
   const root = resolve(import.meta.dir, "..");
+  const dmgPython = join(root, ".local/dmg-tools/bin/python");
+  assert(
+    await Bun.file(dmgPython).exists(),
+    "Set up the DMG builder: python3 -m venv .local/dmg-tools && .local/dmg-tools/bin/python -m pip install -r scripts/dmg-requirements.txt",
+  );
   const config = JSON.parse(await readFile(join(root, "app/src-tauri/tauri.conf.json"), "utf8"));
   const version: string = config.version;
   const arch = process.arch === "arm64" ? "aarch64" : "x86_64";
@@ -144,27 +148,7 @@ async function build() {
     join(output, "build.json"),
     `${JSON.stringify({ version, commit, dirty, arch }, null, 2)}\n`,
   );
-  const staging = await mkdtemp(join(tmpdir(), "planche-dmg-"));
-
-  try {
-    run(["/usr/bin/ditto", app, join(staging, "Planche.app")]);
-    await symlink("/Applications", join(staging, "Applications"));
-    run([
-      "/usr/bin/hdiutil",
-      "create",
-      "-volname",
-      "Planche",
-      "-srcfolder",
-      staging,
-      "-ov",
-      "-format",
-      "UDZO",
-      join(output, `${name}.dmg`),
-    ]);
-    run(["/usr/bin/hdiutil", "verify", join(output, `${name}.dmg`)]);
-  } finally {
-    await rm(staging, { recursive: true, force: true });
-  }
+  run([dmgPython, join(root, "scripts/build-dmg.py"), app, join(output, `${name}.dmg`)], buildEnv);
 
   console.log(`Alpha ready: ${output}`);
   console.log(

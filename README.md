@@ -68,13 +68,24 @@ certificate and notarization credentials can be supplied later to the same build
 Build locally from the root:
 
 ```sh
+python3 -m venv .local/dmg-tools
+.local/dmg-tools/bin/python -m pip install -r scripts/dmg-requirements.txt
 bun run release:alpha
 ```
 
+The first two commands install the DMG build tools once, outside the application.
+Packaged builds regenerate the native icons from
+`app/src/assets/brand/planche-icon.svg`. Use `bun run --cwd app icons` to regenerate
+them independently.
+
 The command checks the repository, builds a native bundle with the public OAuth
 Client ID, verifies its macOS signature, signs and verifies an updater archive,
-tests replacing an isolated copy of the app, and creates and verifies a simple
-DMG. Files are written to `target/release/alpha/<version>/`. The build is for the
+tests replacing an isolated copy of the app, and creates a DMG styled as a small
+Todo → Done board. Dragging Planche from Todo to the Applications shortcut in Done
+copies the app into Applications. The background is static; Finder handles the
+actual copy. The builder checks the image, saved Finder layout, shortcut and
+bundled app signature without automating Finder. Files are written to
+`target/release/alpha/<version>/`. The build is for the
 current Mac's architecture: Apple Silicon produces `aarch64`, Intel `x86_64`.
 Universal archives are not supported by the updater yet.
 

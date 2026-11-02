@@ -5,6 +5,7 @@
       "scripts/**",
       "*.json",
       "app/**",
+      "!!.local",
       "!app/src-tauri",
       "!app/dist",
       "!app/src/ipc/bindings.types.ts"

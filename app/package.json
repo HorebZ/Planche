@@ -8,6 +8,7 @@
     "build": "tsc -p tsconfig.build.json && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
+    "icons": "bun ../scripts/generate-icons.ts",
     "typecheck": "tsc --noEmit",
     "format": "biome check --write",
     "lint": "biome check",
