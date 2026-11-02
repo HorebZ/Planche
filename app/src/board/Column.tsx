@@ -73,7 +73,9 @@ export function Column({
       return row.kind === "card" ? row.card.item_id : "placeholder";
     },
   });
-  const selectedId = useUi((s) => s.selectedId);
+  const selectedId = useUi((s) =>
+    column.cards.some((card) => card.item_id === s.selectedId) ? s.selectedId : null,
+  );
   const revealId = useUi((s) => s.revealId);
   const drafting = useUi((s) =>
     s.overlay?.type === "draft" && s.overlay.column === column.option_id ? s.overlay.editor : null,
