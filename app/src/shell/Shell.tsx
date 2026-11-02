@@ -425,8 +425,6 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
             }
             board={data}
             project={project.data}
-            status={status.data}
-            error={error}
             onSelectView={selectView}
             layout={layout}
             onLayoutChange={setLayout}

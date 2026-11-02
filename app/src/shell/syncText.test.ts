@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import type { SyncStatus } from "@/ipc/bindings.types";
-import { ago, busyLabel, footerText } from "./syncText";
+import { ago, footerText } from "./syncText";
 
 const now = Date.parse("2026-10-15T12:00:00Z");
 const status = (state: SyncStatus["state"], extra: Partial<SyncStatus> = {}): SyncStatus => ({
@@ -34,17 +34,6 @@ test("the footer says how fresh the board is, or why it is not", () => {
   expect(
     footerText(status({ type: "syncing", page: 1, pages: 1, items_total: 9 }), null, now).tone,
   ).toBe("syncing");
-});
-
-test("the toolbar counts items while loading and pages while syncing", () => {
-  const syncing = status({ type: "syncing", page: 3, pages: 5, items_total: 480 });
-
-  expect(busyLabel(syncing, true)).toBe("Loading 480 items…");
-  expect(busyLabel(syncing, false)).toBe("Syncing 3 of 5…");
-  expect(busyLabel(status({ type: "syncing", page: 1, pages: 1, items_total: 9 }), false)).toBe(
-    "Syncing…",
-  );
-  expect(busyLabel(status({ type: "idle" }), false)).toBeNull();
 });
 
 test("quota, sync failures and local read errors override a successful sync", () => {

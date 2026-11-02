@@ -1,5 +1,5 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { Columns3, Link, List, Search } from "lucide-react";
+import { ArrowUpRight, Columns3, List, Search } from "lucide-react";
 import { useMemo } from "react";
 import { statusTone } from "@/board/statusTone";
 import { BoardFilter, type BoardFilters } from "@/components/ui/board-filter";
@@ -15,17 +15,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { type ProjectTone, projectTones } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SyncIndicator } from "@/components/ui/sync-indicator";
-import type { Board, ProjectMeta, SyncStatus, User, ViewId } from "@/ipc/bindings.types";
+import type { Board, ProjectMeta, User, ViewId } from "@/ipc/bindings.types";
 import type { ProjectLayout } from "@/stores/preferences";
-import { busyLabel, footerText } from "./syncText";
 
 type ToolbarProps = {
   tone: ProjectTone;
   board: Board | null | undefined;
   project: ProjectMeta | null | undefined;
-  status: SyncStatus | undefined;
-  error?: string | null;
   onSelectView: (viewId: ViewId) => void;
   layout: ProjectLayout;
   onLayoutChange: (layout: ProjectLayout) => void;
@@ -46,8 +42,6 @@ export function Toolbar({
   tone,
   board,
   project,
-  status,
-  error,
   onSelectView,
   layout,
   onLayoutChange,
@@ -63,10 +57,6 @@ export function Toolbar({
   dragging,
   visibleCount,
 }: ToolbarProps) {
-  const busy = busyLabel(status, !board);
-  const feedback = footerText(status, board?.synced_at ?? null, Date.now(), error);
-  const failed = feedback.tone === "offline";
-  const loading = !board && !failed;
   const boardViews = project?.views.filter((v) => v.layout === "Board") ?? [];
   const currentView = project?.views.find((v) => v.number === board?.view?.number);
   const count = board?.columns.reduce((n, c) => n + c.cards.length, 0) ?? 0;
@@ -174,25 +164,6 @@ export function Toolbar({
           <Skeleton className="h-3 w-[140px] rounded-xs" />
         )}
         <span className="flex-1" />
-        <SyncIndicator
-          state={
-            failed
-              ? "offline"
-              : busy || loading
-                ? "busy"
-                : status || board?.synced_at
-                  ? "idle"
-                  : "unknown"
-          }
-          label={
-            failed
-              ? status?.state.type === "offline" && !error
-                ? "Offline"
-                : feedback.text
-              : (busy ?? (loading ? "Loading project…" : undefined))
-          }
-          title={failed ? feedback.text : undefined}
-        />
         <Button
           variant="ghost"
           size="icon"
@@ -201,7 +172,7 @@ export function Toolbar({
           onClick={() => board && openUrl(board.project.url)}
           className="size-7 text-fg-3"
         >
-          <Link className="size-4" />
+          <ArrowUpRight className="size-4" />
         </Button>
       </div>
       <div className="flex min-h-[42px] flex-wrap items-center gap-1.5 py-1.5 pr-3 pl-4">

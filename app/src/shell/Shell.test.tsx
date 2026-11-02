@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toast";
 import type { Scenario } from "@/ipc/_fixtures/scenarios.fixtures";
 import { type Board, commands } from "@/ipc/bindings.types";
 import { listenToCore } from "@/ipc/queries";
-import { button, calls, click, get, installMockBackend, key, render } from "@/test-support";
+import { button, click, get, installMockBackend, key, render } from "@/test-support";
 import { Shell } from "./Shell";
 
 function renderShell() {
@@ -21,34 +21,32 @@ async function open(scenario: Scenario) {
   const mounted = renderShell();
   const stop = await listenToCore(mounted.client);
 
-  await expect.poll(() => calls.get_board).toBeGreaterThan(0);
   await expect
-    .poll(() => document.querySelector('[data-slot="sync-indicator"]')?.textContent)
-    .not.toBe("Loading project…");
+    .poll(() => document.querySelector('[data-slot="board-column"], [data-slot="board-error"]'))
+    .not.toBeNull();
 
   return { ...mounted, ...backend, stop };
 }
 
 function expectFailure(message: string) {
-  expect(get('[data-slot="sync-indicator"]').textContent).toBe(message);
   expect(get('[data-slot="sidebar-footer"]').textContent).toContain(message);
   expect(document.body.textContent).not.toContain("Up to date");
 }
 
 test.each([
-  ["board", "Up to date", "Synced 2 min ago"],
-  ["syncing", "Syncing 3 of 5…", "Syncing…"],
-  ["offline", "Offline", "Offline · 1 change pending"],
-  ["loading", "Loading 142 items…", "Syncing…"],
-  ["empty", "Up to date", "Synced 2 min ago"],
+  ["board", "Synced 2 min ago"],
+  ["syncing", "Syncing…"],
+  ["offline", "Offline · 1 change pending"],
+  ["loading", "Syncing…"],
+  ["empty", "Synced 2 min ago"],
 ] as const)(
   "%s renders the board state consistently across the shell",
-  async (scenario, indicator, footer) => {
+  async (scenario, footer) => {
     installMockBackend(scenario);
     renderShell();
 
-    await expect.poll(() => get('[data-slot="sync-indicator"]').textContent).toBe(indicator);
-    expect(get('[data-slot="sidebar-footer"]').textContent).toContain(footer);
+    await expect.poll(() => get('[data-slot="sidebar-footer"]').textContent).toContain(footer);
+    expect(document.querySelector('[data-slot="sync-indicator"]')).toBeNull();
 
     if (scenario === "loading") {
       expect(document.querySelectorAll('[data-slot="skeleton-column"]')).toHaveLength(5);
@@ -128,14 +126,14 @@ test.each([
   const backend = await open(scenario);
 
   try {
-    await expect.poll(() => get('[data-slot="sync-indicator"]').textContent).toBe(message);
+    await expect.poll(() => get('[data-slot="sidebar-footer"]').textContent).toContain(message);
     expectFailure(message);
     expect(document.querySelector('[data-slot="skeleton-column"]')).toBeNull();
 
     await expect.poll(() => button("Retry now").disabled).toBe(false);
     click(button("Retry now"));
 
-    await expect.poll(() => get('[data-slot="sync-indicator"]').textContent).toBe("Up to date");
+    await expect.poll(() => get('[data-slot="sidebar-footer"]').textContent).toContain("Synced");
     await expect.poll(() => document.querySelector('[role="alert"]')).toBeNull();
     expect(document.querySelectorAll('[data-slot="board-column"]')).toHaveLength(5);
   } finally {
@@ -149,9 +147,7 @@ test.each(["offline", "rate_limited"] as const)("uncached %s leaves loading", as
   const stop = await listenToCore(client);
 
   try {
-    await expect
-      .poll(() => get('[data-slot="sync-indicator"]').textContent)
-      .toBe("Loading 142 items…");
+    await expect.poll(() => get('[data-slot="sidebar-footer"]').textContent).toContain("Syncing…");
     expect(document.querySelectorAll('[data-slot="skeleton-column"]')).toHaveLength(5);
 
     await backend.emit("sync-status", {
@@ -178,8 +174,8 @@ test.each(["retry", "automatic"] as const)(
       key("r", document, { metaKey: true });
 
       await expect
-        .poll(() => get('[data-slot="sync-indicator"]').textContent)
-        .toBe("Could not start synchronization");
+        .poll(() => get('[data-slot="sidebar-footer"]').textContent)
+        .toContain("Could not start synchronization");
       expectFailure("Could not start synchronization");
       expect(get('[role="alert"]').textContent).toContain("Showing saved data");
 
@@ -195,7 +191,7 @@ test.each(["retry", "automatic"] as const)(
       }
 
       await expect.poll(() => document.querySelector('[role="alert"]')).toBeNull();
-      expect(get('[data-slot="sync-indicator"]').textContent).toBe("Up to date");
+      expect(get('[data-slot="sidebar-footer"]').textContent).toContain("Synced");
     } finally {
       backend.stop();
     }

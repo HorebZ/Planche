@@ -44,18 +44,3 @@ export function footerText(
 
   return { tone: "ok", text: last ? `Synced ${ago(last, now)}` : "Not synced yet" } as const;
 }
-
-/** The toolbar label while busy: "Loading 142 items…" before the first sync, "Syncing 3 of 5…" after. */
-export function busyLabel(status: SyncStatus | undefined, loading: boolean) {
-  if (status?.state.type !== "syncing") {
-    return null;
-  }
-
-  const { page, pages, items_total } = status.state;
-
-  if (loading) {
-    return items_total > 0 ? `Loading ${items_total} items…` : "Loading project…";
-  }
-
-  return pages > 1 ? `Syncing ${page} of ${pages}…` : "Syncing…";
-}
