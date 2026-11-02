@@ -9,7 +9,7 @@
     "dev": "bun run --cwd app --env-file=../.env tauri dev",
     "release:alpha": "bun --env-file=.env scripts/release-alpha.ts",
     "publish:alpha": "bun scripts/publish-alpha.ts",
-    "check": "cargo fmt --check && cargo clippy --workspace -- -D warnings && cargo test --workspace && git diff --exit-code app/src/ipc/bindings.types.ts && bun run lint && bun test scripts/release-alpha.test.ts && bun run --cwd app check && bun run validate:gql",
+    "check": "cargo fmt --check && cargo clippy --workspace -- -D warnings && cargo test --workspace && git diff --exit-code app/src/ipc/bindings.types.ts && bun run lint && bun test ./scripts && bun run --cwd app check && bun run validate:gql",
     "format": "cargo fmt && biome check --write",
     "lint": "biome check",
     "validate:gql": "bun scripts/validate-graphql.ts",
