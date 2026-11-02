@@ -83,6 +83,32 @@ test("the keyboard lifts, moves across and down, and drops", async ({ page }) =>
   await expect.poll(() => numbers(column(page, "In progress"))).toEqual([231, 226, 232, 228]);
 });
 
+test("leaving the board clears the drop target and does not move the card", async ({ page }) => {
+  await open(page, "board");
+  await lift(page, card(page, 226), card(page, 220));
+
+  await expect(column(page, "Done")).toHaveAttribute("data-drop-target", "true");
+  await page.mouse.move(100, 500, { steps: 12 });
+
+  await expect(page.locator('[data-slot="card-placeholder"]')).toHaveCount(0);
+  await expect(page.locator("[data-drop-target]")).toHaveCount(0);
+  await expect(page.locator('[data-drag-state="lifted"]')).toBeVisible();
+
+  await card(page, 226).hover();
+
+  await expect(column(page, "Todo").locator('[data-slot="card-placeholder"]')).toHaveCount(1);
+
+  await page.mouse.move(100, 500, { steps: 12 });
+
+  await expect(page.locator('[data-slot="card-placeholder"]')).toHaveCount(0);
+
+  await page.mouse.up();
+
+  await expect(page.locator('[data-slot="drag-help-bar"]')).toHaveCount(0);
+  await expect.poll(() => numbers(column(page, "Todo"))).toEqual([226, 223, 219]);
+  await expect.poll(() => numbers(column(page, "Done"))).toEqual([220, 215, 211]);
+});
+
 test("a sorted view moves cards between columns but not within one", async ({ page }) => {
   await open(page, "sorted");
   await lift(page, card(page, 219), card(page, 226), false);

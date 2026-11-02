@@ -42,7 +42,7 @@ type Drag = {
   id: ItemId;
   card: BoardCard;
   from: Spot;
-  to: Spot;
+  to: Spot | null;
   height: number;
   keyboard: boolean;
 };
@@ -54,8 +54,12 @@ function others(board: BoardData, column: number, id: ItemId) {
   return board.columns[column].cards.filter((c) => c.item_id !== id);
 }
 
-/** The card under the pointer wins over its column; outside every column, the nearest one. */
+/** Pointer drops require a hit; keyboard drags use the card's translated rectangle. */
 const collision: CollisionDetection = (args) => {
+  if (!args.pointerCoordinates) {
+    return closestCenter(args);
+  }
+
   const hits = pointerWithin(args);
   const card = hits.find((hit) => !String(hit.id).startsWith("column:"));
 
@@ -63,7 +67,7 @@ const collision: CollisionDetection = (args) => {
     return [card];
   }
 
-  return hits.length > 0 ? hits : closestCenter(args);
+  return hits;
 };
 
 type BoardProps = {
@@ -114,7 +118,7 @@ export const Board = memo(function Board({
       }
 
       const b = boardRef.current;
-      let { column, index } = current.to;
+      let { column, index } = current.to ?? current.from;
       const size = (c: number) => others(b, c, current.id).length;
 
       switch (commandFor(event, "drag")) {
@@ -206,7 +210,15 @@ export const Board = memo(function Board({
     ({ active, over, activatorEvent, delta }: DragMoveEvent) => {
       const current = dragRef.current;
 
-      if (!current || current.keyboard || !over) {
+      if (!current || current.keyboard) {
+        return;
+      }
+
+      if (!over) {
+        if (current.to) {
+          setDrag({ ...current, to: null });
+        }
+
         return;
       }
 
@@ -221,7 +233,7 @@ export const Board = memo(function Board({
       if (overId.startsWith("column:")) {
         const column = Number(overId.slice("column:".length));
         const placeholder =
-          column === current.to.column
+          column === current.to?.column
             ? document.querySelector('[data-slot="card-placeholder"]')?.getBoundingClientRect()
             : null;
 
@@ -234,14 +246,17 @@ export const Board = memo(function Board({
       } else {
         const spot = locate(overId);
 
-        if (!spot || overId === current.id) {
+        if (!spot) {
           return;
         }
 
         const index = others(b, spot.column, current.id).findIndex((c) => c.item_id === overId);
         const below = pointerY > over.rect.top + over.rect.height / 2;
 
-        to = { column: spot.column, index: below ? index + 1 : index };
+        to =
+          overId === current.id
+            ? current.from
+            : { column: spot.column, index: below ? index + 1 : index };
       }
 
       // A sorted view keeps each column's order: only the column changes.
@@ -249,7 +264,7 @@ export const Board = memo(function Board({
         to = to.column === current.from.column ? current.from : { column: to.column, index: 0 };
       }
 
-      if (to.column !== current.to.column || to.index !== current.to.index) {
+      if (to.column !== current.to?.column || to.index !== current.to?.index) {
         setDrag({ ...current, to });
       }
     },
@@ -323,10 +338,10 @@ export const Board = memo(function Board({
   }, [board, reverting, setReverting]);
 
   const landingFor = (column: number): Landing | null =>
-    drag && drag.to.column === column
+    drag && drag.to?.column === column
       ? { index: drag.to.index, height: drag.height, fromHere: drag.from.column === column }
       : null;
-  const target = drag ? board.columns[drag.to.column] : null;
+  const target = drag?.to ? board.columns[drag.to.column] : null;
 
   return (
     <DndContext
@@ -360,7 +375,7 @@ export const Board = memo(function Board({
         {drag ? <DragHelpBar className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2" /> : null}
       </div>
       <DragOverlay dropAnimation={null}>
-        {drag && target ? (
+        {drag ? (
           <div className="relative">
             <IssueCard
               {...cardData(drag.card)}
@@ -376,9 +391,11 @@ export const Board = memo(function Board({
               dragState="lifted"
               tabIndex={-1}
             />
-            <DragBubble className="absolute top-full left-[82px] mt-1.5">
-              Move to {target.name} · position {drag.to.index + 1}
-            </DragBubble>
+            {target && drag.to ? (
+              <DragBubble className="absolute top-full left-[82px] mt-1.5">
+                Move to {target.name} · position {drag.to.index + 1}
+              </DragBubble>
+            ) : null}
           </div>
         ) : null}
       </DragOverlay>
@@ -393,9 +410,15 @@ function intentFor(
   drag: Drag,
   manualOrder: boolean,
 ): Intent | null {
-  const sameColumn = drag.to.column === drag.from.column;
+  const to = drag.to;
 
-  if (sameColumn && (!manualOrder || drag.to.index === drag.from.index)) {
+  if (!to) {
+    return null;
+  }
+
+  const sameColumn = to.column === drag.from.column;
+
+  if (sameColumn && (!manualOrder || to.index === drag.from.index)) {
     return null;
   }
 
@@ -404,10 +427,10 @@ function intentFor(
     project_id: board.project.id,
     item_id: drag.id,
     field_id: board.field.id,
-    to: board.columns[drag.to.column].option_id,
+    to: board.columns[to.column].option_id,
     placement: !manualOrder
       ? "keep"
-      : dropPlacement(canonical, board.columns[drag.to.column], drag.id, drag.to.index),
+      : dropPlacement(canonical, board.columns[to.column], drag.id, to.index),
   };
 }
 
