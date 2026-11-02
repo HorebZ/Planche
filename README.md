@@ -57,6 +57,11 @@ Choose a DMG for your Mac's architecture from
 Applications. The installed app requires macOS 15 or later; it does not need Bun,
 Rust or a development environment.
 
+Planche checks for updates at startup. Use the sidebar update indicator or
+**Check for updates** in Settings to install a newer alpha. Saved sessions,
+preferences and cached boards survive updates; submit or discard unsent drafts
+before installing.
+
 On first launch, choose **Sign in with GitHub** and authorize the app using the
 code shown. Planche requests `repo`, `read:org` and `project` access. Organization
 policies may require approval from an administrator. A classic personal access

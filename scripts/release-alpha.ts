@@ -136,7 +136,14 @@ async function build() {
     version,
     arch,
     signature,
-    "Distinct project colors in light and dark themes, with a wider default color cycle and preserved custom choices.",
+    [
+      "- Smoother card moves: stable drop animations, cleared drop targets outside columns, and no scroll jumps when focusing cards.",
+      "- Refined command palette with visible keyboard shortcuts and clearer action groups.",
+      "- Clearer move notifications with issue numbers and destination statuses; dismissible, stacked sync errors keep retry available.",
+      "- Sidebar update indicator and one-click download and installation, with unsent draft protection.",
+      "- Quieter board columns, simpler sync toolbar, consistent dialog motion, and fewer selection re-renders.",
+      "- Updated landing page and documentation with captures of the current app and accurate alpha scope.",
+    ].join("\n"),
   );
   await writeFile(join(output, "latest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
   const commit = Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd: root })
