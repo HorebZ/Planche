@@ -637,14 +637,17 @@ function OverlaysDemo() {
           <ToastCard
             tone="info"
             message="Synced 142 items"
+            onDismiss={() => undefined}
           />
           <ToastCard
             tone="success"
             message={movedMessage()}
+            onDismiss={() => undefined}
             action={{ label: "Undo", kbd: "⌘Z" }}
           />
           <ToastCard
             tone="error"
+            onDismiss={() => undefined}
             message={
               <>
                 Couldn't move <span className="font-mono text-fg-2 text-sm">#231</span>: missing{" "}
@@ -652,6 +655,24 @@ function OverlaysDemo() {
               </>
             }
           />
+          <State label="persistent error">
+            <ToastCard
+              tone="error"
+              message="Could not read the local cache"
+              onDismiss={() => undefined}
+              description="Showing saved data"
+              action={{ label: "Retry now" }}
+            />
+          </State>
+          <State label="error retained during retry">
+            <ToastCard
+              tone="error"
+              message="Could not read the local cache"
+              onDismiss={() => undefined}
+              description="Showing saved data"
+              action={{ label: "Retry now", disabled: true }}
+            />
+          </State>
           <Button
             variant="secondary"
             onClick={() =>
@@ -660,6 +681,7 @@ function OverlaysDemo() {
                   <ToastCard
                     tone="success"
                     message={movedMessage()}
+                    onDismiss={() => toast.dismiss(id)}
                     action={{ label: "Undo", kbd: "⌘Z", onClick: () => toast.dismiss(id) }}
                   />
                 ),

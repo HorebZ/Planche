@@ -198,6 +198,7 @@ export function useActions(projectId: ProjectId, viewId: ViewId | null) {
                 <ToastCard
                   tone="success"
                   message={label}
+                  onDismiss={() => toast.dismiss(t)}
                   action={
                     undo
                       ? {

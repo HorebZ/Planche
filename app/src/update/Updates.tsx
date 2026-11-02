@@ -127,6 +127,7 @@ export function Updates() {
       (id) => (
         <ToastCard
           message={`Planche ${status.release?.version} ${status.phase === "ready" ? "is ready to install" : "is available"}`}
+          onDismiss={() => toast.dismiss(id)}
           action={{
             label: "Review",
             onClick: () => {

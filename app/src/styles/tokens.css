@@ -25,6 +25,7 @@
   --pl-accent-soft: light-dark(oklch(0.56 0.18 38 / 0.1), oklch(0.7 0.16 42 / 0.14));
   --pl-danger: light-dark(oklch(0.52 0.19 20), oklch(0.69 0.17 22));
   --pl-danger-soft: light-dark(oklch(0.52 0.19 20 / 0.08), oklch(0.69 0.17 22 / 0.12));
+  --pl-danger-surface: color-mix(in srgb, var(--pl-danger) 12%, var(--pl-elevated));
   --pl-success: light-dark(oklch(0.55 0.13 150), oklch(0.72 0.13 150));
   --pl-warning: light-dark(oklch(0.66 0.14 75), oklch(0.8 0.13 80));
   --pl-s-draft: var(--pl-fg-3);

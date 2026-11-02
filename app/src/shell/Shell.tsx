@@ -21,10 +21,8 @@ import {
   toggleAssignee,
 } from "@/command/commands";
 import { ShortcutSheet } from "@/command/ShortcutSheet";
-import { Banner } from "@/components/ui/banner";
 import { emptyFilters } from "@/components/ui/board-filter";
 import { BoardErrorCard, NoFilterResults } from "@/components/ui/board-states";
-import { Button } from "@/components/ui/button";
 import { IssueDetail } from "@/components/ui/issue-detail";
 import { IssueListGroup } from "@/components/ui/issue-list";
 import { defaultProjectTones } from "@/components/ui/sidebar";
@@ -43,10 +41,11 @@ import {
 } from "@/ipc/queries";
 import { type Direction, navigate } from "@/keyboard/shortcuts";
 import { useShortcuts } from "@/keyboard/useShortcuts";
+import { useSettledError } from "@/lib/useSettledError";
 import { type ProjectLayout, usePreferences } from "@/stores/preferences";
 import { useUi } from "@/stores/ui";
-import { OfflineBanner } from "./OfflineBanner";
 import { AppSidebar, signOut } from "./Sidebar";
+import { SyncErrorToast } from "./SyncErrorToast";
 import { footerText } from "./syncText";
 import { Toolbar } from "./Toolbar";
 
@@ -194,7 +193,6 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
     }
 
     refresh.mutate(projectId, {
-      onError: (error) => notify(`Sync failed: ${errorMessage(error)}`, "error"),
       onSuccess: () => void board.refetch(),
     });
   }, [refresh, projectId, board.refetch]);
@@ -375,8 +373,13 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   const failure = board.error ?? status.error ?? refreshError;
   const error = failure ? errorMessage(failure) : null;
   const feedback = footerText(status.data, data?.synced_at ?? null, Date.now(), error);
-  const failed = feedback.tone === "offline";
   const retrying = board.isFetching || status.isFetching || refresh.isPending;
+  const message = useSettledError(
+    feedback.tone === "offline" ? feedback.text : null,
+    retrying || syncing,
+    JSON.stringify([projectId, viewId]),
+  );
+  const failed = message !== null;
 
   const retry = () => {
     if (retrying) {
@@ -458,29 +461,14 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
               usePreferences.getState().setPropertyVisible(context, property, visible)
             }
           />
-          {syncing ? <SyncBar /> : null}
-          {data && offline && !error ? (
-            <OfflineBanner
+          {syncing || retrying ? <SyncBar /> : null}
+          {data ? (
+            <SyncErrorToast
+              key={projectId}
+              message={message}
               retryAt={status.data?.retry_at ?? null}
-              onRetry={syncNow}
-              pending={refresh.isPending}
-            />
-          ) : null}
-          {data && failed && (!offline || error) ? (
-            <Banner
-              className="mx-3.5 mt-2.5"
-              title="Could not refresh this project"
-              description={feedback.text}
-              meta="Showing saved data"
-              action={
-                <Button
-                  size="sm"
-                  disabled={retrying}
-                  onClick={retry}
-                >
-                  Retry now
-                </Button>
-              }
+              onRetry={retry}
+              pending={retrying || syncing}
             />
           ) : null}
           <section
@@ -492,8 +480,8 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
             {data == null && failed ? (
               <div className="grid h-full place-items-center overflow-y-auto p-6">
                 <BoardErrorCard
-                  message={feedback.text}
-                  pending={retrying}
+                  message={message ?? feedback.text}
+                  pending={retrying || syncing}
                   onRetry={retry}
                   onBack={chooseProject}
                 />

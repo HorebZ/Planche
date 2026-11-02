@@ -10,7 +10,7 @@ import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, expect, test, vi } from "vitest";
-import { toast } from "@/components/ui/toast";
+import { Toaster, toast } from "@/components/ui/toast";
 import { authStatus } from "@/ipc/_fixtures/user.fixtures";
 import type { Board, DispatchOutcome, Intent } from "@/ipc/bindings.types";
 import {
@@ -927,6 +927,7 @@ test("accepted seq survives projection failure with cached board and a recoverab
           QueryClientProvider,
           { client: h.client },
           createElement(Shell, { projectId: first.board.project.id }),
+          createElement(Toaster),
         ),
       ),
     );
@@ -943,7 +944,7 @@ test("accepted seq survives projection failure with cached board and a recoverab
 
     await expect
       .poll(() => container.querySelector('[role="alert"]')?.textContent)
-      .toContain("Could not refresh this projectcache read failed");
+      .toContain("cache read failed");
     expect(container.querySelector('[data-slot="board-column"]')?.textContent).toContain("Todo");
     expect(h.client.getQueryData(key)).toBe(optimistic);
     expect(results).toEqual([{ type: "accepted", seq: 42 }]);

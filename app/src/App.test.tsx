@@ -2,6 +2,7 @@
 import { StrictMode } from "react";
 import { expect, test, vi } from "vitest";
 import App from "./App";
+import { type AuthStatus, commands } from "./ipc/bindings.types";
 import { queryClient } from "./ipc/queries";
 import { button, calls, click, get, installMockBackend, key, render } from "./test-support";
 
@@ -66,4 +67,33 @@ test("an unavailable project returns to the picker and can open again", async ()
 
   await expect.poll(() => document.querySelector('[data-slot="board-error"]')).toBeNull();
   await expect.poll(() => get('[data-slot="board-column"]').textContent).toContain("Backlog");
+});
+
+test("startup keeps its error visible until authentication finishes", async () => {
+  installMockBackend("unlock-cancelled");
+  render(<App />, queryClient);
+
+  await expect
+    .poll(() => document.querySelector('[role="alert"]')?.textContent)
+    .toContain("Authentication cancelled");
+  const alert = get('[role="alert"]');
+  const original = commands.authStatus;
+  let resolve!: (auth: AuthStatus) => void;
+  vi.spyOn(commands, "authStatus").mockImplementationOnce(
+    () =>
+      new Promise((ok) => {
+        resolve = ok;
+      }),
+  );
+
+  click(button("Retry"));
+
+  await expect.poll(() => button("Opening…").disabled).toBe(true);
+  expect(get('[role="alert"]')).toBe(alert);
+  expect(alert.textContent).toContain("Authentication cancelled");
+  await expect.poll(() => typeof resolve).toBe("function");
+  resolve(await original());
+
+  await expect.poll(() => document.querySelector('[role="dialog"]')).toBeNull();
+  expect(document.querySelector('[role="alert"]')).toBeNull();
 });

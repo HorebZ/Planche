@@ -10,6 +10,7 @@ import {
   useCurrentProject,
   useOpenProject,
 } from "@/ipc/queries";
+import { useSettledError } from "@/lib/useSettledError";
 import { Onboarding } from "@/onboarding/Onboarding";
 import { Shell } from "@/shell/Shell";
 import { usePreferences } from "@/stores/preferences";
@@ -62,6 +63,11 @@ function Root() {
   const picked = useUi((s) => s.projectId);
   const projectId = picked ?? current.data ?? null;
   const open = useOpenProject();
+  const authError = useSettledError(
+    auth.error ? errorMessage(auth.error) : null,
+    auth.isFetching,
+    "auth",
+  );
 
   // Starts the engine of the last project; Rust ignores a project already open.
   const { mutate } = open;
@@ -76,7 +82,7 @@ function Root() {
     return (
       <LockedApp
         pending={auth.isPending || auth.isFetching || current.isPending}
-        error={auth.error ? errorMessage(auth.error) : undefined}
+        error={authError ?? undefined}
         onUnlock={() => void auth.refetch()}
       />
     );

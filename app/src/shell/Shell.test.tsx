@@ -1,13 +1,24 @@
 // @vitest-environment happy-dom
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
+import { Toaster } from "@/components/ui/toast";
 import type { Scenario } from "@/ipc/_fixtures/scenarios.fixtures";
+import { type Board, commands } from "@/ipc/bindings.types";
 import { listenToCore } from "@/ipc/queries";
 import { button, calls, click, get, installMockBackend, key, render } from "@/test-support";
 import { Shell } from "./Shell";
 
+function renderShell() {
+  return render(
+    <>
+      <Shell projectId="PVT_planche" />
+      <Toaster />
+    </>,
+  );
+}
+
 async function open(scenario: Scenario) {
   const backend = installMockBackend(scenario);
-  const mounted = render(<Shell projectId="PVT_planche" />);
+  const mounted = renderShell();
   const stop = await listenToCore(mounted.client);
 
   await expect.poll(() => calls.get_board).toBeGreaterThan(0);
@@ -34,7 +45,7 @@ test.each([
   "%s renders the board state consistently across the shell",
   async (scenario, indicator, footer) => {
     installMockBackend(scenario);
-    render(<Shell projectId="PVT_planche" />);
+    renderShell();
 
     await expect.poll(() => get('[data-slot="sync-indicator"]').textContent).toBe(indicator);
     expect(get('[data-slot="sidebar-footer"]').textContent).toContain(footer);
@@ -125,7 +136,7 @@ test.each([
     click(button("Retry now"));
 
     await expect.poll(() => get('[data-slot="sync-indicator"]').textContent).toBe("Up to date");
-    expect(document.querySelector('[role="alert"]')).toBeNull();
+    await expect.poll(() => document.querySelector('[role="alert"]')).toBeNull();
     expect(document.querySelectorAll('[data-slot="board-column"]')).toHaveLength(5);
   } finally {
     backend.stop();
@@ -134,7 +145,7 @@ test.each([
 
 test.each(["offline", "rate_limited"] as const)("uncached %s leaves loading", async (type) => {
   const backend = installMockBackend("loading");
-  const { client } = render(<Shell projectId="PVT_planche" />);
+  const { client } = renderShell();
   const stop = await listenToCore(client);
 
   try {
@@ -190,3 +201,107 @@ test.each(["retry", "automatic"] as const)(
     }
   },
 );
+
+test.each([false, true])(
+  "retry keeps the same error until settled (cached: %s)",
+  async (cached) => {
+    const backend = await open(cached ? "board" : "board-error");
+
+    try {
+      if (cached) {
+        backend.setBoardError(true);
+        await backend.emit("board-changed", { project_id: "PVT_planche" });
+      }
+
+      await expect
+        .poll(() => document.querySelector('[role="alert"]')?.textContent)
+        .toContain("Could not read the local cache");
+
+      const alert = get('[role="alert"]');
+      const original = commands.getBoard;
+      const read = vi.spyOn(commands, "getBoard");
+
+      for (const outcome of ["same", "different", "success"] as const) {
+        let resolve!: (board: Board | null) => void;
+        let reject!: (error: unknown) => void;
+        read.mockImplementationOnce(
+          () =>
+            new Promise((ok, fail) => {
+              resolve = ok;
+              reject = fail;
+            }),
+        );
+        const previousMessage = alert.textContent;
+        const reads = read.mock.calls.length;
+
+        click(button("Retry now", alert));
+
+        await expect.poll(() => alert.querySelector("button:disabled")).not.toBeNull();
+        expect(document.querySelector('[role="alert"]')).toBe(alert);
+        expect(alert.textContent).toContain(
+          outcome === "success" ? "Disk is full" : "Could not read the local cache",
+        );
+        expect(document.querySelector('[role="progressbar"]')).not.toBeNull();
+        await expect.poll(() => read.mock.calls.length).toBe(reads + 1);
+
+        if (outcome === "success") {
+          backend.setBoardError(false);
+          resolve(await original("PVT_planche", null));
+
+          await expect.poll(() => document.querySelector('[role="alert"]')).toBeNull();
+          expect(document.querySelectorAll('[data-slot="board-column"]')).toHaveLength(5);
+        } else {
+          reject({
+            kind: "Cache",
+            message: outcome === "same" ? "Could not read the local cache" : "Disk is full",
+          });
+
+          await expect.poll(() => button("Retry now", alert).disabled).toBe(false);
+          expect(document.querySelector('[role="alert"]')).toBe(alert);
+          if (outcome === "same") {
+            expect(alert.textContent).toBe(previousMessage);
+          } else {
+            expect(alert.textContent).toContain("Disk is full");
+            expect(alert.textContent).not.toContain("Could not read the local cache");
+          }
+        }
+      }
+    } finally {
+      backend.stop();
+    }
+  },
+);
+
+test("a failed manual sync keeps one persistent toast throughout retry", async () => {
+  const backend = await open("refresh-error");
+
+  try {
+    key("r", document, { metaKey: true });
+
+    await expect
+      .poll(() => document.querySelector('[role="alert"]')?.textContent)
+      .toContain("Could not start synchronization");
+    const alert = get('[role="alert"]');
+    let reject!: (error: unknown) => void;
+    vi.spyOn(commands, "refreshProject").mockImplementationOnce(
+      () =>
+        new Promise((_, fail) => {
+          reject = fail;
+        }),
+    );
+
+    click(button("Retry now", alert));
+
+    await expect.poll(() => button("Retry now", alert).disabled).toBe(true);
+    expect(document.querySelector('[role="alert"]')).toBe(alert);
+    expect(alert.textContent).toContain("Could not start synchronization");
+    await expect.poll(() => typeof reject).toBe("function");
+    reject({ kind: "Network", message: "Could not start synchronization" });
+
+    await expect.poll(() => button("Retry now", alert).disabled).toBe(false);
+    expect(document.querySelectorAll('[data-slot="toast"]')).toHaveLength(1);
+    expect(document.querySelector('[role="alert"]')).toBe(alert);
+  } finally {
+    backend.stop();
+  }
+});

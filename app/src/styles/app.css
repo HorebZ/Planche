@@ -47,6 +47,7 @@
   --color-focus: var(--pl-focus);
   --color-danger: var(--pl-danger);
   --color-danger-soft: var(--pl-danger-soft);
+  --color-danger-surface: var(--pl-danger-surface);
   --color-success: var(--pl-success);
   --color-warning: var(--pl-warning);
   --color-status-draft: var(--pl-s-draft);
