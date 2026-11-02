@@ -13,7 +13,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
 SIZE = (720, 480)
-ICONS = {"Planche.app": (180, 268), "Applications": (540, 268)}
+ICONS = {"Planche.app": (180, 196), "Applications": (540, 196)}
 ICON_SIZE = 96
 
 
@@ -48,26 +48,20 @@ def background(path, scale):
         draw.line([(x * scale, y * scale) for x, y in points],
                   fill=color(tone), width=width * scale, joint="curve")
 
-    text((40, 34), "Planche", 30, weight="Semibold")
-    text((40, 80), "Your first move.", 15, "fg-2")
-    rect((594, 42, 680, 68), 13, "column", "bg-sunken")
-    text((637, 55), "INSTALL", 10, "fg-2", "Semibold", "mm")
-
     for left, title, hint in [(40, "Todo", "Ready to install"), (400, "Done", "Ready to use")]:
-        rect((left, 136, left + 280, 384), 12, "column", "bg-sunken")
-        text((left + 40, 165), title, 14, weight="Semibold", anchor="lm")
-        text((left + 20, 188), hint, 11, "fg-3", anchor="lm")
-        rect((left + 20, 208, left + 260, 356), 8, "card", "bg-sunken")
+        rect((left, 64, left + 280, 312), 12, "column", "bg-sunken")
+        text((left + 40, 93), title, 14, weight="Semibold", anchor="lm")
+        text((left + 20, 116), hint, 11, "fg-3", anchor="lm")
+        rect((left + 20, 136, left + 260, 284), 8, "card", "bg-sunken")
 
-    draw.ellipse((60 * scale, 159 * scale, 72 * scale, 171 * scale),
+    draw.ellipse((60 * scale, 87 * scale, 72 * scale, 99 * scale),
                  outline=color("fg-3"), width=2 * scale)
-    draw.ellipse((419 * scale, 158 * scale, 433 * scale, 172 * scale), fill=color("fg"))
-    line([(422, 165), (425, 168), (430, 162)], "card")
-    line([(339, 268), (381, 268)])
-    line([(372, 259), (381, 268), (372, 277)])
+    draw.ellipse((419 * scale, 86 * scale, 433 * scale, 100 * scale), fill=color("fg"))
+    line([(422, 93), (425, 96), (430, 90)], "card")
+    line([(339, 196), (381, 196)])
+    line([(372, 187), (381, 196), (372, 205)])
 
-    text((360, 418), "Drag Planche into Applications.", 15, weight="Semibold", anchor="mm")
-    text((360, 444), "Then open Planche from Applications.", 12, "fg-2", anchor="mm")
+    text((360, 360), "drag&drop planche into Applications", 15, weight="Semibold", anchor="mm")
     image.save(path)
     return image
 
