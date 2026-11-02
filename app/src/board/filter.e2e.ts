@@ -41,7 +41,7 @@ async function drag(page: Page, from: Locator, to: Locator) {
   await expect(page.getByRole("button", { name: "Filter issues" })).toBeDisabled();
 
   await page.mouse.move(target.x + target.width / 2, target.y + target.height * 0.8, { steps: 12 });
-  await expect(page.locator('[data-slot="drag-bubble"]')).toContainText("position 2");
+  await expect(page.locator('[data-slot="card-placeholder"]')).toHaveCount(1);
   await page.mouse.up();
 }
 

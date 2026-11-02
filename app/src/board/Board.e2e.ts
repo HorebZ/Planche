@@ -46,12 +46,11 @@ test("a card dragged under the first card of Done lands second, and the scene ma
   await open(page, "board");
   await lift(page, card(page, 226), card(page, 220));
 
-  // While lifted: ghost at the origin, placeholder and +1 count in the target, bubble and help bar.
+  // While lifted: ghost at the origin, placeholder and +1 count in the target, and help bar.
   await expect(card(page, 226).first()).toHaveAttribute("data-drag-state", "ghost");
   await expect(column(page, "Done").locator('[data-slot="card-placeholder"]')).toHaveCount(1);
   await expect(column(page, "Done").locator('[data-slot="board-column-count"]')).toHaveText("4");
   await expect(column(page, "Done")).toHaveAttribute("data-drop-target", "true");
-  await expect(page.locator('[data-slot="drag-bubble"]')).toHaveText("Move to Done · position 2");
   await expect(page.locator('[data-slot="drag-help-bar"]')).toBeVisible();
 
   await page.mouse.up();
@@ -74,8 +73,8 @@ test("the keyboard lifts, moves across and down, and drops", async ({ page }) =>
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("ArrowDown");
 
-  await expect(page.locator('[data-slot="drag-bubble"]')).toHaveText(
-    "Move to In progress · position 2",
+  await expect(column(page, "In progress").locator('[data-slot="card-placeholder"]')).toHaveCount(
+    1,
   );
 
   await page.keyboard.press("Enter");
@@ -165,7 +164,7 @@ test("a sorted view moves cards between columns but not within one", async ({ pa
   await lift(page, card(page, 219), card(page, 220));
 
   await expect(page.locator('[data-slot="drag-help-bar"]')).toBeVisible();
-  await expect(page.locator('[data-slot="drag-bubble"]')).toContainText("Done");
+  await expect(column(page, "Done")).toHaveAttribute("data-drop-target", "true");
 
   await page.mouse.up();
 

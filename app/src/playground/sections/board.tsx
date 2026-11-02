@@ -4,7 +4,7 @@ import { BoardColumn, BoardColumnScroll } from "@/components/ui/board-column";
 import { BoardFilter, type BoardFilters, emptyFilters } from "@/components/ui/board-filter";
 import { NoFilterResults } from "@/components/ui/board-states";
 import { DisplayMenu, type DisplayProperty } from "@/components/ui/display-menu";
-import { DragBubble, DragHelpBar } from "@/components/ui/drag";
+import { DragHelpBar } from "@/components/ui/drag";
 import {
   CardPlaceholder,
   DraftField,
@@ -559,9 +559,6 @@ function DragMock() {
         dragState="lifted"
         className="absolute top-[108px] left-[168px] z-10 w-[218px]"
       />
-      <DragBubble className="absolute top-[196px] left-[250px] z-20">
-        Move to In progress · position 2
-      </DragBubble>
       <DragHelpBar className="absolute bottom-0 left-1/2 z-20 -translate-x-1/2" />
     </div>
   );

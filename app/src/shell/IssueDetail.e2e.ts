@@ -67,7 +67,7 @@ test("detail isolates Space, closes its submenu first and returns to a neighbor 
   await page.locator('[data-slot="issue-card"][data-item-id="PVTI_226"]').click();
   await page.keyboard.press("Space");
 
-  await expect(page.locator('[data-slot="drag-bubble"]')).toHaveCount(0);
+  await expect(page.locator('[data-slot="drag-help-bar"]')).toHaveCount(0);
   await page.keyboard.press("s");
 
   await expect(page.getByPlaceholder("Change status…")).toBeFocused();
@@ -90,7 +90,7 @@ test("detail isolates Space, closes its submenu first and returns to a neighbor 
   await page.keyboard.press("Enter");
 
   await expect(page.locator('[data-slot="issue-detail"]')).toHaveCount(0);
-  await expect(page.locator('[data-slot="drag-bubble"]')).toHaveCount(0);
+  await expect(page.locator('[data-slot="drag-help-bar"]')).toHaveCount(0);
   await expect(neighbor).toHaveCount(0);
 });
 

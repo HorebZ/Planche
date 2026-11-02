@@ -3,20 +3,6 @@ import { Kbd } from "@/components/ui/kbd";
 import { keysFor } from "@/keyboard/shortcuts";
 import { cn } from "@/lib/cn";
 
-/** The bubble by the lifted card: where it will land. */
-export function DragBubble({ className, ...props }: ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="drag-bubble"
-      className={cn(
-        "pointer-events-none flex h-[22px] w-max items-center rounded-sm bg-fg px-2 font-medium text-[11.5px] text-bg shadow-pop",
-        className,
-      )}
-      {...props}
-    />
-  );
-}
-
 const keys = [
   { keys: [...keysFor("drag.left"), ...keysFor("drag.right")], label: "Column" },
   { keys: [...keysFor("drag.up"), ...keysFor("drag.down")], label: "Position" },

@@ -16,7 +16,7 @@ import {
 } from "@dnd-kit/core";
 import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { DisplayProperty } from "@/components/ui/display-menu";
-import { DragBubble, DragHelpBar } from "@/components/ui/drag";
+import { DragHelpBar } from "@/components/ui/drag";
 import { IssueCard } from "@/components/ui/issue-card";
 import {
   type Card as BoardCard,
@@ -341,7 +341,6 @@ export const Board = memo(function Board({
     drag && drag.to?.column === column
       ? { index: drag.to.index, height: drag.height, fromHere: drag.from.column === column }
       : null;
-  const target = drag?.to ? board.columns[drag.to.column] : null;
 
   return (
     <DndContext
@@ -376,27 +375,20 @@ export const Board = memo(function Board({
       </div>
       <DragOverlay dropAnimation={null}>
         {drag ? (
-          <div className="relative">
-            <IssueCard
-              {...cardData(drag.card)}
-              hiddenProperties={hiddenProperties}
-              status={
-                drag.card.kind === "draft"
-                  ? "draft"
-                  : statusTone(
-                      board.columns[drag.from.column].color,
-                      board.columns[drag.from.column].name,
-                    )
-              }
-              dragState="lifted"
-              tabIndex={-1}
-            />
-            {target && drag.to ? (
-              <DragBubble className="absolute top-full left-[82px] mt-1.5">
-                Move to {target.name} · position {drag.to.index + 1}
-              </DragBubble>
-            ) : null}
-          </div>
+          <IssueCard
+            {...cardData(drag.card)}
+            hiddenProperties={hiddenProperties}
+            status={
+              drag.card.kind === "draft"
+                ? "draft"
+                : statusTone(
+                    board.columns[drag.from.column].color,
+                    board.columns[drag.from.column].name,
+                  )
+            }
+            dragState="lifted"
+            tabIndex={-1}
+          />
         ) : null}
       </DragOverlay>
     </DndContext>
