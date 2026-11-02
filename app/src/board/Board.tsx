@@ -74,7 +74,7 @@ type BoardProps = {
   hiddenProperties?: DisplayProperty[];
   board: BoardData;
   canonicalBoard: BoardData;
-  onMove: (intent: Intent) => Promise<unknown>;
+  onMove: (intent: Intent) => Promise<DispatchResult>;
   /** A title typed in a column's new-draft field, and that column. */
   onCreateDraft: (
     column: BoardData["columns"][number],
@@ -272,24 +272,25 @@ export const Board = memo(function Board({
   );
 
   const droppedAt = useRef<number | null>(null);
-  // Where the lifted card was let go, so it slides from there to its slot after the commit.
-  const settle = useRef<{ id: ItemId; from: Rect } | null>(null);
+  const [settle, setSettle] = useState<{
+    drag: Drag;
+    from: Rect & { width: number };
+    board: BoardData | null;
+  } | null>(null);
   const end = useCallback(
-    async (drop: boolean, released: Rect | null) => {
+    async (drop: boolean, released: (Rect & { width: number }) | null) => {
       const current = dragRef.current;
+      const intent =
+        drop && current
+          ? intentFor(boardRef.current, canonicalRef.current, current, manualOrder)
+          : null;
 
       if (current && released) {
-        settle.current = { id: current.id, from: released };
+        setSettle({ drag: current, from: released, board: intent ? boardRef.current : null });
       }
 
       setDrag(null);
       stopFrames();
-
-      if (!drop || !current) {
-        return setDragging(false);
-      }
-
-      const intent = intentFor(boardRef.current, canonicalRef.current, current, manualOrder);
 
       if (!intent) {
         return setDragging(false);
@@ -297,8 +298,16 @@ export const Board = memo(function Board({
 
       droppedAt.current = performance.now();
       // Board changes held during the drag apply once Rust has the move queued.
-      await onMove(intent);
-      setDragging(false);
+      try {
+        const result = await onMove(intent);
+
+        if (result.type === "rejected") {
+          setSettle((pending) => (pending ? { ...pending, board: null } : null));
+          droppedAt.current = null;
+        }
+      } finally {
+        setDragging(false);
+      }
     },
     [manualOrder, onMove, setDrag, setDragging],
   );
@@ -313,18 +322,15 @@ export const Board = memo(function Board({
     droppedAt.current = null;
   }, [board]);
 
-  // The drop: the card leaves the overlay and slides into its slot, wherever that is.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the optimistic board can commit after the drag state clears
+  // Keep the released card in place until its optimistic destination is mounted.
   useLayoutEffect(() => {
-    if (drag || !settle.current) {
+    if (drag || !settle || settle.board === board) {
       return;
     }
 
-    const { id, from } = settle.current;
-
-    settle.current = null;
-    flip(id, from, true);
-  }, [drag, board]);
+    flip(settle.drag.id, settle.from, true);
+    setSettle(null);
+  }, [drag, board, settle]);
 
   // A failed move: once the board puts the card back, it slides from where it was dropped.
   const reverting = useUi((s) => s.reverting);
@@ -341,6 +347,23 @@ export const Board = memo(function Board({
     drag && drag.to?.column === column
       ? { index: drag.to.index, height: drag.height, fromHere: drag.from.column === column }
       : null;
+  const lifted = drag ?? settle?.drag;
+  const liftedCard = lifted ? (
+    <IssueCard
+      {...cardData(lifted.card)}
+      hiddenProperties={hiddenProperties}
+      status={
+        lifted.card.kind === "draft"
+          ? "draft"
+          : statusTone(
+              board.columns[lifted.from.column].color,
+              board.columns[lifted.from.column].name,
+            )
+      }
+      dragState="lifted"
+      tabIndex={-1}
+    />
+  ) : null;
 
   return (
     <DndContext
@@ -365,7 +388,7 @@ export const Board = memo(function Board({
               hiddenProperties={hiddenProperties}
               projectId={board.project.id}
               index={index}
-              activeId={drag?.id ?? null}
+              activeId={lifted?.id ?? null}
               landing={landingFor(index)}
               onCreateDraft={(title, observe) => onCreateDraft(column, title, observe)}
             />
@@ -373,24 +396,16 @@ export const Board = memo(function Board({
         </div>
         {drag ? <DragHelpBar className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2" /> : null}
       </div>
-      <DragOverlay dropAnimation={null}>
-        {drag ? (
-          <IssueCard
-            {...cardData(drag.card)}
-            hiddenProperties={hiddenProperties}
-            status={
-              drag.card.kind === "draft"
-                ? "draft"
-                : statusTone(
-                    board.columns[drag.from.column].color,
-                    board.columns[drag.from.column].name,
-                  )
-            }
-            dragState="lifted"
-            tabIndex={-1}
-          />
-        ) : null}
-      </DragOverlay>
+      <DragOverlay dropAnimation={null}>{drag ? liftedCard : null}</DragOverlay>
+      {settle ? (
+        <div
+          data-slot="drop-preview"
+          className="pointer-events-none fixed z-50"
+          style={{ left: settle.from.left, top: settle.from.top, width: settle.from.width }}
+        >
+          {liftedCard}
+        </div>
+      ) : null}
     </DndContext>
   );
 });

@@ -82,6 +82,82 @@ test("the keyboard lifts, moves across and down, and drops", async ({ page }) =>
   await expect.poll(() => numbers(column(page, "In progress"))).toEqual([231, 226, 232, 228]);
 });
 
+test("a drop animates into the optimistic column before the local receipt", async ({ page }) => {
+  await open(page, "board");
+  await page.evaluate(() => {
+    const state = window as unknown as {
+      __TAURI_INTERNALS__: { invoke: (command: string, ...args: unknown[]) => Promise<unknown> };
+      __dropColumns: (string | null)[];
+      __releaseMove: () => void;
+    };
+    const invoke = state.__TAURI_INTERNALS__.invoke;
+    const animate = Element.prototype.animate;
+
+    state.__dropColumns = [];
+    state.__TAURI_INTERNALS__.invoke = async (command, ...args) => {
+      if (command === "dispatch_intent") {
+        await new Promise<void>((resolve) => {
+          state.__releaseMove = resolve;
+        });
+      }
+
+      return invoke(command, ...args);
+    };
+    Element.prototype.animate = function (...args) {
+      if (this.getAttribute("data-item-id") === "PVTI_226") {
+        state.__dropColumns.push(
+          this.closest("[data-column-index]")?.getAttribute("data-column-index") ?? null,
+        );
+      }
+
+      return animate.apply(this, args);
+    };
+  });
+
+  await lift(page, card(page, 226), card(page, 220));
+  await page.mouse.up();
+
+  await expect(column(page, "Done").locator('[data-item-id="PVTI_226"]')).toBeVisible();
+  await expect(card(page, 226).getByText("Pending")).toBeVisible();
+
+  const animationColumns = await page.evaluate(
+    () => (window as unknown as { __dropColumns: string[] }).__dropColumns,
+  );
+
+  expect(animationColumns).toEqual(["4"]);
+
+  await page.evaluate(() => (window as unknown as { __releaseMove: () => void }).__releaseMove());
+  await expect(card(page, 226).getByText("Pending")).toHaveCount(0);
+});
+
+test("a rejected local move clears the drop preview and keeps the original order", async ({
+  page,
+}) => {
+  await open(page, "board");
+  await page.evaluate(() => {
+    const backend = (
+      window as unknown as {
+        __TAURI_INTERNALS__: { invoke: (command: string, ...args: unknown[]) => Promise<unknown> };
+      }
+    ).__TAURI_INTERNALS__;
+    const invoke = backend.invoke;
+
+    backend.invoke = async (command, ...args) =>
+      command === "dispatch_intent"
+        ? { type: "rejected", error: { kind: "Invalid", message: "Move rejected" } }
+        : invoke(command, ...args);
+  });
+
+  await lift(page, card(page, 226), card(page, 220));
+  await page.mouse.up();
+
+  await expect(page.getByText(/Could not apply:.*Move rejected/)).toBeVisible();
+  await expect(page.locator('[data-slot="drop-preview"]')).toHaveCount(0);
+  await expect(page.locator('[data-slot="drag-help-bar"]')).toHaveCount(0);
+  await expect.poll(() => numbers(column(page, "Todo"))).toEqual([226, 223, 219]);
+  await expect.poll(() => numbers(column(page, "Done"))).toEqual([220, 215, 211]);
+});
+
 test("leaving the board clears the drop target and does not move the card", async ({ page }) => {
   await open(page, "board");
   await lift(page, card(page, 226), card(page, 220));
