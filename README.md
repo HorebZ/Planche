@@ -52,6 +52,14 @@ exposed to the webview.
 
 ## Development
 
+### Website
+
+The public landing page lives in [`website/`](website/), independently of the
+desktop app. Run `bun run dev:website` from the root and open
+http://localhost:1421. Python 3 is the only requirement; there is no build step.
+Any static host can serve the contents of `website/` directly. See
+[`website/README.md`](website/README.md) for assets and link maintenance.
+
 ### Installable alpha
 
 The alpha requires macOS 15 or later. A DMG installs `Planche.app` into Applications;
@@ -317,4 +325,5 @@ app/
   src/**/*.e2e.ts      Focused WebKit journeys and optional rendering/performance checks
   src-tauri/           Tauri shell
 scripts/               GraphQL validation, schema update
+website/               Static public site, styles, fonts and demo images
 ```

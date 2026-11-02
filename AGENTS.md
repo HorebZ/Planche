@@ -8,6 +8,7 @@ Native macOS client for GitHub Projects v2. Tauri 2 shell, React webview, all lo
 - `crates/planche-cli` and `app/src-tauri` are thin shells over `planche-core`. Neither contains GitHub or cache logic.
 - `app/src` is the React frontend. It reaches the system only through `app/src/ipc/bindings.types.ts`.
 - `app/src/styles/tokens.css` is the source of truth for theme values; `app/src/assets/brand/` holds the app icons and README logos.
+- `website/` is the public static site, served independently of the desktop app. It has no build step or runtime dependencies.
 - The roadmap lives in GitHub issues, starting at #1. Each phase issue lists its files, steps, tests, and live scenarios.
 
 ## Commands
@@ -17,6 +18,7 @@ Native macOS client for GitHub Projects v2. Tauri 2 shell, React webview, all lo
 - `cargo test -p planche-core` runs the core tests.
 - `cargo run -p planche-cli -- board @me/<number>` prints a board.
 - `bun run dev` at the root loads the ignored root `.env` and runs the app. In dev, `http://localhost:1420/playground` shows every UI component in every state.
+- `bun run dev:website` serves `website/` at `http://localhost:1421` with Python's standard HTTP server.
 - `cd app && bun run test:e2e` runs the focused WebKit e2e suite. Run `bunx playwright install webkit` once first. `test:visual`, `test:perf` and `test:video` run the optional browser checks and captures.
 - Live tests run against the real tracking project "Planche" (`@me/2`). A scenario that changes a card restores it at the end.
 
@@ -41,6 +43,8 @@ Native macOS client for GitHub Projects v2. Tauri 2 shell, React webview, all lo
 - Group code by logical step, with a blank line between validation, preparation, side effects, and the result. In tests, separate setup, action, and assertions; keep related declarations and assertions together. Prefer descriptive names over single-letter locals outside short closures. Preserve this spacing when adding or editing code: Biome and rustfmt keep logical blank lines but do not insert them. `bun run format` fixes formatting; `bun run check` verifies it.
 
 ## Design
+
+The rules below apply to `app/src/`. The static marketing site in `website/` uses its own `tokens.css` and `styles.css`; keep it independent of React, Tauri, and the app's component playground. Preserve the supplied landing design and use semantic HTML, accessible links, and responsive layouts.
 
 - UI is built only from the tokens in `app/src/styles/tokens.css` and the components in `app/src/components/ui/`.
 - Never improvise a color. No hex, `rgb()`, `oklch()`, or Tailwind palette class such as `bg-gray-100` outside `tokens.css`. GitHub label and option colors are data and may be applied inline. `bun run --cwd app check:design` enforces this.

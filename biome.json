@@ -5,6 +5,7 @@
       "scripts/**",
       "*.json",
       "app/**",
+      "website/**",
       "!!.local",
       "!app/src-tauri",
       "!app/dist",
@@ -31,5 +32,15 @@
         "organizeImports": "on"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["website/**"],
+      "html": {
+        "formatter": {
+          "enabled": true
+        }
+      }
+    }
+  ]
 }

@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Planche — Your GitHub Projects, at native speed</title>
+    <meta
+      name="description"
+      content="A native macOS client for GitHub Projects. Move cards from the keyboard, reach every action with ⌘K, and keep working offline."
+    >
+    <meta name="theme-color" content="#08080a">
+    <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="./tokens.css">
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body id="top">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <nav class="container navigation" aria-label="Main navigation">
+        <a class="brand" href="#top" aria-label="Planche home">
+          <img src="./assets/icon.svg" width="24" height="24" alt="">
+          <span>Planche</span>
+        </a>
+        <div class="nav-links">
+          <a href="#features">Features</a>
+          <a href="#shortcuts">Shortcuts</a>
+          <a href="#changelog">Changelog</a>
+          <a href="https://github.com/HorebZ/Planche#readme">Docs</a>
+        </div>
+        <a class="nav-github" href="https://github.com/HorebZ/Planche">GitHub</a>
+        <a class="button button-small" href="https://github.com/HorebZ/Planche/releases"
+          >Download</a
+        >
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-glow" aria-hidden="true"></div>
+        <img class="hero-icon" src="./assets/icon.svg" width="96" height="96" alt="">
+        <a class="announcement" href="https://github.com/HorebZ/Planche/releases">
+          <span class="announcement-dot" aria-hidden="true"></span>
+          New: sign in with GitHub <span aria-hidden="true">→</span>
+        </a>
+        <h1 id="hero-title">Your GitHub Projects,<br>at native speed.</h1>
+        <p class="hero-description">
+          Planche is a native macOS client for GitHub Projects. Move cards from the keyboard, reach
+          every action with ⌘K, and keep working when the network doesn't.
+        </p>
+        <div class="actions">
+          <a class="button" href="https://github.com/HorebZ/Planche/releases">
+            <svg class="icon" aria-hidden="true">
+              <use href="./assets/icons.svg#apple"></use>
+            </svg>
+            Download for macOS
+          </a>
+          <a class="button button-secondary" href="https://github.com/HorebZ/Planche">
+            <svg class="icon" aria-hidden="true">
+              <use href="./assets/icons.svg#github"></use>
+            </svg>
+            View on GitHub
+          </a>
+        </div>
+        <p class="release-note">Public alpha · macOS 15+</p>
+        <div class="hero-preview">
+          <img
+            src="./assets/board.png"
+            width="2880"
+            height="1800"
+            alt="The current Planche app in dark mode, showing its project sidebar and GitHub issue board with demonstration data."
+            fetchpriority="high"
+          >
+        </div>
+      </section>
+
+      <section class="container highlights" aria-label="Why Planche">
+        <div class="highlight">
+          <h2>
+            <svg class="icon accent" aria-hidden="true">
+              <use href="./assets/icons.svg#bolt"></use>
+            </svg
+            >Instant
+          </h2>
+          <p>Boards open from a local cache, then sync quietly in the background.</p>
+        </div>
+        <div class="highlight">
+          <h2>
+            <svg class="icon" aria-hidden="true"><use href="./assets/icons.svg#keyboard"></use></svg
+            >Keyboard-first
+          </h2>
+          <p>J and K to move, S for status, 1 to 6 to set it. Every action has a shortcut.</p>
+        </div>
+        <div class="highlight">
+          <h2>
+            <svg class="icon" aria-hidden="true"><use href="./assets/icons.svg#monitor"></use></svg
+            >Native
+          </h2>
+          <p>A real macOS window built with Rust and Tauri, not a browser tab.</p>
+        </div>
+      </section>
+
+      <section class="container features" id="features" aria-labelledby="features-title">
+        <div class="section-heading">
+          <span class="eyebrow">Features</span>
+          <h2 id="features-title">Everything a board needs.<br>Nothing it doesn't.</h2>
+          <p>
+            Built around how GitHub Projects already work: statuses, sub-issues, linked pull
+            requests and the views you set up.
+          </p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card palette-card">
+            <div class="feature-copy">
+              <h3>Command palette</h3>
+              <p>Change status, assign, label or jump to any issue from ⌘K, wherever you are.</p>
+            </div>
+            <img
+              class="window-preview palette-preview"
+              src="./assets/palette.png"
+              width="2880"
+              height="1800"
+              alt="The command palette showing available actions and keyboard shortcuts."
+              loading="lazy"
+            >
+          </article>
+          <article class="feature-card drag-card">
+            <div class="feature-copy">
+              <h3>Drag and drop that feels physical</h3>
+              <p>Cards lift, columns make room, and the move lands on GitHub when you let go.</p>
+            </div>
+            <img
+              class="drag-preview"
+              src="./assets/drag.png"
+              width="1180"
+              height="660"
+              alt="An issue card being dragged from Todo into In progress, with a placeholder for its new position."
+              loading="lazy"
+            >
+          </article>
+          <article class="feature-card shortcuts-card" id="shortcuts">
+            <div class="feature-copy">
+              <h3>Every action, one key away</h3>
+              <p>Planche is built to be driven from the keyboard. The mouse is optional.</p>
+            </div>
+            <dl class="shortcuts">
+              <div>
+                <dt><kbd>J</kbd><kbd>K</kbd></dt>
+                <dd>Move selection</dd>
+              </div>
+              <div>
+                <dt><kbd>S</kbd></dt>
+                <dd>Status menu</dd>
+              </div>
+              <div>
+                <dt><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd><kbd>5</kbd><kbd>6</kbd></dt>
+                <dd>Set status</dd>
+              </div>
+              <div class="shortcut-primary">
+                <dt><kbd>⌘</kbd><kbd>K</kbd></dt>
+                <dd>Everything else</dd>
+              </div>
+              <div>
+                <dt><kbd>C</kbd></dt>
+                <dd>New issue</dd>
+              </div>
+            </dl>
+          </article>
+          <article class="feature-card detail-card">
+            <div class="feature-copy">
+              <h3>The whole issue, in place</h3>
+              <p>
+                Markdown descriptions, sub-issues with progress, linked pull requests and
+                properties. No browser tab required.
+              </p>
+            </div>
+            <img
+              class="window-preview detail-preview"
+              src="./assets/detail.png"
+              width="2880"
+              height="1800"
+              alt="An issue open inside Planche, showing its description, sub-issues, properties and linked pull requests."
+              loading="lazy"
+            >
+          </article>
+        </div>
+      </section>
+
+      <section class="container changelog" id="changelog" aria-labelledby="changelog-title">
+        <div class="changelog-heading">
+          <span class="eyebrow">Changelog</span>
+          <h2 id="changelog-title">Shipping<br>in the open.</h2>
+          <p>Planche is built in public on GitHub. Here are some recent improvements.</p>
+          <a href="https://github.com/HorebZ/Planche/releases"
+            >All releases <span aria-hidden="true">→</span></a
+          >
+        </div>
+        <div class="changelog-entries">
+          <article>
+            <time datetime="2026-11-01">Nov 1, 2026</time>
+            <div>
+              <h3>Issues beyond projects</h3>
+              <p>
+                Issue content and permissions are shared across projects, so an issue reads the same
+                wherever you open it.
+              </p>
+            </div>
+          </article>
+          <article>
+            <time datetime="2026-11-01">Nov 1, 2026</time>
+            <div>
+              <h3>Sign in with GitHub</h3>
+              <p>Sign in once; your session persists locally between launches.</p>
+            </div>
+          </article>
+          <article>
+            <time datetime="2026-10-31">Oct 31, 2026</time>
+            <div>
+              <h3>Markdown descriptions</h3>
+              <p>Issue descriptions render as Markdown, safely sanitized.</p>
+            </div>
+          </article>
+          <article>
+            <time datetime="2026-10-31">Oct 31, 2026</time>
+            <div>
+              <h3>Issue page</h3>
+              <p>Open any card as a full page, from the board or the list.</p>
+            </div>
+          </article>
+          <article>
+            <time datetime="2026-10-31">Oct 31, 2026</time>
+            <div>
+              <h3>Combined filters</h3>
+              <p>Filter by assignee, label and repository at the same time.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="download" id="download" aria-labelledby="download-title">
+        <img src="./assets/icon.svg" width="120" height="120" alt="">
+        <h2 id="download-title">Open your board.</h2>
+        <p>Try the public alpha. Sign in with GitHub and your projects are already there.</p>
+        <div class="actions">
+          <a class="button" href="https://github.com/HorebZ/Planche/releases">
+            <svg class="icon" aria-hidden="true">
+              <use href="./assets/icons.svg#apple"></use>
+            </svg>
+            Download for macOS
+          </a>
+          <a class="button button-secondary" href="https://github.com/HorebZ/Planche">
+            <svg class="icon" aria-hidden="true">
+              <use href="./assets/icons.svg#github"></use>
+            </svg>
+            View on GitHub
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-links">
+        <div class="footer-brand">
+          <a class="brand" href="#top" aria-label="Planche home"
+            ><img src="./assets/icon.svg" width="24" height="24" alt=""><span>Planche</span></a
+          >
+          <p>A native macOS client for GitHub Projects.</p>
+        </div>
+        <nav aria-label="Product">
+          <h2>Product</h2>
+          <a href="#features">Features</a><a href="#shortcuts">Shortcuts</a
+          ><a href="#changelog">Changelog</a><a href="#download">Download</a>
+        </nav>
+        <nav aria-label="Project">
+          <h2>Project</h2>
+          <a href="https://github.com/HorebZ/Planche">GitHub</a
+          ><a href="https://github.com/HorebZ/Planche/issues/1">Roadmap</a
+          ><a href="https://github.com/HorebZ/Planche/issues">Issues</a>
+        </nav>
+        <nav aria-label="Resources">
+          <h2>Resources</h2>
+          <a href="https://github.com/HorebZ/Planche#readme">Docs</a
+          ><a href="https://github.com/HorebZ/Planche/tree/main/app/src/assets/brand">Brand</a>
+        </nav>
+      </div>
+      <div class="container footer-meta">
+        <span>© 2026 Planche</span><span>Made for macOS</span>
+      </div>
+      <div class="footer-wordmark" aria-hidden="true">Planche</div>
+    </footer>
+  </body>
+</html>
