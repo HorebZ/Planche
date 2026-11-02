@@ -148,11 +148,11 @@ test("cards resolve the card token per theme", async ({ page }) => {
   await expect(card("light")).toHaveCSS("background-color", "rgb(255, 255, 255)");
   await expect(
     scope(page, "board", "light").locator('[data-slot="board-column"]').first(),
-  ).toHaveCSS("background-color", "rgb(245, 245, 246)");
+  ).toHaveCSS("background-image", /linear-gradient\(rgb\(245, 245, 246\)/);
   await expect(card("dark")).toHaveCSS("background-color", "rgb(26, 26, 27)");
   await expect(
     scope(page, "board", "dark").locator('[data-slot="board-column"]').first(),
-  ).toHaveCSS("background-color", "rgb(16, 16, 17)");
+  ).toHaveCSS("background-image", /linear-gradient\(rgb\(16, 16, 17\)/);
 });
 
 test("a drop target column counts the hovering card, the origin keeps its own", async ({

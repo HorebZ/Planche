@@ -153,6 +153,7 @@ test.describe("screenshots", () => {
           await page.getByRole("dialog", { name: "Open Planche" }).waitFor();
         } else if (scenario === "valid") {
           await page.setViewportSize({ width: 780, height: 540 });
+          await page.getByRole("button", { name: "Use a personal access token" }).click();
           await page
             .getByLabel("Personal access token")
             .fill("ghp_7Hq2xxxxxxxxxxxxxxxxxxxxxxxx8f2c");
@@ -160,7 +161,11 @@ test.describe("screenshots", () => {
           await page.getByText("Valid").waitFor();
         } else {
           await page
-            .locator('[data-slot="board-column"], [data-slot="skeleton-column"]')
+            .locator(
+              scenario === "loading"
+                ? '[data-slot="skeleton-column"]'
+                : '[data-slot="board-column"]',
+            )
             .first()
             .waitFor();
         }
