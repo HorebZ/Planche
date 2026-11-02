@@ -109,6 +109,42 @@ test("leaving the board clears the drop target and does not move the card", asyn
   await expect.poll(() => numbers(column(page, "Done"))).toEqual([220, 215, 211]);
 });
 
+test("scrolling back up does not jump when the selected card mounts again", async ({ page }) => {
+  await page.goto("/?mock=big");
+
+  const first = card(page, 0);
+  const scroll = column(page, "Backlog").locator('[data-slot="column-scroll"]');
+
+  await first.focus();
+  await scroll.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+
+  await expect(first).toHaveCount(0);
+
+  const jumps = await scroll.evaluate(async (element) => {
+    const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const jumps: number[] = [];
+
+    element.scrollTop = 1500;
+    await frame();
+    await frame();
+
+    for (let step = 0; step < 26; step++) {
+      const target = Math.max(0, element.scrollTop - 60);
+
+      element.scrollTop = target;
+      await frame();
+      await frame();
+      jumps.push(element.scrollTop - target);
+    }
+
+    return jumps;
+  });
+
+  expect(Math.min(...jumps)).toBeGreaterThanOrEqual(-1);
+});
+
 test("a sorted view moves cards between columns but not within one", async ({ page }) => {
   await open(page, "sorted");
   await lift(page, card(page, 219), card(page, 226), false);

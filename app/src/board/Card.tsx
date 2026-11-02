@@ -79,7 +79,7 @@ export const Card = memo(function Card({
   });
   const ref = useRef<HTMLDivElement | null>(null);
 
-  // A selection made with the keyboard moves the focus here. An open overlay keeps it.
+  // The column reveals selections; focusing a remounted row must not scroll it again.
   useLayoutEffect(() => {
     if (
       selected &&
@@ -87,7 +87,7 @@ export const Card = memo(function Card({
       !useUi.getState().overlay &&
       !ref.current?.contains(document.activeElement)
     ) {
-      ref.current?.focus();
+      ref.current?.focus({ preventScroll: true });
     }
   }, [selected, detailing]);
 
