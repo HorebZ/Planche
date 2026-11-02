@@ -360,18 +360,18 @@ h1 {
 }
 .palette-preview {
   left: -56px;
-  top: 150px;
+  top: 190px;
 }
 .detail-preview {
-  left: 32px;
-  top: 160px;
+  left: -120px;
+  top: 190px;
 }
 .detail-card .feature-copy {
   max-width: 480px;
 }
 .drag-preview {
   position: absolute;
-  top: 150px;
+  top: 190px;
   left: 0;
   width: 100%;
 }
@@ -390,7 +390,12 @@ h1 {
 .shortcuts dt {
   display: flex;
   flex: none;
+  align-items: center;
   gap: 6px;
+}
+.key-sequence {
+  color: var(--site-muted);
+  font-size: 12px;
 }
 .shortcuts dd {
   display: flex;
@@ -426,6 +431,26 @@ kbd {
 }
 .shortcut-primary dd {
   color: var(--site-fg);
+}
+
+.alpha-note {
+  margin-top: 32px;
+  padding: 28px 32px;
+  border: 1px solid var(--site-border);
+  border-radius: 20px;
+}
+.alpha-note h3 {
+  font: 600 20px / 1.3 var(--site-display-font);
+}
+.alpha-note p {
+  max-width: 850px;
+  margin-top: 10px;
+  color: var(--site-muted);
+}
+.alpha-note a {
+  display: inline-block;
+  margin-top: 16px;
+  font-weight: 500;
 }
 
 .changelog {
@@ -496,6 +521,10 @@ kbd {
   font-size: 18px;
   line-height: 28px;
   color: var(--site-muted);
+}
+.download > .release-note {
+  font-size: 13px;
+  line-height: 1.5;
 }
 .site-footer {
   border-top: 1px solid var(--site-border);
@@ -631,20 +660,14 @@ kbd {
     grid-column: auto;
   }
   .palette-preview {
-    width: 720px;
+    width: calc(100% + 160px);
     left: -80px;
-    top: 170px;
+    top: 210px;
   }
   .detail-preview {
-    width: 720px;
-    left: 20px;
-    top: 190px;
-  }
-  .drag-preview {
-    width: 590px;
-    max-width: none;
-    left: 50%;
-    transform: translateX(-50%);
+    width: calc(100% + 160px);
+    left: -120px;
+    top: 230px;
   }
   .shortcuts-card {
     height: 460px;
