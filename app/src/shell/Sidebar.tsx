@@ -110,7 +110,7 @@ export function AppSidebar({
           <Search className="size-4" />
         </Button>
       </div>
-      <div className="flex min-h-0 flex-col gap-3.5 overflow-y-auto">
+      <div className="flex min-h-0 flex-col gap-3.5 overflow-y-auto overscroll-contain">
         <SidebarGroup title="Projects">
           {visibleProjects.map((project) => renderProject(project, false))}
           {showHidden ? hiddenItems.map((project) => renderProject(project, true)) : null}

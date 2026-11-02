@@ -197,6 +197,9 @@
 }
 
 @layer base {
+  html {
+    overscroll-behavior: none;
+  }
   html,
   body {
     background: var(--pl-bg-sunken);
