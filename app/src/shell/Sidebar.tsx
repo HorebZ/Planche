@@ -24,7 +24,7 @@ import { useAuth, useProjects, useSetSyncPrefs, useSyncPrefs, useSyncStatus } fr
 import { keysOf, shortcuts } from "@/keyboard/shortcuts";
 import { usePreferences } from "@/stores/preferences";
 import { useUi } from "@/stores/ui";
-import { showUpdates } from "@/update/Updates";
+import { showUpdates, UpdateButton } from "@/update/Updates";
 import { footerText } from "./syncText";
 
 type AppSidebarProps = {
@@ -158,6 +158,7 @@ function SyncFooter({ syncedAt, error }: { syncedAt: string | null; error?: stri
         text={text}
         title={text}
       >
+        <UpdateButton />
         <Button
           variant="ghost"
           size="icon"

@@ -1,19 +1,75 @@
+import { Download, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import type { UpdateStatus } from "@/ipc/bindings.types";
+import { cn } from "@/lib/cn";
+
+export function UpdateIndicator({
+  status,
+  onClick,
+}: {
+  status: UpdateStatus;
+  onClick: () => void;
+}) {
+  const phase = status.phase;
+  const checking = phase === "checking";
+  const available = Boolean(status.release) && !checking;
+  const label = checking
+    ? "Checking for updates…"
+    : phase === "downloading"
+      ? "Downloading update…"
+      : phase === "installing"
+        ? "Installing update…"
+        : available
+          ? `Planche ${status.release?.version} available`
+          : phase === "error"
+            ? "Update check failed"
+            : "Check for updates";
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      aria-label={label}
+      title={label}
+      aria-busy={checking || phase === "downloading" || phase === "installing"}
+      disabled={checking || phase === "installing"}
+      onClick={onClick}
+      className="relative size-6 text-fg-3 hover:text-fg disabled:bg-transparent"
+      data-slot="update-indicator"
+    >
+      {available ? (
+        <Download
+          className="size-[17px]"
+          aria-hidden
+        />
+      ) : (
+        <RefreshCw
+          className={cn("size-[17px]", checking && "animate-pl-spin")}
+          aria-hidden
+        />
+      )}
+      {available ? (
+        <span
+          aria-hidden
+          data-slot="update-badge"
+          className="absolute top-0.5 right-0.5 size-1.5 rounded-full bg-primary ring-2 ring-bg-sunken"
+        />
+      ) : null}
+    </Button>
+  );
+}
 
 export function UpdateContent({
   status,
   blocked,
   onCheck,
-  onDownload,
   onInstall,
   onClose,
 }: {
   status: UpdateStatus;
   blocked: boolean;
   onCheck: () => void;
-  onDownload: () => void;
   onInstall: () => void;
   onClose: () => void;
 }) {
@@ -35,6 +91,11 @@ export function UpdateContent({
       <p className="text-fg-3 text-sm">
         Installed version {status.current_version} · Alpha channel
       </p>
+      {status.release ? (
+        <p className="font-medium tabular-nums">
+          {status.current_version} → {status.release.version}
+        </p>
+      ) : null}
       <p
         role="status"
         className="font-medium"
@@ -70,7 +131,7 @@ export function UpdateContent({
           {(status.received / 1048576).toFixed(1)} MB downloaded
         </p>
       ) : null}
-      {status.phase === "ready" ? (
+      {status.phase === "available" || status.phase === "ready" ? (
         <p className="text-fg-2 text-sm">
           {blocked
             ? "Finish or discard your draft before restarting."
@@ -85,14 +146,7 @@ export function UpdateContent({
         >
           {status.phase === "current" || status.phase === "idle" ? "Close" : "Later"}
         </Button>
-        {status.phase === "available" ? (
-          <Button
-            variant="primary"
-            onClick={onDownload}
-          >
-            Download update
-          </Button>
-        ) : status.phase === "ready" ? (
+        {status.phase === "available" || status.phase === "ready" ? (
           <Button
             variant="primary"
             disabled={blocked}

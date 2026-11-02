@@ -1,4 +1,4 @@
-import { UpdateContent } from "@/components/ui/update";
+import { UpdateContent, UpdateIndicator } from "@/components/ui/update";
 import { updateStatus } from "@/ipc/_fixtures/update.fixtures";
 import type { UpdatePhase } from "@/ipc/bindings.types";
 import { Section, State } from "../kit";
@@ -28,6 +28,19 @@ export function UpdatesSection() {
               label={phase}
               className="w-full rounded-lg bg-elevated p-4 shadow-pop"
             >
+              <UpdateIndicator
+                status={updateStatus({
+                  phase,
+                  release:
+                    phase === "available" ||
+                    phase === "downloading" ||
+                    phase === "ready" ||
+                    phase === "installing"
+                      ? { version: "0.1.0-alpha.2", notes: "" }
+                      : null,
+                })}
+                onClick={() => {}}
+              />
               <UpdateContent
                 status={updateStatus({
                   phase,
@@ -47,7 +60,6 @@ export function UpdatesSection() {
                 })}
                 blocked={false}
                 onCheck={() => {}}
-                onDownload={() => {}}
                 onInstall={() => {}}
                 onClose={() => {}}
               />
@@ -64,7 +76,6 @@ export function UpdatesSection() {
               })}
               blocked
               onCheck={() => {}}
-              onDownload={() => {}}
               onInstall={() => {}}
               onClose={() => {}}
             />
