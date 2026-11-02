@@ -62,5 +62,21 @@ for (const layout of ["Board", "List"] as const) {
 
     await expect(card).toBeFocused();
     await expect(card).toBeInViewport();
+
+    if (layout === "Board") {
+      await expect
+        .poll(() =>
+          card.evaluate((element) => {
+            const scroll = element.closest('[data-slot="column-scroll"]');
+
+            if (!scroll) {
+              throw new Error("Missing column scroll viewport");
+            }
+
+            return scroll.getBoundingClientRect().bottom - element.getBoundingClientRect().bottom;
+          }),
+        )
+        .toBeGreaterThanOrEqual(32);
+    }
   });
 }

@@ -17,6 +17,33 @@ const column = (page: Page, name: string) =>
   page.locator('[data-slot="board-column"]').filter({ has: page.getByText(name, { exact: true }) });
 
 for (const colorScheme of ["light", "dark"] as const) {
+  test(`column bottoms fade into the board in ${colorScheme}`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme });
+    await page.setViewportSize({ width: 980, height: 420 });
+    await open(page, "board");
+
+    const todo = column(page, "Todo");
+    const scroll = todo.locator('[data-slot="column-scroll"]');
+
+    await expect(todo.locator('[data-slot="issue-card"]').first()).toBeVisible();
+    await page.screenshot({ path: test.info().outputPath(`column-fade-${colorScheme}.png`) });
+    await scroll.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+
+    const last = todo.locator('[data-slot="issue-card"]').last();
+    const viewport = await scroll.boundingBox();
+    const card = await last.boundingBox();
+
+    if (!viewport || !card) {
+      throw new Error("Missing column content");
+    }
+
+    expect(viewport.y + viewport.height - (card.y + card.height)).toBeGreaterThanOrEqual(32);
+
+    await page.screenshot({ path: test.info().outputPath(`column-fade-end-${colorScheme}.png`) });
+  });
+
   test(`the first card shadow stays below the column header in ${colorScheme}`, async ({
     page,
   }) => {

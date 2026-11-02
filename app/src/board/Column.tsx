@@ -2,7 +2,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useMemo, useRef } from "react";
-import { BoardColumn } from "@/components/ui/board-column";
+import { BoardColumn, BoardColumnScroll } from "@/components/ui/board-column";
 import type { DisplayProperty } from "@/components/ui/display-menu";
 import { CardPlaceholder } from "@/components/ui/issue-card";
 import type { Column as BoardColumnData, ItemId } from "@/ipc/bindings.types";
@@ -65,6 +65,8 @@ export function Column({
     estimateSize: () => 86,
     gap: GAP,
     overscan: 3,
+    // Keep a revealed card above the scroll viewport's bottom fade.
+    scrollPaddingEnd: 32,
     getItemKey: (i) => {
       const row = rows[i];
 
@@ -113,11 +115,7 @@ export function Column({
         items={column.cards.map((c) => c.item_id)}
         strategy={verticalListSortingStrategy}
       >
-        <div
-          ref={scrollRef}
-          data-slot="column-scroll"
-          className="-m-[5px] min-h-0 overflow-y-auto p-[5px]"
-        >
+        <BoardColumnScroll ref={scrollRef}>
           <div
             className="relative w-full"
             style={{ height: virtualizer.getTotalSize() }}
@@ -148,7 +146,7 @@ export function Column({
               );
             })}
           </div>
-        </div>
+        </BoardColumnScroll>
       </SortableContext>
     </BoardColumn>
   );

@@ -79,7 +79,7 @@ export function SkeletonColumn({
       data-slot="skeleton-column"
       aria-hidden
       className={cn(
-        "flex w-column shrink-0 flex-col gap-2 rounded-xl bg-column p-[5px]",
+        "flex w-column shrink-0 flex-col gap-2 rounded-xl bg-[image:var(--pl-column-background)] p-[5px]",
         className,
       )}
       {...props}

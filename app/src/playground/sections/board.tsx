@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Avatar, AvatarStack } from "@/components/ui/avatar";
-import { BoardColumn } from "@/components/ui/board-column";
+import { BoardColumn, BoardColumnScroll } from "@/components/ui/board-column";
 import { BoardFilter, type BoardFilters, emptyFilters } from "@/components/ui/board-filter";
 import { NoFilterResults } from "@/components/ui/board-states";
 import { DisplayMenu, type DisplayProperty } from "@/components/ui/display-menu";
@@ -432,6 +432,24 @@ export function BoardSection() {
             </State>
             <State label="empty">
               <DraftColumnPreview />
+            </State>
+            <State label="bottom fade · scroll">
+              <BoardColumn
+                status="todo"
+                count={3}
+                className="h-[260px]"
+              >
+                <BoardColumnScroll>
+                  <div className="flex flex-col gap-2">
+                    <IssueCard {...openIssue} />
+                    <IssueCard {...dragCard} />
+                    <IssueCard
+                      {...openIssue}
+                      title="Keep the last card readable after scrolling"
+                    />
+                  </div>
+                </BoardColumnScroll>
+              </BoardColumn>
             </State>
             <State label="drop target · 3 + 1">
               <BoardColumn

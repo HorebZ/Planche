@@ -34,7 +34,7 @@ export function BoardColumn({
       data-slot="board-column"
       data-drop-target={dropTarget || undefined}
       className={cn(
-        "relative flex w-column shrink-0 flex-col gap-2 rounded-xl bg-column px-[5px] pt-0.5 pb-1.5",
+        "relative flex w-column shrink-0 flex-col gap-2 rounded-xl bg-[image:var(--pl-column-background)] px-[5px] pt-0.5 pb-1.5",
         className,
       )}
       {...props}
@@ -86,5 +86,18 @@ export function BoardColumn({
         />
       ) : null}
     </section>
+  );
+}
+
+export function BoardColumnScroll({ className, ...props }: ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="column-scroll"
+      className={cn(
+        "mask-[var(--pl-column-mask)] -m-[5px] min-h-0 overflow-y-auto p-[5px] pb-[37px]",
+        className,
+      )}
+      {...props}
+    />
   );
 }
