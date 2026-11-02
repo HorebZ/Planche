@@ -57,18 +57,18 @@
   --color-status-review: var(--pl-s-review);
   --color-status-done: var(--pl-s-done);
   /* Project identifiers use a distinct palette, independent of semantic status colors. */
-  --color-project-red: crimson;
-  --color-project-orange: darkorange;
-  --color-project-yellow: gold;
-  --color-project-lime: yellowgreen;
-  --color-project-green: light-dark(forestgreen, limegreen);
-  --color-project-teal: light-dark(teal, turquoise);
-  --color-project-cyan: deepskyblue;
-  --color-project-blue: royalblue;
-  --color-project-indigo: light-dark(midnightblue, mediumpurple);
-  --color-project-purple: light-dark(darkorchid, orchid);
-  --color-project-pink: deeppink;
-  --color-project-gray: light-dark(slategray, silver);
+  --color-project-red: var(--pl-project-red);
+  --color-project-orange: var(--pl-project-orange);
+  --color-project-yellow: var(--pl-project-yellow);
+  --color-project-lime: var(--pl-project-lime);
+  --color-project-green: var(--pl-project-green);
+  --color-project-teal: var(--pl-project-teal);
+  --color-project-cyan: var(--pl-project-cyan);
+  --color-project-blue: var(--pl-project-blue);
+  --color-project-indigo: var(--pl-project-indigo);
+  --color-project-purple: var(--pl-project-purple);
+  --color-project-pink: var(--pl-project-pink);
+  --color-project-gray: var(--pl-project-gray);
 
   --font-sans: var(--pl-font);
   --font-mono: var(--pl-font-mono);

@@ -136,7 +136,7 @@ async function build() {
     version,
     arch,
     signature,
-    "First Planche alpha: GitHub Projects, offline cache, keyboard actions and updates from the app.",
+    "Distinct project colors in light and dark themes, with a wider default color cycle and preserved custom choices.",
   );
   await writeFile(join(output, "latest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
   const commit = Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd: root })

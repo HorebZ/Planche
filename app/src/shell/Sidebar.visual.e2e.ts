@@ -15,7 +15,7 @@ for (const colorScheme of ["light", "dark"] as const) {
     const palette = page.getByRole("dialog", { name: "Color for API Gateway", exact: true });
     const headerSwatch = page.locator('main header [data-slot="project-color"]');
 
-    await expect(headerSwatch).toHaveClass(/\bbg-project-gray\b/);
+    await expect(headerSwatch).toHaveClass(/\bbg-project-yellow\b/);
 
     await trigger.click();
 
@@ -29,7 +29,11 @@ for (const colorScheme of ["light", "dark"] as const) {
       .evaluateAll((swatches) => swatches.map((el) => getComputedStyle(el).backgroundColor));
 
     expect(new Set(colors).size).toBe(12);
-    await expect(palette.getByRole("button", { name: "Purple", exact: true })).toHaveAttribute(
+    await page.screenshot({
+      path: `screenshots/project-colors-${colorScheme}.png`,
+      animations: "disabled",
+    });
+    await expect(palette.getByRole("button", { name: "Red", exact: true })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -38,7 +42,7 @@ for (const colorScheme of ["light", "dark"] as const) {
 
     await expect(palette).toHaveCount(0);
     await expect(swatch).toHaveClass(/\bbg-project-blue\b/);
-    await expect(headerSwatch).toHaveClass(/\bbg-project-gray\b/);
+    await expect(headerSwatch).toHaveClass(/\bbg-project-yellow\b/);
 
     const color = await swatch.evaluate((el) => getComputedStyle(el).backgroundColor);
 
@@ -52,12 +56,14 @@ for (const colorScheme of ["light", "dark"] as const) {
 
     await expect(project).not.toHaveAttribute("aria-current");
     await expect(swatch).toHaveCSS("background-color", color);
-    await expect(headerSwatch).toHaveClass(/\bbg-project-gray\b/);
+    await expect(headerSwatch).toHaveClass(/\bbg-project-yellow\b/);
 
     await page.reload();
 
     await expect(swatch).toHaveCSS("background-color", color);
-    await expect(current.locator('[data-slot="project-color"]')).toHaveClass(/\bbg-project-gray\b/);
+    await expect(current.locator('[data-slot="project-color"]')).toHaveClass(
+      /\bbg-project-yellow\b/,
+    );
 
     await trigger.focus();
     await page.keyboard.press("Enter");

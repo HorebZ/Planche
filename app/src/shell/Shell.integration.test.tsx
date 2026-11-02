@@ -265,7 +265,7 @@ test("project colors update only their project, and hidden projects can be resto
   click(button("Blue"));
 
   expect(usePreferences.getState().projectColors["camille-r"]).toEqual({ PVT_api: "blue" });
-  expect(get('main header [data-slot="project-color"]').className).toContain("bg-project-gray");
+  expect(get('main header [data-slot="project-color"]').className).toContain("bg-project-yellow");
 
   key("h", button("Design system"), { metaKey: true, shiftKey: true });
 

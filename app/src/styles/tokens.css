@@ -34,6 +34,18 @@
   --pl-s-done: light-dark(oklch(0.58 0.13 150), oklch(0.72 0.13 150));
   --pl-s-cancelled: var(--pl-fg-3);
   --pl-s-deleted: var(--pl-danger);
+  --pl-project-red: light-dark(oklch(0.62 0.19 25), oklch(0.7 0.17 25));
+  --pl-project-orange: light-dark(oklch(0.71 0.16 58), oklch(0.78 0.15 60));
+  --pl-project-yellow: light-dark(oklch(0.84 0.16 92), oklch(0.88 0.15 95));
+  --pl-project-lime: light-dark(oklch(0.74 0.18 132), oklch(0.8 0.17 132));
+  --pl-project-green: light-dark(oklch(0.54 0.14 150), oklch(0.68 0.15 150));
+  --pl-project-teal: light-dark(oklch(0.6 0.1 192), oklch(0.7 0.11 190));
+  --pl-project-cyan: light-dark(oklch(0.72 0.13 228), oklch(0.82 0.11 225));
+  --pl-project-blue: light-dark(oklch(0.58 0.18 262), oklch(0.67 0.16 260));
+  --pl-project-indigo: light-dark(oklch(0.45 0.15 285), oklch(0.58 0.15 290));
+  --pl-project-purple: light-dark(oklch(0.6 0.19 318), oklch(0.72 0.16 318));
+  --pl-project-pink: light-dark(oklch(0.68 0.2 355), oklch(0.76 0.16 355));
+  --pl-project-gray: light-dark(oklch(0.66 0.012 265), oklch(0.56 0.012 265));
   --pl-shadow-card-light: 0 0 0 1px rgba(36, 36, 37, 0.06), 0 1px 2px rgba(36, 36, 37, 0.05);
   --pl-shadow-card-dark: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 1px 2px rgba(0, 0, 0, 0.3);
   --pl-shadow-drag-light:

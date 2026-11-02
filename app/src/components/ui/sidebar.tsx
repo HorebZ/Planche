@@ -18,7 +18,19 @@ export type ProjectTone =
   | "pink";
 
 /** GitHub projects have no color, so each takes a default tone from its number. */
-export const defaultProjectTones = ["done", "todo", "review", "doing", "backlog"] as const;
+export const defaultProjectTones = [
+  "blue",
+  "doing",
+  "danger",
+  "done",
+  "cyan",
+  "review",
+  "lime",
+  "accent",
+  "indigo",
+  "pink",
+  "teal",
+] as const;
 
 export const projectTones: Record<ProjectTone, string> = {
   accent: "bg-project-orange",

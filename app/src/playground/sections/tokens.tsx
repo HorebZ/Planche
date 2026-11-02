@@ -32,6 +32,18 @@ const colors = [
   "s-doing",
   "s-review",
   "s-done",
+  "project-red",
+  "project-orange",
+  "project-yellow",
+  "project-lime",
+  "project-green",
+  "project-teal",
+  "project-cyan",
+  "project-blue",
+  "project-indigo",
+  "project-purple",
+  "project-pink",
+  "project-gray",
 ];
 const textSizes = ["2xs", "xs", "sm", "base", "md", "lg", "xl", "2xl"];
 const radii = ["xs", "sm", "md", "lg", "xl", "window"];
