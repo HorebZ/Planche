@@ -14,6 +14,7 @@ import {
 import { statusTone } from "@/board/statusTone";
 import type { StatusKey } from "@/components/ui/status";
 import type { Board, Card, Intent, OptionId, OwnerProjects, User } from "@/ipc/bindings.types";
+import type { CommandId } from "@/keyboard/shortcuts";
 
 /** The column of a card, as an index into `board.columns`. */
 export function columnIndexOf(board: Board, card: Card) {
@@ -72,6 +73,7 @@ export type PaletteCommand = {
   status?: StatusKey;
   label: string;
   icon: LucideIcon;
+  shortcut?: CommandId;
   run: () => void;
 };
 
@@ -106,6 +108,8 @@ export function paletteCommands(
         status: statusTone(column.color, column.name),
         label: `Move to ${column.name}`,
         icon: index > from ? ArrowRight : ArrowLeft,
+        shortcut:
+          index === from + 1 ? "card.moveNext" : index === from - 1 ? "card.movePrev" : undefined,
         run: () => {
           if (index !== from) {
             actions.move(column.option_id);
@@ -139,6 +143,7 @@ export function paletteCommands(
       group: "commands",
       label: "New draft",
       icon: Plus,
+      shortcut: "issue.new",
       run: actions.newIssue,
     },
     {
@@ -146,6 +151,7 @@ export function paletteCommands(
       group: "commands",
       label: "Sync now",
       icon: RefreshCw,
+      shortcut: "sync.now",
       run: actions.syncNow,
     },
   );

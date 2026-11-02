@@ -91,6 +91,13 @@ test("the palette wires status, card, project and layout actions without reopeni
   expect(actions.archive).toHaveBeenCalledOnce();
   expect(actions.showBoard).toHaveBeenCalledOnce();
   expect(actions.showList).toHaveBeenCalledOnce();
+  expect(
+    commands.filter((command) => command.shortcut).map(({ value, shortcut }) => [value, shortcut]),
+  ).toEqual([
+    ["Move to In Progress", "card.moveNext"],
+    ["New draft", "issue.new"],
+    ["Sync now", "sync.now"],
+  ]);
 
   const withoutSelection = paletteCommands(board, null, owners, actions);
 

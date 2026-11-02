@@ -1,5 +1,45 @@
 import { expect, test } from "@playwright/test";
 
+test("command shortcuts reflect the current scope without consuming issue-number searches", async ({
+  page,
+}) => {
+  await page.goto("/?mock=board");
+
+  const card = page.locator('[data-slot="issue-card"][data-item-id="PVTI_226"]');
+
+  await card.focus();
+  await page.keyboard.press("Meta+k");
+
+  const dialog = page.getByRole("dialog");
+  const shortcut = (label: string) =>
+    dialog
+      .getByRole("option")
+      .filter({ hasText: label })
+      .locator('[data-slot="command-shortcut"] kbd');
+
+  await expect(shortcut("Move to Backlog")).toHaveText(["⇧", "←"]);
+  await expect(shortcut("Move to In progress")).toHaveText(["⇧", "→"]);
+  await expect(shortcut("New draft")).toHaveText(["C"]);
+  await expect(shortcut("Sync now")).toHaveText(["⌘", "R"]);
+  await expect(shortcut("Assign…")).toHaveCount(0);
+
+  await dialog.getByRole("combobox").fill("226");
+
+  await expect(dialog.getByRole("combobox")).toHaveValue("226");
+  await expect(dialog.getByRole("option").filter({ hasText: "app#226" })).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Enter");
+
+  await expect(page.locator('[data-slot="issue-detail"]')).toBeVisible();
+
+  await page.keyboard.press("Meta+k");
+
+  await expect(shortcut("Move to In progress")).toHaveCount(0);
+  await expect(shortcut("New draft")).toHaveCount(0);
+  await expect(shortcut("Sync now")).toHaveText(["⌘", "R"]);
+});
+
 test("search reveals a result in a collapsed List group and releases focus afterwards", async ({
   page,
 }) => {

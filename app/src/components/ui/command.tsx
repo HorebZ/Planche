@@ -25,7 +25,7 @@ function CommandInput({
   ...props
 }: ComponentProps<typeof CommandPrimitive.Input> & { leading?: ReactNode; trailing?: ReactNode }) {
   return (
-    <div className="flex h-[50px] items-center gap-2.5 border-line border-b px-3.5">
+    <div className="flex h-14 shrink-0 items-center gap-3 border-line border-b px-4">
       {leading ?? <Search className="size-4 shrink-0 text-fg-3" />}
       <CommandPrimitive.Input
         data-slot="command-input"
@@ -40,18 +40,18 @@ function CommandInput({
   );
 }
 
-/** The card the palette acts on, before the query, as its number. */
+/** The selected card, separate from the search field. */
 function CommandContext({ className, children, ...props }: ComponentProps<"span">) {
   return (
     <span
       data-slot="command-context"
       className={cn(
-        "flex h-[22px] min-w-0 max-w-[320px] shrink items-center gap-[5px] rounded-sm bg-hover px-[7px] font-semibold text-fg-2 text-sm",
+        "inline-flex h-6 min-w-0 max-w-full items-center gap-1.5 rounded-md bg-hover px-2 font-medium text-fg-2 text-sm",
         className,
       )}
       {...props}
     >
-      <span className="flex min-w-0 items-center gap-1.5 truncate text-[11.5px]">{children}</span>
+      <span className="flex min-w-0 items-center gap-1.5">{children}</span>
     </span>
   );
 }
@@ -123,7 +123,7 @@ function CommandFooter({ className, ...props }: ComponentProps<"div">) {
     <div
       data-slot="command-footer"
       className={cn(
-        "flex h-[38px] items-center gap-4 border-line border-t bg-bg-sunken px-3.5 text-[11.5px] text-fg-3",
+        "flex h-10 shrink-0 items-center gap-4 border-line border-t bg-bg-sunken px-4 text-fg-3 text-xs",
         className,
       )}
       {...props}
@@ -131,10 +131,14 @@ function CommandFooter({ className, ...props }: ComponentProps<"div">) {
   );
 }
 
-function CommandHint({ keys, children }: { keys: string; children: ReactNode }) {
+function CommandHint({ keys, children }: { keys: string[]; children: ReactNode }) {
   return (
-    <span className="flex items-center gap-[5px]">
-      <Kbd>{keys}</Kbd>
+    <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap">
+      <span className="inline-flex items-center gap-[3px]">
+        {keys.map((key) => (
+          <Kbd key={key}>{key}</Kbd>
+        ))}
+      </span>
       {children}
     </span>
   );
@@ -144,7 +148,10 @@ function CommandList({ className, ...props }: ComponentProps<typeof CommandPrimi
   return (
     <CommandPrimitive.List
       data-slot="command-list"
-      className={cn("max-h-[360px] overflow-y-auto p-1.5", className)}
+      className={cn(
+        "max-h-[min(420px,calc(100vh-400px))] overflow-y-auto overscroll-contain p-1.5",
+        className,
+      )}
       {...props}
     />
   );
@@ -166,7 +173,7 @@ function CommandGroup({ className, ...props }: ComponentProps<typeof CommandPrim
       data-slot="command-group"
       className={cn(
         "flex flex-col gap-px overflow-hidden text-fg",
-        "[&_[cmdk-group-heading]]:flex [&_[cmdk-group-heading]]:h-[26px] [&_[cmdk-group-heading]]:items-center [&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:text-2xs [&_[cmdk-group-heading]]:text-fg-3",
+        "[&_[cmdk-group-heading]]:flex [&_[cmdk-group-heading]]:h-8 [&_[cmdk-group-heading]]:items-center [&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-fg-3 [&_[cmdk-group-heading]]:text-xs",
         className,
       )}
       {...props}
@@ -179,7 +186,7 @@ function CommandItem({ className, ...props }: ComponentProps<typeof CommandPrimi
     <CommandPrimitive.Item
       data-slot="command-item"
       className={cn(
-        "flex h-[34px] cursor-default select-none items-center gap-2.5 rounded-md px-2.5 text-base outline-none",
+        "flex h-[38px] cursor-default select-none items-center gap-2.5 rounded-md px-2.5 text-base outline-none transition-colors",
         "data-[disabled=true]:pointer-events-none data-[disabled=true]:text-fg-3",
         "data-[preview~=hover]:bg-active data-[selected=true]:bg-active",
         "[&_svg]:shrink-0",
@@ -194,7 +201,7 @@ function CommandShortcut({ className, ...props }: ComponentProps<"span">) {
   return (
     <span
       data-slot="command-shortcut"
-      className={cn("ml-auto flex items-center gap-[3px]", className)}
+      className={cn("ml-auto inline-flex shrink-0 items-center gap-[3px] pl-3", className)}
       {...props}
     />
   );
@@ -227,7 +234,7 @@ function CommandDialog({
       <DialogContent
         {...contentProps}
         showClose={false}
-        className="top-[120px] w-[640px] max-w-[calc(100%-2rem)] translate-y-0 gap-0 overflow-hidden rounded-window bg-elevated p-0 shadow-pop"
+        className="top-[120px] w-[640px] max-w-[calc(100%-2rem)] translate-y-0 gap-0 overflow-hidden rounded-window border border-line-strong bg-elevated p-0 shadow-pop"
       >
         <DialogTitle className="sr-only">Command palette</DialogTitle>
         <DialogDescription className="sr-only">

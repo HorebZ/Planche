@@ -9,6 +9,7 @@ import {
   Link,
   Maximize2,
   Plus,
+  RefreshCw,
   Search,
   Tag,
   UserPlus,
@@ -28,6 +29,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandShortcut,
 } from "@/components/ui/command";
 import {
   ContextMenu,
@@ -72,6 +74,7 @@ import { StatusList, type StatusOption, UserList, type UserOption } from "@/comp
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ToastCard, Toaster, toast } from "@/components/ui/toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { keysFor } from "@/keyboard/shortcuts";
 import { cn } from "@/lib/cn";
 import { Row, Section, State } from "../kit";
 
@@ -221,11 +224,16 @@ function PaletteBody({ preview = false }: { preview?: boolean }) {
     <>
       <CommandInput
         placeholder="Run an action or search…"
-        leading={<CommandContext>#226</CommandContext>}
-        trailing={<Kbd className="px-[5px] text-fg-3">esc</Kbd>}
+        trailing={<Kbd>esc</Kbd>}
         {...(preview ? { value: query, onValueChange: () => undefined } : {})}
       />
-      <p className="border-line border-b px-3.5 py-2 text-fg-3 text-xs">
+      <div className="flex min-w-0 items-center gap-2 border-line border-b bg-bg px-4 py-2">
+        <span className="shrink-0 text-fg-3 text-xs">Selected</span>
+        <CommandContext>
+          <span className="truncate">#226 Show linked PRs in issue detail</span>
+        </CommandContext>
+      </div>
+      <p className="px-4 pt-3 pb-1 text-fg-3 text-xs">
         Loaded project: Planche — search loaded items only
       </p>
       <CommandList>
@@ -242,6 +250,11 @@ function PaletteBody({ preview = false }: { preview?: boolean }) {
                 query={query}
               />
             </span>
+            <CommandShortcut>
+              {keysFor("card.moveNext").map((key) => (
+                <Kbd key={key}>{key}</Kbd>
+              ))}
+            </CommandShortcut>
           </CommandItem>
           <CommandItem value="move-backlog">
             <ArrowLeft className="size-[18px] text-fg-2" />
@@ -251,10 +264,38 @@ function PaletteBody({ preview = false }: { preview?: boolean }) {
                 query={query}
               />
             </span>
+            <CommandShortcut>
+              {keysFor("card.movePrev").map((key) => (
+                <Kbd key={key}>{key}</Kbd>
+              ))}
+            </CommandShortcut>
           </CommandItem>
+        </CommandGroup>
+        <CommandGroup
+          heading="Commands"
+          className="mt-1"
+        >
           <CommandItem value="assign">
             <UserPlus className="size-[18px] text-fg-2" />
             <span className="min-w-0 flex-1">Assign…</span>
+          </CommandItem>
+          <CommandItem value="new-draft">
+            <Plus className="size-[18px] text-fg-3" />
+            <span className="min-w-0 flex-1">New draft</span>
+            <CommandShortcut>
+              {keysFor("issue.new").map((key) => (
+                <Kbd key={key}>{key}</Kbd>
+              ))}
+            </CommandShortcut>
+          </CommandItem>
+          <CommandItem value="sync">
+            <RefreshCw className="size-[18px] text-fg-3" />
+            <span className="min-w-0 flex-1">Sync now</span>
+            <CommandShortcut>
+              {keysFor("sync.now").map((key) => (
+                <Kbd key={key}>{key}</Kbd>
+              ))}
+            </CommandShortcut>
           </CommandItem>
         </CommandGroup>
         <CommandGroup
@@ -271,7 +312,7 @@ function PaletteBody({ preview = false }: { preview?: boolean }) {
                 query={query}
               />
             </span>
-            <span className="font-mono text-fg-3 text-xs">app #214</span>
+            <span className="shrink-0 text-fg-3 text-xs tabular-nums">app#214</span>
             <span className="inline-flex h-4 items-center gap-1 rounded-xs bg-hover px-[5px] text-2xs text-fg-2">
               <span className="size-1.5 rounded-[2px] bg-status-backlog" />
               Backlog
@@ -287,7 +328,7 @@ function PaletteBody({ preview = false }: { preview?: boolean }) {
                 query={query}
               />
             </span>
-            <span className="font-mono text-fg-3 text-xs">app #198</span>
+            <span className="shrink-0 text-fg-3 text-xs tabular-nums">app#198</span>
             <span className="inline-flex h-4 items-center gap-1 rounded-xs bg-hover px-[5px] text-2xs text-fg-2">
               <span className="size-1.5 rounded-[2px] bg-status-done" />
               Done
@@ -296,11 +337,13 @@ function PaletteBody({ preview = false }: { preview?: boolean }) {
         </CommandGroup>
       </CommandList>
       <CommandFooter>
-        <CommandHint keys="↑↓">Navigate</CommandHint>
-        <CommandHint keys="↵">Apply</CommandHint>
-        <CommandHint keys="⌫">Clear context</CommandHint>
+        <CommandHint keys={[...keysFor("palette.prev"), ...keysFor("palette.next")]}>
+          Navigate
+        </CommandHint>
+        <CommandHint keys={keysFor("palette.run")}>Apply</CommandHint>
+        <CommandHint keys={keysFor("palette.clearContext")}>Clear context</CommandHint>
         <span className="flex-1" />
-        <CommandHint keys="?">All shortcuts</CommandHint>
+        <CommandHint keys={keysFor("dialog.close")}>Close</CommandHint>
       </CommandFooter>
     </>
   );

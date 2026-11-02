@@ -13,11 +13,12 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandShortcut,
 } from "@/components/ui/command";
 import { Kbd } from "@/components/ui/kbd";
 import { StatusSquare } from "@/components/ui/status";
 import type { Board, Card } from "@/ipc/bindings.types";
-import { commandFor, keysFor } from "@/keyboard/shortcuts";
+import { commandFor, keysFor, type Scope } from "@/keyboard/shortcuts";
 import { useUi } from "@/stores/ui";
 import { cardRef } from "@/undo/inverse";
 import { matchCards, type PaletteCommand } from "./commands";
@@ -34,6 +35,7 @@ type CommandPaletteProps = {
 export function CommandPalette({ board, card, commands, onReveal }: CommandPaletteProps) {
   const scopeId = useId();
   const open = useUi((s) => s.overlay?.type === "palette");
+  const inDetail = useUi((s) => s.detailId !== null);
   const [query, setQuery] = useState("");
   const [withContext, setWithContext] = useState(true);
   const pending = useRef<(() => void) | null>(null);
@@ -49,6 +51,9 @@ export function CommandPalette({ board, card, commands, onReveal }: CommandPalet
   }, [open]);
 
   const target = withContext ? card : null;
+  const targetColumn = board?.columns.find((column) =>
+    column.cards.some((item) => item.item_id === target?.item_id),
+  );
   const ref = target ? cardRef(target) : "";
   const shown = commands.filter((c) => c.group === "commands" || target);
   const cards = matchCards(board, query);
@@ -57,7 +62,7 @@ export function CommandPalette({ board, card, commands, onReveal }: CommandPalet
     pending.current = command.run;
     close();
   };
-  const keys = (command: Parameters<typeof keysFor>[0]) => keysFor(command, "palette").join("");
+  const keys = (command: Parameters<typeof keysFor>[0]) => keysFor(command, "palette");
 
   return (
     <CommandDialog
@@ -109,32 +114,28 @@ export function CommandPalette({ board, card, commands, onReveal }: CommandPalet
         value={query}
         onValueChange={setQuery}
         placeholder={target ? "Run an action or search…" : "Search or run…"}
-        leading={
-          target ? (
-            <CommandContext>
-              <StatusSquare
-                status={
-                  target.kind === "draft"
-                    ? "draft"
-                    : statusTone(
-                        board?.columns.find((c) =>
-                          c.cards.some((x) => x.item_id === target.item_id),
-                        )?.color ?? null,
-                        board?.columns.find((c) =>
-                          c.cards.some((x) => x.item_id === target.item_id),
-                        )?.name,
-                      )
-                }
-              />
-              {ref} {target.kind === "redacted" ? "Redacted item" : target.title}
-            </CommandContext>
-          ) : undefined
-        }
-        trailing={<Kbd className="px-[5px] text-fg-3">esc</Kbd>}
+        trailing={<Kbd className="text-fg-3">esc</Kbd>}
       />
+      {target ? (
+        <div className="flex min-w-0 items-center gap-2 border-line border-b bg-bg px-4 py-2">
+          <span className="shrink-0 text-fg-3 text-xs">Selected</span>
+          <CommandContext>
+            <StatusSquare
+              status={
+                target.kind === "draft"
+                  ? "draft"
+                  : statusTone(targetColumn?.color ?? null, targetColumn?.name)
+              }
+            />
+            <span className="truncate">
+              {ref} {target.kind === "redacted" ? "Redacted item" : target.title}
+            </span>
+          </CommandContext>
+        </div>
+      ) : null}
       <p
         id={scopeId}
-        className="truncate border-line border-b px-3.5 py-2 text-fg-3 text-xs"
+        className="truncate px-4 pt-3 pb-1 text-fg-3 text-xs"
         title={board?.project.title}
       >
         {board
@@ -152,6 +153,7 @@ export function CommandPalette({ board, card, commands, onReveal }: CommandPalet
                   key={c.value}
                   command={c}
                   query={query}
+                  shortcutScope={inDetail ? "detail" : undefined}
                   onRun={run}
                 />
               ))}
@@ -168,6 +170,7 @@ export function CommandPalette({ board, card, commands, onReveal }: CommandPalet
                 key={c.value}
                 command={c}
                 query={query}
+                shortcutScope={inDetail ? "detail" : undefined}
                 onRun={run}
               />
             ))}
@@ -193,13 +196,15 @@ export function CommandPalette({ board, card, commands, onReveal }: CommandPalet
         ) : null}
       </CommandList>
       <CommandFooter>
-        <CommandHint keys={keys("palette.prev") + keys("palette.next")}>Navigate</CommandHint>
+        <CommandHint keys={[...keys("palette.prev"), ...keys("palette.next")]}>
+          Navigate
+        </CommandHint>
         <CommandHint keys={keys("palette.run")}>Apply</CommandHint>
         {target ? (
           <CommandHint keys={keys("palette.clearContext")}>Clear context</CommandHint>
         ) : null}
         <span className="flex-1" />
-        <CommandHint keys={keysFor("dialog.close").join("")}>Close</CommandHint>
+        <CommandHint keys={keysFor("dialog.close")}>Close</CommandHint>
       </CommandFooter>
     </CommandDialog>
   );
@@ -208,13 +213,16 @@ export function CommandPalette({ board, card, commands, onReveal }: CommandPalet
 function PaletteRow({
   command,
   query,
+  shortcutScope,
   onRun,
 }: {
   command: PaletteCommand;
   query: string;
+  shortcutScope?: Scope;
   onRun: (command: PaletteCommand) => void;
 }) {
   const Icon = command.icon;
+  const shortcut = command.shortcut ? keysFor(command.shortcut, shortcutScope) : [];
 
   return (
     <CommandItem
@@ -224,7 +232,7 @@ function PaletteRow({
       {command.status ? (
         <StatusSquare status={command.status} />
       ) : (
-        <Icon className="size-[18px] text-fg-2" />
+        <Icon className="size-[18px] text-fg-3" />
       )}
       <span className="min-w-0 flex-1 truncate">
         <CommandHighlight
@@ -232,7 +240,16 @@ function PaletteRow({
           query={query}
         />
       </span>
-      {command.current ? <span className="text-fg-3 text-sm">Current</span> : null}
+      {command.current ? (
+        <span className="rounded-sm bg-hover px-1.5 py-0.5 text-fg-3 text-xs">Current</span>
+      ) : null}
+      {shortcut.length ? (
+        <CommandShortcut>
+          {shortcut.map((key) => (
+            <Kbd key={key}>{key}</Kbd>
+          ))}
+        </CommandShortcut>
+      ) : null}
     </CommandItem>
   );
 }
@@ -251,7 +268,7 @@ function CardRow({
   const column = board.columns.find((c) => c.cards.some((x) => x.item_id === card.item_id));
   const title = card.kind === "redacted" ? "Redacted item" : card.title;
   const where =
-    "number" in card ? `${card.repo.slice(card.repo.indexOf("/") + 1)} #${card.number}` : "draft";
+    "number" in card ? `${card.repo.slice(card.repo.indexOf("/") + 1)}#${card.number}` : "draft";
 
   return (
     <CommandItem
@@ -271,7 +288,7 @@ function CardRow({
           query={query}
         />
       </span>
-      <span className="font-mono text-fg-3 text-xs">{where}</span>
+      <span className="shrink-0 text-fg-3 text-xs tabular-nums">{where}</span>
       {column ? (
         <span className="inline-flex h-4 items-center gap-1 rounded-xs bg-hover px-[5px] text-2xs text-fg-2">
           <StatusSquare
