@@ -1,6 +1,69 @@
 import { expect, test } from "@playwright/test";
 
 for (const layout of ["Board", "List"] as const) {
+  test(`${layout} keeps the collection usable beside the panel and expands without losing context`, async ({
+    page,
+  }) => {
+    await page.goto("/?mock=board");
+    await page.getByRole("button", { name: layout, exact: true }).click();
+
+    const slot = layout === "Board" ? "issue-card" : "issue-list-row";
+    const origin = page.locator(`[data-slot="${slot}"][data-item-id="PVTI_226"]`);
+    const next = page.locator(`[data-slot="${slot}"][data-item-id="PVTI_223"]`);
+    const collection = page.getByRole("region", { name: "Project view" });
+    const detail = page.getByRole("article", { name: "Issue detail" });
+
+    await origin.click();
+
+    await expect(collection).toBeVisible();
+    expect((await detail.boundingBox())?.width).toBe(480);
+    expect((await collection.boundingBox())?.width).toBeGreaterThanOrEqual(480);
+    await next.click();
+
+    await expect(detail.getByRole("heading", { level: 1 })).toHaveText(
+      "Column counter ignores filtered cards",
+    );
+    await expect(detail).toHaveCount(1);
+    await origin.focus();
+    await page.keyboard.press("Enter");
+
+    await expect(detail.getByRole("heading", { level: 1 })).toHaveText(
+      "Show linked PRs in issue detail",
+    );
+    await next.click();
+    await detail.getByRole("button", { name: "Expand detail" }).click();
+
+    await expect(collection).toBeHidden();
+    await expect(detail).toHaveAttribute("data-expanded", "true");
+    expect((await detail.boundingBox())?.width).toBeGreaterThan(480);
+    await page.keyboard.press("j");
+
+    await expect(detail.getByRole("heading", { level: 1 })).toHaveText(
+      "Pricing page: compare Solo and Team",
+    );
+    await detail.getByRole("button", { name: "Show side panel" }).click();
+
+    await expect(collection).toBeVisible();
+    expect((await detail.boundingBox())?.width).toBe(480);
+    await detail.getByRole("button", { name: "Close detail" }).click();
+
+    await expect(detail).toHaveCount(0);
+    await expect(origin).toBeFocused();
+    await page.keyboard.press("Enter");
+
+    await expect(detail).toHaveAttribute("data-expanded", "false");
+    await page.setViewportSize({ width: 1100, height: 700 });
+
+    await expect(collection).toBeHidden();
+    expect((await detail.boundingBox())?.width).toBe(
+      (await page.locator("main").boundingBox())?.width,
+    );
+    await page.keyboard.press("Escape");
+
+    await expect(detail).toHaveCount(0);
+    await expect(origin).toBeFocused();
+  });
+
   test(`${layout} returns from detail to the same scroll, groups and focus`, async ({ page }) => {
     await page.goto("/?mock=big");
     await page.getByRole("button", { name: layout, exact: true }).click();
@@ -80,6 +143,8 @@ test("detail isolates Space, closes its submenu first and returns to a neighbor 
   await expect(page.getByRole("button", { name: "Change project status" })).toHaveText(
     "In progress",
   );
+  await expect(page.getByPlaceholder("Change status…")).toHaveCount(0);
+  await expect(page.locator('[data-slot="issue-detail"] [data-item-id="PVTI_226"]')).toBeFocused();
   await page.keyboard.press("Escape");
 
   const neighbor = page.locator('[data-slot="issue-card"][data-item-id="PVTI_223"]');
