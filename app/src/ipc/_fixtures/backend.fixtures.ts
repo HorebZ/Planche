@@ -43,6 +43,7 @@ export function installMockBackend(scenario: Scenario) {
   let prefs: SyncPrefs = { interval: "five_minutes", on_wake: true };
   let auth = structuredClone(onboarding(scenario) ? signedOut : signedIn);
   let board = boardFor(scenario);
+  const boards = new Map<string, Board>();
   let boardError = scenario === "board-error";
   let status = statusFor(scenario);
   let projectError = scenario === "projects-error" || scenario === "valid-projects-error";
@@ -55,7 +56,7 @@ export function installMockBackend(scenario: Scenario) {
           ? { ...projects, sso_blocked: ["acme-sso"] }
           : projects,
   );
-  const changed = () => emit("board-changed", { project_id: PROJECT });
+  const changed = (project = PROJECT) => emit("board-changed", { project_id: project });
   let dispatchSeq = 0;
   const descriptions = new Map<string, IssueDescription>();
   let descriptionError = scenario === "description-error";
@@ -156,10 +157,10 @@ export function installMockBackend(scenario: Scenario) {
     open_project: () => null,
     current_project: () =>
       onboarding(scenario) || scenario.startsWith("projects-") ? null : PROJECT,
-    get_project: (): ProjectMeta => ({
-      id: PROJECT,
+    get_project: (args): ProjectMeta => ({
+      id: String(args.projectId),
       number: 1,
-      title: "Planche — v1.2",
+      title: boards.get(String(args.projectId))?.project.title ?? "Planche — v1.2",
       url: "",
       owner: "planche",
       owner_is_org: true,
@@ -191,9 +192,11 @@ export function installMockBackend(scenario: Scenario) {
         throw { kind: "Cache", message: "Could not read the local cache" } satisfies AppError;
       }
 
-      return board && args.viewId === "PVTV_2"
-        ? { ...board, view: { number: 2, name: "Planning", manual_order: true } }
-        : board;
+      const source = boards.get(String(args.projectId)) ?? board;
+
+      return source && args.viewId === "PVTV_2"
+        ? { ...source, view: { number: 2, name: "Planning", manual_order: true } }
+        : source;
     },
     cached_issue_description: (args) =>
       scenario === "offline"
@@ -232,7 +235,14 @@ export function installMockBackend(scenario: Scenario) {
     // Queue locally before sending in the background.
     dispatch_intent: (args) => {
       const intent = args.intent as Intent;
-      const before = board;
+      const before = boards.get(intent.project_id) ?? board;
+      const save = (value: Board) => {
+        if (boards.has(intent.project_id)) {
+          boards.set(intent.project_id, value);
+        } else {
+          board = value;
+        }
+      };
 
       if (!before) {
         throw new Error("mockBackend: no board to move a card on");
@@ -248,19 +258,19 @@ export function installMockBackend(scenario: Scenario) {
         })),
       });
 
-      board = pending(applyIntent(before, intent), true);
+      save(pending(applyIntent(before, intent), true));
 
       if (scenario !== "offline") {
         setTimeout(
           async () => {
             if (scenario === "rollback") {
-              board = before;
+              save(before);
               await emit("mutation-failed", { intent, message: "PLANCHE_FAULT=fail_mutations" });
             } else {
-              board = pending(board ?? before, false);
+              save(pending(boards.get(intent.project_id) ?? board ?? before, false));
             }
 
-            await changed();
+            await changed(intent.project_id);
             // A refused move fails at once, like PLANCHE_FAULT=fail_mutations; an accepted one takes a moment.
           },
           scenario === "rollback" ? 0 : 300,
@@ -326,7 +336,8 @@ export function installMockBackend(scenario: Scenario) {
     },
     emit,
     calls,
-    getBoard: () => board,
+    getBoard: (project = PROJECT) => boards.get(project) ?? board,
+    setBoard: (value: Board) => boards.set(value.project.id, structuredClone(value)),
     restoreDescriptions: () => {
       descriptionError = false;
     },

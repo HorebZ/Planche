@@ -1,12 +1,11 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { AssigneePicker } from "@/board/AssigneePicker";
 import { Board } from "@/board/Board";
 import { EmptyBoard, LoadingBoard, SyncBar } from "@/board/BoardStates";
 import { cardData, focusCard } from "@/board/Card";
 import { filterBoard, selectionAfterRemoval } from "@/board/filter";
-import { IssueDescription } from "@/board/IssueDescription";
 import { NewDraft } from "@/board/NewDraft";
 import { StatusMenu } from "@/board/StatusMenu";
 import { statusTone } from "@/board/statusTone";
@@ -23,12 +22,13 @@ import {
 import { ShortcutSheet } from "@/command/ShortcutSheet";
 import { emptyFilters } from "@/components/ui/board-filter";
 import { BoardErrorCard, NoFilterResults } from "@/components/ui/board-states";
-import { IssueDetail } from "@/components/ui/issue-detail";
 import { IssueListGroup } from "@/components/ui/issue-list";
+import { IssueTabPanel, IssueTabs } from "@/components/ui/issue-tabs";
 import { defaultProjectTones } from "@/components/ui/sidebar";
 import { notify } from "@/components/ui/toast";
 import type { Card, Column, OptionId, ProjectId, User } from "@/ipc/bindings.types";
 import {
+  boardQuery,
   currentProjectQuery,
   errorMessage,
   useAuth,
@@ -45,6 +45,7 @@ import { cn } from "@/lib/cn";
 import { useSettledError } from "@/lib/useSettledError";
 import { type ProjectLayout, usePreferences } from "@/stores/preferences";
 import { useUi } from "@/stores/ui";
+import { ProjectIssueDetail } from "./ProjectIssueDetail";
 import { AppSidebar, signOut } from "./Sidebar";
 import { SyncErrorToast } from "./SyncErrorToast";
 import { footerText } from "./syncText";
@@ -63,6 +64,9 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   const selectedId = useUi((s) => s.selectedId);
   const detailId = useUi((s) => s.detailId);
   const detailExpanded = useUi((s) => s.detailExpanded);
+  const issueTabs = useUi((s) => s.issueTabs);
+  const activeIssueTab = useUi((s) => s.activeIssueTab);
+  const activeTab = issueTabs.find((tab) => tab.id === activeIssueTab);
   const revealId = useUi((s) => s.revealId);
   const overlay = useUi((s) => s.overlay);
   const filters = useUi((s) => s.filters);
@@ -71,6 +75,26 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   const drafting = overlay?.type === "draft";
   const { selectProject, selectView, select, open: show, setFilters } = useUi.getState();
   const board = useBoard(projectId, viewId);
+  const tabSources = issueTabs.filter(
+    (tab, index) =>
+      issueTabs.findIndex(
+        (source) => source.projectId === tab.projectId && source.viewId === tab.viewId,
+      ) === index,
+  );
+  const sourceBoards = useQueries({
+    queries: tabSources.map((tab) => boardQuery(tab.projectId, tab.viewId)),
+  });
+  const tabBoards = issueTabs.map(
+    (tab) =>
+      sourceBoards[
+        tabSources.findIndex(
+          (source) => source.projectId === tab.projectId && source.viewId === tab.viewId,
+        )
+      ],
+  );
+  const activeBoard = activeTab ? tabBoards[issueTabs.indexOf(activeTab)] : board;
+  const actionProjectId = activeTab?.projectId ?? projectId;
+  const actionViewId = activeTab ? activeTab.viewId : viewId;
   const project = useProject(projectId);
   const projects = useProjects();
   const status = useSyncStatus();
@@ -78,20 +102,19 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   const projectColor = usePreferences((s) => s.projectColors[auth.data?.login ?? ""]?.[projectId]);
   const openProject = useOpenProject();
   const refresh = useRefresh();
-  const actions = useActions(projectId, viewId);
+  const actions = useActions(actionProjectId, actionViewId);
 
   const data = board.data ?? null;
+  const actionData = activeBoard.data ?? null;
   const context = JSON.stringify([auth.data?.login, projectId, data?.view?.number ?? null]);
   const viewPreferences = usePreferences((s) => s.views[context]);
   const layout = viewPreferences?.layout ?? "board";
   const setLayout = (layout: ProjectLayout) => usePreferences.getState().setLayout(context, layout);
   const card =
-    data?.columns.flatMap((c) => c.cards).find((c) => c.item_id === (detailId ?? selectedId)) ??
-    null;
+    actionData?.columns
+      .flatMap((c) => c.cards)
+      .find((c) => c.item_id === (activeTab?.itemId ?? detailId ?? selectedId)) ?? null;
   const visibleBoard = useMemo(() => (data ? filterBoard(data, filters) : null), [data, filters]);
-  const detailColumn = detailId
-    ? data?.columns.find((column) => column.cards.some((card) => card.item_id === detailId))
-    : null;
   const visibleIds = useMemo(
     () =>
       visibleBoard?.columns
@@ -117,6 +140,22 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
       ? undefined
       : detailIds.slice(detailIndex + 1).find((id) => visibleIds.includes(id));
 
+  useEffect(() => {
+    openProject.mutate(actionProjectId);
+  }, [actionProjectId, openProject.mutate]);
+
+  useLayoutEffect(() => {
+    const item = data?.columns
+      .flatMap((column) => column.cards)
+      .find((card) => card.item_id === detailId);
+    const existing =
+      item && item.kind !== "redacted" && issueTabs.find((tab) => tab.id === item.id);
+
+    if (existing) {
+      useUi.getState().activateIssueTab(existing.id);
+    }
+  }, [detailId, data, issueTabs]);
+
   useLayoutEffect(() => {
     if (detailId && visibleIds.includes(detailId)) {
       detailOrder.current = visibleIds;
@@ -125,6 +164,30 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
 
   const previousIds = useRef<string[]>([]);
   const viewRef = useRef<HTMLElement>(null);
+  const sourceScroll = useRef<{ element: HTMLElement; top: number; left: number }[]>([]);
+
+  useLayoutEffect(() => {
+    sourceScroll.current = [];
+
+    return useUi.subscribe((state, previous) => {
+      if ((state.projectId && state.projectId !== projectId) || state.viewId !== viewId) {
+        sourceScroll.current = [];
+        return;
+      }
+
+      if (
+        !previous.detailId &&
+        !previous.activeIssueTab &&
+        (state.detailId || state.activeIssueTab)
+      ) {
+        sourceScroll.current = [
+          ...(viewRef.current?.querySelectorAll<HTMLElement>(
+            '[data-slot="column-scroll"], [data-slot="board"], [data-slot="issue-list"]',
+          ) ?? []),
+        ].map((element) => ({ element, top: element.scrollTop, left: element.scrollLeft }));
+      }
+    });
+  }, [projectId, viewId]);
 
   useLayoutEffect(() => {
     if (!data || dragging) {
@@ -142,7 +205,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
     const next = selectionAfterRemoval(previous, visibleIds, selectedId);
 
     if (next) {
-      if (overlay || detailId) {
+      if (overlay || detailId || activeIssueTab) {
         select(next);
       } else {
         useUi.getState().revealCard(next);
@@ -151,16 +214,16 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
     } else {
       select(null);
 
-      if (!overlay && !detailId) {
+      if (!overlay && !detailId && !activeIssueTab) {
         viewRef.current?.focus();
       }
     }
-  }, [data, visibleIds, selectedId, revealId, dragging, overlay, detailId, select]);
+  }, [data, visibleIds, selectedId, revealId, dragging, overlay, detailId, activeIssueTab, select]);
 
   const returning = useRef(false);
 
   useLayoutEffect(() => {
-    if (detailId) {
+    if (detailId || activeIssueTab) {
       returning.current = true;
 
       return;
@@ -171,7 +234,26 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
     }
 
     returning.current = false;
-    if (useUi.getState().overlay) {
+    const positions = sourceScroll.current;
+    sourceScroll.current = [];
+
+    requestAnimationFrame(() => {
+      const state = useUi.getState();
+
+      if (
+        !state.detailId &&
+        !state.activeIssueTab &&
+        !state.overlay &&
+        (state.projectId === null || state.projectId === projectId) &&
+        state.viewId === viewId
+      ) {
+        for (const { element, top, left } of positions) {
+          element.scrollTo({ top, left });
+        }
+      }
+    });
+
+    if (useUi.getState().overlay || document.activeElement?.closest('[role="tablist"]')) {
       return;
     }
 
@@ -183,7 +265,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
     } else {
       viewRef.current?.focus();
     }
-  }, [detailId]);
+  }, [detailId, activeIssueTab, projectId, viewId]);
 
   const viewer: User | null = auth.data?.id
     ? { id: auth.data.id, login: auth.data.login ?? "", avatar_url: auth.data.avatar_url ?? "" }
@@ -194,16 +276,19 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
       return;
     }
 
-    refresh.mutate(projectId, {
-      onSuccess: () => void board.refetch(),
+    refresh.mutate(actionProjectId, {
+      onSuccess: () => void activeBoard.refetch(),
     });
-  }, [refresh, projectId, board.refetch]);
+  }, [refresh, actionProjectId, activeBoard.refetch]);
 
   const goTo = (id: ProjectId) => {
     selectProject(id);
     openProject.mutate(id);
   };
   const newDraft = (column: OptionId | null) => {
+    if (activeIssueTab) {
+      useUi.getState().activateIssueTab(null);
+    }
     useUi.getState().closeDetail();
     show({ type: "draft", column });
   };
@@ -223,6 +308,9 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   };
 
   const step = (direction: Direction) => {
+    if (activeIssueTab) {
+      return;
+    }
     if (detailId) {
       const id = direction === "next" ? nextDetail : previousDetail;
 
@@ -264,19 +352,19 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   };
 
   const moveBy = (offset: number) => {
-    if (!data || !card) {
+    if (!actionData || !card) {
       return;
     }
 
-    const target = data.columns[columnIndexOf(data, card) + offset];
+    const target = actionData.columns[columnIndexOf(actionData, card) + offset];
 
     if (target) {
-      void actions.run(moveTo(data, card, target.option_id));
+      void actions.run(moveTo(actionData, card, target.option_id));
     }
   };
 
   const toggle = (user: User | null) => {
-    if (!data || !card) {
+    if (!actionData || !card) {
       return;
     }
 
@@ -284,14 +372,42 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
       return notify("Planche does not know your GitHub user yet. Sync, then try again.", "error");
     }
 
-    const intent = toggleAssignee(data, card, user);
+    const intent = toggleAssignee(actionData, card, user);
 
     if (intent) {
       void actions.run(intent);
     }
   };
 
+  const openTab = () => {
+    if (card && card.kind !== "redacted") {
+      useUi.getState().openIssueTab({
+        id: card.id,
+        projectId: actionProjectId,
+        viewId: actionViewId,
+        itemId: card.item_id,
+      });
+    }
+  };
+  const cycleTab = (offset: number) => {
+    if (!issueTabs.length) {
+      return;
+    }
+
+    const ids = [null, ...issueTabs.map((tab) => tab.id)];
+    const index = ids.indexOf(activeIssueTab);
+
+    useUi.getState().activateIssueTab(ids[(index + offset + ids.length) % ids.length]);
+  };
+
   useShortcuts({
+    "tab.open": openTab,
+    "tab.close": () =>
+      activeIssueTab
+        ? useUi.getState().closeIssueTab(activeIssueTab)
+        : useUi.getState().closeDetail(),
+    "tab.next": () => cycleTab(1),
+    "tab.prev": () => cycleTab(-1),
     "filters.open": () => data && show({ type: "filters" }),
     "palette.open": showPalette,
     "settings.open": () => show({ type: "settings" }),
@@ -303,9 +419,13 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
     "column.next": () => step("right"),
     "column.prev": () => step("left"),
     "card.open": () => card && useUi.getState().openDetail(card.item_id),
-    "detail.close": useUi.getState().closeDetail,
+    "detail.close": () =>
+      activeIssueTab ? useUi.getState().activateIssueTab(null) : useUi.getState().closeDetail(),
     "card.github": () =>
-      card && card.kind !== "redacted" && data && void openUrl(urlOf(card, data.project.url)),
+      card &&
+      card.kind !== "redacted" &&
+      actionData &&
+      void openUrl(urlOf(card, actionData.project.url)),
     "selection.clear": () => {
       select(null);
 
@@ -318,11 +438,11 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
     "card.status": () => card && card.kind !== "redacted" && show({ type: "status" }),
     "card.assignMe": () => toggle(viewer),
     "card.copyLink": () => {
-      if (!card || !data) {
+      if (!card || !actionData) {
         return;
       }
 
-      navigator.clipboard.writeText(urlOf(card, data.project.url)).then(
+      navigator.clipboard.writeText(urlOf(card, actionData.project.url)).then(
         () => notify("Link copied", "success"),
         (error) => notify(`Couldn't copy the link: ${errorMessage(error)}`, "error"),
       );
@@ -330,19 +450,21 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
     undo: () => void actions.undo(),
   });
 
-  const commands = paletteCommands(data, card, projects.data?.owners ?? [], {
-    move: (to) => data && card && void actions.run(moveTo(data, card, to)),
+  const commands = paletteCommands(actionData, card, projects.data?.owners ?? [], {
+    move: (to) => actionData && card && void actions.run(moveTo(actionData, card, to)),
     assign: () => show({ type: "assign" }),
-    archive: () => data && card && void actions.run(archive(data, card)),
+    archive: () => actionData && card && void actions.run(archive(actionData, card)),
     newIssue,
     syncNow,
     openProject: goTo,
     signOut: () => void signOut(queryClient),
     showBoard: () => {
+      useUi.getState().activateIssueTab(null);
       useUi.getState().closeDetail();
       setLayout("board");
     },
     showList: () => {
+      useUi.getState().activateIssueTab(null);
       useUi.getState().closeDetail();
       setLayout("list");
     },
@@ -414,203 +536,220 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
         onSelect={goTo}
         onSearch={showPalette}
       />
-      <main className="@container relative my-2 mr-2 flex min-w-0 flex-1 overflow-hidden rounded-xl bg-bg shadow-panel">
-        <div
-          className={cn(
-            "flex min-h-0 min-w-0 flex-1 flex-col",
-            detailId && (detailExpanded ? "invisible" : "@min-[960px]:visible invisible"),
-          )}
+      <main className="relative my-2 mr-2 flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-bg shadow-panel">
+        <IssueTabs
+          source={data?.project.title ?? "Project"}
+          tabs={issueTabs.map((tab, index) => {
+            const source = tabBoards[index].data;
+            const item = source?.columns
+              .flatMap((column) => column.cards)
+              .find((card) => card.item_id === tab.itemId);
+
+            return {
+              id: tab.id,
+              title:
+                item && "number" in item
+                  ? `#${item.number} ${item.title}`
+                  : item && "title" in item
+                    ? item.title
+                    : "Unavailable item",
+              project: source?.project.title ?? "Project unavailable",
+            };
+          })}
+          active={activeIssueTab}
+          onSelect={useUi.getState().activateIssueTab}
+          onClose={useUi.getState().closeIssueTab}
         >
-          <Toolbar
-            tone={
-              projectColor ??
-              defaultProjectTones[(data?.project.number ?? 0) % defaultProjectTones.length]
-            }
-            board={data}
-            project={project.data}
-            onSelectView={selectView}
-            layout={layout}
-            onLayoutChange={setLayout}
-            onSearch={showPalette}
-            filters={filters}
-            onFiltersChange={setFilters}
-            viewer={viewer}
-            filterOpen={overlay?.type === "filters"}
-            onFilterOpenChange={(open) => show(open ? { type: "filters" } : null)}
-            onFilterClose={(event) => {
-              event.preventDefault();
-
-              requestAnimationFrame(() => {
-                const { selectedId: id, overlay, dragging } = useUi.getState();
-
-                if (overlay || dragging) {
-                  return;
+          <IssueTabPanel value="source">
+            <div
+              className={cn(
+                "flex min-h-0 min-w-0 flex-1 flex-col",
+                detailId && (detailExpanded ? "invisible" : "@min-[960px]:visible invisible"),
+              )}
+            >
+              <Toolbar
+                tone={
+                  projectColor ??
+                  defaultProjectTones[(data?.project.number ?? 0) % defaultProjectTones.length]
                 }
-
-                if (id) {
-                  useUi.getState().revealCard(id);
-                  focusCard(id);
-                } else {
-                  viewRef.current?.focus();
-                }
-              });
-            }}
-            dragging={dragging}
-            visibleCount={visibleCount}
-            hiddenProperties={viewPreferences?.hiddenProperties}
-            onPropertyChange={(property, visible) =>
-              usePreferences.getState().setPropertyVisible(context, property, visible)
-            }
-          />
-          {syncing || retrying ? <SyncBar /> : null}
-          {data ? (
-            <SyncErrorToast
-              key={projectId}
-              message={message}
-              retryAt={status.data?.retry_at ?? null}
-              onRetry={retry}
-              pending={retrying || syncing}
-            />
-          ) : null}
-          <section
-            ref={viewRef}
-            tabIndex={-1}
-            aria-label="Project view"
-            className="min-h-0 flex-1 outline-none"
-          >
-            {data == null && failed ? (
-              <div className="grid h-full place-items-center overflow-y-auto p-6">
-                <BoardErrorCard
-                  message={message ?? feedback.text}
-                  pending={retrying || syncing}
-                  onRetry={retry}
-                  onBack={chooseProject}
-                />
-              </div>
-            ) : data == null ? (
-              <LoadingBoard />
-            ) : filtering && visibleCount === 0 && !drafting ? (
-              <NoFilterResults onReset={() => setFilters(emptyFilters)} />
-            ) : cards === 0 && !drafting && layout === "board" ? (
-              <EmptyBoard
                 board={data}
-                onNewIssue={newIssue}
-                onNewDraft={newDraft}
-              />
-            ) : layout === "list" ? (
-              <div
-                data-slot="issue-list"
-                className="h-full overflow-y-auto"
-              >
-                {visibleBoard?.columns.map((column) => (
-                  <IssueListGroup
-                    key={column.option_id ?? "none"}
-                    name={column.name}
-                    status={statusTone(column.color, column.name)}
-                    items={column.cards.map((card) => ({
-                      ...cardData(card),
-                      status:
-                        card.kind === "draft" ? "draft" : statusTone(column.color, column.name),
-                      id: card.item_id,
-                      pending: card.pending,
-                    }))}
-                    onOpen={useUi.getState().openDetail}
-                    onSelect={(id) => !detailId && select(id)}
-                    revealId={revealId}
-                    onRevealed={useUi.getState().finishReveal}
-                    hiddenProperties={viewPreferences?.hiddenProperties}
-                    expanded={
-                      !viewPreferences?.collapsedGroups.includes(column.option_id ?? "none")
+                project={project.data}
+                onSelectView={selectView}
+                layout={layout}
+                onLayoutChange={setLayout}
+                onSearch={showPalette}
+                filters={filters}
+                onFiltersChange={setFilters}
+                viewer={viewer}
+                filterOpen={overlay?.type === "filters"}
+                onFilterOpenChange={(open) => show(open ? { type: "filters" } : null)}
+                onFilterClose={(event) => {
+                  event.preventDefault();
+
+                  requestAnimationFrame(() => {
+                    const { selectedId: id, overlay, dragging } = useUi.getState();
+
+                    if (overlay || dragging) {
+                      return;
                     }
-                    onExpandedChange={(expanded) =>
-                      usePreferences
-                        .getState()
-                        .setGroupExpanded(context, column.option_id ?? "none", expanded)
+
+                    if (id) {
+                      useUi.getState().revealCard(id);
+                      focusCard(id);
+                    } else {
+                      viewRef.current?.focus();
                     }
-                    onAddDraft={() => newDraft(column.option_id)}
-                    draft={
-                      overlay?.type === "draft" && overlay.column === column.option_id ? (
-                        <NewDraft
-                          key={overlay.editor}
-                          projectId={projectId}
-                          column={column.option_id}
-                          onSubmit={(title, observe) => onCreateDraft(column, title, observe)}
-                        />
-                      ) : undefined
-                    }
-                  />
-                ))}
-              </div>
-            ) : (
-              <Board
-                board={visibleBoard ?? data}
-                canonicalBoard={data}
+                  });
+                }}
+                dragging={dragging}
+                visibleCount={visibleCount}
                 hiddenProperties={viewPreferences?.hiddenProperties}
-                onMove={run}
-                onCreateDraft={onCreateDraft}
+                onPropertyChange={(property, visible) =>
+                  usePreferences.getState().setPropertyVisible(context, property, visible)
+                }
               />
-            )}
-          </section>
-        </div>
-        {detailId && data ? (
-          <IssueDetail
-            key={detailId}
-            itemId={detailId}
-            item={card ? cardData(card) : null}
-            project={data.project.title}
-            status={
-              detailColumn
-                ? {
-                    name: detailColumn.name,
-                    tone: statusTone(detailColumn.color, detailColumn.name),
-                  }
-                : null
-            }
-            notice={
-              !card
-                ? "This item is no longer in the project. Return to the visible collection."
-                : card.kind === "redacted"
-                  ? "This item's content is unavailable with your current access."
-                  : card.kind === "draft"
-                    ? "This is a project draft. It has no GitHub issue page yet."
-                    : card.kind === "pull_request"
-                      ? "Read this pull request's description and activity on GitHub."
-                      : undefined
-            }
-            editable={Boolean(card && card.kind !== "redacted")}
-            expanded={detailExpanded}
-            onExpandedChange={useUi.getState().setDetailExpanded}
-            onBack={useUi.getState().closeDetail}
-            onPrevious={
-              previousDetail ? () => useUi.getState().openDetail(previousDetail) : undefined
-            }
-            onNext={nextDetail ? () => useUi.getState().openDetail(nextDetail) : undefined}
-            onStatus={() => show({ type: "status" })}
-            onAssign={() => show({ type: "assign" })}
-            onGitHub={
-              card && card.kind !== "redacted"
-                ? () => void openUrl(urlOf(card, data.project.url))
-                : undefined
-            }
-          >
-            {card?.kind === "issue" && auth.data?.id ? (
-              <IssueDescription
-                key={`${auth.data.id}:${card.id}`}
-                account={auth.data.id}
-                content={card.id}
-                sourceUrl={card.url}
+              {syncing || retrying ? <SyncBar /> : null}
+              {data ? (
+                <SyncErrorToast
+                  key={projectId}
+                  message={message}
+                  retryAt={status.data?.retry_at ?? null}
+                  onRetry={retry}
+                  pending={retrying || syncing}
+                />
+              ) : null}
+              <section
+                ref={viewRef}
+                tabIndex={-1}
+                aria-label="Project view"
+                className="min-h-0 flex-1 outline-none"
+              >
+                {data == null && failed ? (
+                  <div className="grid h-full place-items-center overflow-y-auto p-6">
+                    <BoardErrorCard
+                      message={message ?? feedback.text}
+                      pending={retrying || syncing}
+                      onRetry={retry}
+                      onBack={chooseProject}
+                    />
+                  </div>
+                ) : data == null ? (
+                  <LoadingBoard />
+                ) : filtering && visibleCount === 0 && !drafting ? (
+                  <NoFilterResults onReset={() => setFilters(emptyFilters)} />
+                ) : cards === 0 && !drafting && layout === "board" ? (
+                  <EmptyBoard
+                    board={data}
+                    onNewIssue={newIssue}
+                    onNewDraft={newDraft}
+                  />
+                ) : layout === "list" ? (
+                  <div
+                    data-slot="issue-list"
+                    className="h-full overflow-y-auto"
+                  >
+                    {visibleBoard?.columns.map((column) => (
+                      <IssueListGroup
+                        key={column.option_id ?? "none"}
+                        name={column.name}
+                        status={statusTone(column.color, column.name)}
+                        items={column.cards.map((card) => ({
+                          ...cardData(card),
+                          status:
+                            card.kind === "draft" ? "draft" : statusTone(column.color, column.name),
+                          id: card.item_id,
+                          pending: card.pending,
+                        }))}
+                        onOpen={useUi.getState().openDetail}
+                        onSelect={(id) => !detailId && select(id)}
+                        revealId={revealId}
+                        onRevealed={useUi.getState().finishReveal}
+                        hiddenProperties={viewPreferences?.hiddenProperties}
+                        expanded={
+                          !viewPreferences?.collapsedGroups.includes(column.option_id ?? "none")
+                        }
+                        onExpandedChange={(expanded) =>
+                          usePreferences
+                            .getState()
+                            .setGroupExpanded(context, column.option_id ?? "none", expanded)
+                        }
+                        onAddDraft={() => newDraft(column.option_id)}
+                        draft={
+                          overlay?.type === "draft" && overlay.column === column.option_id ? (
+                            <NewDraft
+                              key={overlay.editor}
+                              projectId={projectId}
+                              column={column.option_id}
+                              onSubmit={(title, observe) => onCreateDraft(column, title, observe)}
+                            />
+                          ) : undefined
+                        }
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <Board
+                    board={visibleBoard ?? data}
+                    canonicalBoard={data}
+                    hiddenProperties={viewPreferences?.hiddenProperties}
+                    onMove={run}
+                    onCreateDraft={onCreateDraft}
+                  />
+                )}
+              </section>
+            </div>
+            {detailId && data ? (
+              <ProjectIssueDetail
+                key={detailId}
+                board={data}
+                account={auth.data?.id ?? null}
                 offline={offline}
+                itemId={detailId}
+                expanded={detailExpanded}
+                onExpandedChange={useUi.getState().setDetailExpanded}
+                onOpenTab={card && card.kind !== "redacted" ? openTab : undefined}
+                onBack={useUi.getState().closeDetail}
+                onPrevious={
+                  previousDetail ? () => useUi.getState().openDetail(previousDetail) : undefined
+                }
+                onNext={nextDetail ? () => useUi.getState().openDetail(nextDetail) : undefined}
+                onStatus={() => show({ type: "status" })}
+                onAssign={() => show({ type: "assign" })}
               />
             ) : null}
-          </IssueDetail>
-        ) : null}
+          </IssueTabPanel>
+          {issueTabs.map((tab, index) => (
+            <IssueTabPanel
+              key={tab.id}
+              value={tab.id}
+            >
+              <ProjectIssueDetail
+                board={tabBoards[index].data ?? null}
+                account={auth.data?.id ?? null}
+                offline={offline}
+                itemId={tab.itemId}
+                expanded
+                active={activeIssueTab === tab.id}
+                contextNotice={
+                  tab.projectId !== projectId
+                    ? `Actions apply to ${tabBoards[index].data?.project.title ?? "the original Project"}. Current source: ${data?.project.title ?? "another Project"}.`
+                    : undefined
+                }
+                onBack={() => useUi.getState().activateIssueTab(null)}
+                onStatus={() => show({ type: "status" })}
+                onAssign={() => show({ type: "assign" })}
+              />
+            </IssueTabPanel>
+          ))}
+        </IssueTabs>
       </main>
       <CommandPalette
-        board={data}
+        board={actionData}
         card={card}
         commands={commands}
         onReveal={(id) => {
           if (
+            !activeTab &&
             filtering &&
             !visibleBoard?.columns.some((column) =>
               column.cards.some((card) => card.item_id === id),
@@ -620,7 +759,15 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
             notify("Filters cleared to show the search result");
           }
 
-          if (detailId) {
+          if (activeTab && actionData) {
+            const item = actionData.columns
+              .flatMap((column) => column.cards)
+              .find((card) => card.item_id === id);
+
+            if (item && item.kind !== "redacted") {
+              useUi.getState().openIssueTab({ ...activeTab, id: item.id, itemId: id });
+            }
+          } else if (detailId) {
             useUi.getState().openDetail(id);
           } else {
             useUi.getState().revealCard(id);
@@ -628,15 +775,15 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
         }}
       />
       <ShortcutSheet />
-      {data && card ? (
+      {actionData && card ? (
         <>
           <StatusMenu
-            board={data}
+            board={actionData}
             card={card}
-            onMove={(to) => void actions.run(moveTo(data, card, to))}
+            onMove={(to) => void actions.run(moveTo(actionData, card, to))}
           />
           <AssigneePicker
-            board={data}
+            board={actionData}
             card={card}
             viewer={viewer}
             onToggle={toggle}

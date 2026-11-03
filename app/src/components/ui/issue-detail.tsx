@@ -1,4 +1,12 @@
-import { ChevronDown, ChevronUp, ExternalLink, Maximize2, Minimize2, X } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Maximize2,
+  Minimize2,
+  SquarePlus,
+  X,
+} from "lucide-react";
 import { type ReactNode, useLayoutEffect, useRef } from "react";
 import { AvatarStack } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -16,6 +24,8 @@ export function IssueDetail({
   editable,
   expanded = false,
   onExpandedChange,
+  onOpenTab,
+  active = true,
   onBack,
   onPrevious,
   onNext,
@@ -31,7 +41,9 @@ export function IssueDetail({
   notice?: string;
   editable: boolean;
   expanded?: boolean;
-  onExpandedChange: (expanded: boolean) => void;
+  onExpandedChange?: (expanded: boolean) => void;
+  onOpenTab?: () => void;
+  active?: boolean;
   onBack: () => void;
   onPrevious?: () => void;
   onNext?: () => void;
@@ -43,13 +55,16 @@ export function IssueDetail({
   const anchor = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
-    anchor.current?.focus({ preventScroll: true });
-  }, []);
+    if (active && !document.activeElement?.closest('[role="tablist"]')) {
+      anchor.current?.focus({ preventScroll: true });
+    }
+  }, [active]);
 
   return (
     <article
       data-slot="issue-detail"
       data-expanded={expanded}
+      data-active={active}
       aria-label="Issue detail"
       className={cn(
         "absolute inset-0 z-10 flex min-h-0 min-w-0 flex-col bg-bg",
@@ -70,14 +85,27 @@ export function IssueDetail({
           <X />
         </Button>
         <span className="min-w-0 flex-1 truncate text-fg-3">{project}</span>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={expanded ? "Show side panel" : "Expand detail"}
-          onClick={() => onExpandedChange(!expanded)}
-        >
-          {expanded ? <Minimize2 /> : <Maximize2 />}
-        </Button>
+        {onOpenTab ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Open in tab"
+            title="Open in tab"
+            onClick={onOpenTab}
+          >
+            <SquarePlus />
+          </Button>
+        ) : null}
+        {onExpandedChange ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={expanded ? "Show side panel" : "Expand detail"}
+            onClick={() => onExpandedChange(!expanded)}
+          >
+            {expanded ? <Minimize2 /> : <Maximize2 />}
+          </Button>
+        ) : null}
         <Button
           variant="ghost"
           size="icon"

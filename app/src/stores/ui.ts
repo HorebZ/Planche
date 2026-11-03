@@ -13,6 +13,13 @@ export type Overlay =
   | { type: "filters" }
   | { type: "draft"; column: OptionId | null; editor: string };
 
+export type IssueTab = {
+  id: string;
+  projectId: ProjectId;
+  viewId: ViewId | null;
+  itemId: ItemId;
+};
+
 type UiState = {
   updatesOpen: boolean;
   setUpdatesOpen: (open: boolean) => void;
@@ -28,6 +35,11 @@ type UiState = {
   setDetailExpanded: (expanded: boolean) => void;
   openDetail: (id: ItemId) => void;
   closeDetail: () => void;
+  issueTabs: IssueTab[];
+  activeIssueTab: string | null;
+  openIssueTab: (tab: IssueTab) => void;
+  activateIssueTab: (id: string | null) => void;
+  closeIssueTab: (id: string) => void;
   revealId: ItemId | null;
   revealCard: (id: ItemId) => void;
   finishReveal: (id: ItemId) => void;
@@ -85,6 +97,52 @@ export const useUi = create<UiState>()((set, get) => ({
           },
     ),
   closeDetail: () => set({ detailId: null, detailExpanded: false, overlay: null }),
+  issueTabs: [],
+  activeIssueTab: null,
+  openIssueTab: (tab) => {
+    if (get().dragging) {
+      return;
+    }
+
+    set((state) => ({
+      projectId: state.projectId ?? tab.projectId,
+      issueTabs: state.issueTabs.some((open) => open.id === tab.id)
+        ? state.issueTabs
+        : [...state.issueTabs, tab],
+    }));
+    get().activateIssueTab(tab.id);
+  },
+  activateIssueTab: (activeIssueTab) =>
+    set((state) =>
+      state.dragging ||
+      (activeIssueTab !== null && !state.issueTabs.some((tab) => tab.id === activeIssueTab))
+        ? state
+        : {
+            activeIssueTab,
+            detailId: null,
+            detailExpanded: false,
+            overlay: null,
+            undo: null,
+            actionVersion: state.actionVersion + 1,
+            contextVersion: state.contextVersion + 1,
+          },
+    ),
+  closeIssueTab: (id) => {
+    const state = get();
+    const index = state.issueTabs.findIndex((tab) => tab.id === id);
+
+    if (index < 0 || state.dragging) {
+      return;
+    }
+
+    const issueTabs = state.issueTabs.filter((tab) => tab.id !== id);
+
+    set({ issueTabs });
+
+    if (state.activeIssueTab === id) {
+      get().activateIssueTab(issueTabs[Math.max(0, index - 1)]?.id ?? null);
+    }
+  },
   revealId: null,
   overlay: null,
   undo: null,
@@ -101,6 +159,7 @@ export const useUi = create<UiState>()((set, get) => ({
       selectedId: null,
       detailId: null,
       detailExpanded: false,
+      activeIssueTab: null,
       revealId: null,
       undo: null,
       actionVersion: s.actionVersion + 1,
@@ -111,6 +170,7 @@ export const useUi = create<UiState>()((set, get) => ({
       viewId,
       detailId: null,
       detailExpanded: false,
+      activeIssueTab: null,
       filters: emptyFilters,
       revealId: null,
       overlay: null,
@@ -138,6 +198,8 @@ export const useUi = create<UiState>()((set, get) => ({
     set((s) => ({
       detailId: null,
       detailExpanded: false,
+      issueTabs: [],
+      activeIssueTab: null,
       filters: emptyFilters,
       revealId: null,
       overlay: null,

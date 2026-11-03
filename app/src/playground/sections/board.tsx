@@ -14,6 +14,7 @@ import {
 import { type DescriptionStatus, IssueDescriptionContent } from "@/components/ui/issue-description";
 import { IssueDetail } from "@/components/ui/issue-detail";
 import { IssueListGroup } from "@/components/ui/issue-list";
+import { IssueTabPanel, IssueTabs } from "@/components/ui/issue-tabs";
 import { LabelChip } from "@/components/ui/label-chip";
 import { PriorityGlyph, ProgressRing } from "@/components/ui/planche-glyph";
 import { StatusChip, type StatusKey, StatusSquare, statusLabels } from "@/components/ui/status";
@@ -129,6 +130,9 @@ export function BoardSection() {
           </Row>
           <Row label="issue side panel · full width in a narrow container">
             <IssuePanelPreview />
+          </Row>
+          <Row label="retained issue tabs · overflow and keyboard navigation">
+            <IssueTabsPreview />
           </Row>
           <Row label="issue description">
             {(
@@ -544,6 +548,67 @@ function IssuePanelPreview() {
           />
         </IssueDetail>
       ) : null}
+    </div>
+  );
+}
+
+function IssueTabsPreview() {
+  const [tabs, setTabs] = useState([
+    {
+      id: "issue-223",
+      title: "Issue 223: column counter ignores filtered cards",
+      project: "Planche",
+    },
+    { id: "issue-226", title: "Issue 226: show linked PRs in issue detail", project: "Planche" },
+    { id: "issue-219", title: "Issue 219: compare Solo and Team", project: "Website" },
+  ]);
+  const [active, setActive] = useState<string | null>(tabs[0].id);
+
+  return (
+    <div
+      data-slot="issue-tabs-preview"
+      className="flex h-[440px] w-full overflow-hidden rounded-xl bg-bg shadow-panel"
+    >
+      <IssueTabs
+        source="Planche"
+        tabs={tabs}
+        active={active}
+        onSelect={setActive}
+        onClose={(id) => {
+          setTabs(tabs.filter((tab) => tab.id !== id));
+          if (active === id) {
+            setActive(null);
+          }
+        }}
+      >
+        <IssueTabPanel value="source">
+          <IssueListGroup
+            name="Todo"
+            status="todo"
+            items={[{ ...openIssue, id: "preview" }]}
+            onOpen={() => setActive(tabs[0]?.id ?? null)}
+          />
+        </IssueTabPanel>
+        {tabs.map((tab) => (
+          <IssueTabPanel
+            key={tab.id}
+            value={tab.id}
+          >
+            <IssueDetail
+              itemId={tab.id}
+              item={{ ...openIssue, title: tab.title }}
+              project={tab.project}
+              status={{ name: "Todo", tone: "todo" }}
+              editable
+              expanded
+              active={active === tab.id}
+              onBack={() => setActive(null)}
+              onStatus={() => {}}
+              onAssign={() => {}}
+            />
+          </IssueTabPanel>
+        ))}
+      </IssueTabs>
     </div>
   );
 }

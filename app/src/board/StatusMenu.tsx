@@ -17,7 +17,7 @@ export function StatusMenu({ board, card, onMove }: StatusMenuProps) {
     () => ({
       current:
         document.querySelector<HTMLElement>(
-          '[data-slot="issue-detail"] [aria-label="Change project status"]',
+          '[data-slot="issue-detail"][data-active="true"] [aria-label="Change project status"]',
         ) ?? cardElement(card.item_id),
     }),
     [card.item_id, open],
