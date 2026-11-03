@@ -4,6 +4,7 @@ import type { DisplayProperty } from "@/components/ui/display-menu";
 import { IssueCard, type IssueCardData } from "@/components/ui/issue-card";
 import type { StatusKey } from "@/components/ui/status";
 import type { Card as BoardCard } from "@/ipc/bindings.types";
+import { commandFor } from "@/keyboard/shortcuts";
 import { useUi } from "@/stores/ui";
 
 /** The repository name without its owner, as the card shows it. */
@@ -102,6 +103,20 @@ export const Card = memo(function Card({
       }}
       {...attributes}
       {...listeners}
+      aria-disabled={detailing ? undefined : attributes["aria-disabled"]}
+      onKeyDown={(event) => {
+        listeners?.onKeyDown?.(event);
+
+        if (
+          !event.defaultPrevented &&
+          detailing &&
+          event.target === event.currentTarget &&
+          commandFor(event.nativeEvent, "board") === "card.open"
+        ) {
+          event.preventDefault();
+          useUi.getState().openDetail(card.item_id);
+        }
+      }}
       onClick={(event) => {
         if (!event.defaultPrevented && !(event.target as HTMLElement).closest("button, a")) {
           useUi.getState().openDetail(card.item_id);
@@ -110,7 +125,7 @@ export const Card = memo(function Card({
       onFocus={() => {
         useUi.getState().finishReveal(card.item_id);
 
-        if (!selected) {
+        if (!selected && !detailing) {
           useUi.getState().select(card.item_id);
         }
       }}

@@ -24,6 +24,8 @@ type UiState = {
   /** The card the keyboard acts on. It holds the focus ring. */
   selectedId: ItemId | null;
   detailId: ItemId | null;
+  detailExpanded: boolean;
+  setDetailExpanded: (expanded: boolean) => void;
   openDetail: (id: ItemId) => void;
   closeDetail: () => void;
   revealId: ItemId | null;
@@ -69,17 +71,20 @@ export const useUi = create<UiState>()((set, get) => ({
   },
   selectedId: null,
   detailId: null,
+  detailExpanded: false,
+  setDetailExpanded: (detailExpanded) => set({ detailExpanded }),
   openDetail: (detailId) =>
     set((state) =>
       state.dragging
         ? state
         : {
             detailId,
+            detailExpanded: state.detailId ? state.detailExpanded : false,
             selectedId: state.detailId ? state.selectedId : detailId,
             overlay: null,
           },
     ),
-  closeDetail: () => set({ detailId: null, overlay: null }),
+  closeDetail: () => set({ detailId: null, detailExpanded: false, overlay: null }),
   revealId: null,
   overlay: null,
   undo: null,
@@ -95,6 +100,7 @@ export const useUi = create<UiState>()((set, get) => ({
       filters: emptyFilters,
       selectedId: null,
       detailId: null,
+      detailExpanded: false,
       revealId: null,
       undo: null,
       actionVersion: s.actionVersion + 1,
@@ -104,6 +110,7 @@ export const useUi = create<UiState>()((set, get) => ({
     set((s) => ({
       viewId,
       detailId: null,
+      detailExpanded: false,
       filters: emptyFilters,
       revealId: null,
       overlay: null,
@@ -130,6 +137,7 @@ export const useUi = create<UiState>()((set, get) => ({
   invalidateUndo: () =>
     set((s) => ({
       detailId: null,
+      detailExpanded: false,
       filters: emptyFilters,
       revealId: null,
       overlay: null,

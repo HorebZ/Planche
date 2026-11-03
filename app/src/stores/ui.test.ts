@@ -49,13 +49,22 @@ test("detail navigation keeps the return selection, rejects a drag and resets wi
 
   ui.setDragging(false);
   ui.openDetail("first");
+  ui.setDetailExpanded(true);
   ui.openDetail("next");
 
-  expect(useUi.getState()).toMatchObject({ detailId: "next", selectedId: "first" });
+  expect(useUi.getState()).toMatchObject({
+    detailId: "next",
+    detailExpanded: true,
+    selectedId: "first",
+  });
 
   ui.closeDetail();
 
-  expect(useUi.getState()).toMatchObject({ detailId: null, selectedId: "first" });
+  expect(useUi.getState()).toMatchObject({
+    detailId: null,
+    detailExpanded: false,
+    selectedId: "first",
+  });
 
   for (const reset of [
     () => ui.selectProject("other"),
@@ -63,8 +72,10 @@ test("detail navigation keeps the return selection, rejects a drag and resets wi
     ui.invalidateUndo,
   ]) {
     ui.openDetail("first");
+    ui.setDetailExpanded(true);
     reset();
 
     expect(useUi.getState().detailId).toBeNull();
+    expect(useUi.getState().detailExpanded).toBe(false);
   }
 });

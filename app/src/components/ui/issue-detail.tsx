@@ -1,10 +1,11 @@
-import { ArrowLeft, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { ChevronDown, ChevronUp, ExternalLink, Maximize2, Minimize2, X } from "lucide-react";
 import { type ReactNode, useLayoutEffect, useRef } from "react";
 import { AvatarStack } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import type { IssueCardData } from "@/components/ui/issue-card";
 import { LabelSummary } from "@/components/ui/label-summary";
 import { StatusChip, type StatusKey } from "@/components/ui/status";
+import { cn } from "@/lib/cn";
 
 export function IssueDetail({
   itemId,
@@ -13,6 +14,8 @@ export function IssueDetail({
   status,
   notice,
   editable,
+  expanded = false,
+  onExpandedChange,
   onBack,
   onPrevious,
   onNext,
@@ -27,6 +30,8 @@ export function IssueDetail({
   status: { name: string; tone: StatusKey } | null;
   notice?: string;
   editable: boolean;
+  expanded?: boolean;
+  onExpandedChange: (expanded: boolean) => void;
   onBack: () => void;
   onPrevious?: () => void;
   onNext?: () => void;
@@ -44,21 +49,35 @@ export function IssueDetail({
   return (
     <article
       data-slot="issue-detail"
+      data-expanded={expanded}
       aria-label="Issue detail"
-      className="absolute inset-0 z-10 flex flex-col bg-bg"
+      className={cn(
+        "absolute inset-0 z-10 flex min-h-0 min-w-0 flex-col bg-bg",
+        !expanded &&
+          "@min-[960px]:static @min-[960px]:w-[480px] @min-[960px]:shrink-0 @min-[960px]:border-line @min-[960px]:border-l",
+      )}
     >
       <header
         data-tauri-drag-region
-        className="flex h-12 shrink-0 items-center gap-2 border-line border-b px-4"
+        className="flex h-12 shrink-0 items-center gap-1 border-line border-b px-3"
       >
         <Button
           variant="ghost"
-          size="sm"
+          size="icon"
+          aria-label="Close detail"
           onClick={onBack}
         >
-          <ArrowLeft /> Back to project
+          <X />
         </Button>
         <span className="min-w-0 flex-1 truncate text-fg-3">{project}</span>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={expanded ? "Show side panel" : "Expand detail"}
+          onClick={() => onExpandedChange(!expanded)}
+        >
+          {expanded ? <Minimize2 /> : <Maximize2 />}
+        </Button>
         <Button
           variant="ghost"
           size="icon"
@@ -80,16 +99,16 @@ export function IssueDetail({
         {onGitHub ? (
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
+            aria-label={item?.number != null ? "Open on GitHub" : "Open project on GitHub"}
             onClick={onGitHub}
           >
             <ExternalLink />
-            {item?.number != null ? "Open on GitHub" : "Open project on GitHub"}
           </Button>
         ) : null}
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-[760px] px-8 py-7">
+        <div className="mx-auto max-w-[760px] px-6 py-7">
           <div
             ref={anchor}
             data-item-id={itemId}

@@ -41,6 +41,7 @@ import {
 } from "@/ipc/queries";
 import { type Direction, navigate } from "@/keyboard/shortcuts";
 import { useShortcuts } from "@/keyboard/useShortcuts";
+import { cn } from "@/lib/cn";
 import { useSettledError } from "@/lib/useSettledError";
 import { type ProjectLayout, usePreferences } from "@/stores/preferences";
 import { useUi } from "@/stores/ui";
@@ -61,6 +62,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   const viewId = useUi((s) => s.viewId);
   const selectedId = useUi((s) => s.selectedId);
   const detailId = useUi((s) => s.detailId);
+  const detailExpanded = useUi((s) => s.detailExpanded);
   const revealId = useUi((s) => s.revealId);
   const overlay = useUi((s) => s.overlay);
   const filters = useUi((s) => s.filters);
@@ -412,11 +414,12 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
         onSelect={goTo}
         onSearch={showPalette}
       />
-      <main className="relative my-2 mr-2 flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-bg shadow-panel">
+      <main className="@container relative my-2 mr-2 flex min-w-0 flex-1 overflow-hidden rounded-xl bg-bg shadow-panel">
         <div
-          inert={detailId !== null}
-          aria-hidden={detailId !== null}
-          className="flex min-h-0 flex-1 flex-col"
+          className={cn(
+            "flex min-h-0 min-w-0 flex-1 flex-col",
+            detailId && (detailExpanded ? "invisible" : "@min-[960px]:visible invisible"),
+          )}
         >
           <Toolbar
             tone={
@@ -512,7 +515,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
                       pending: card.pending,
                     }))}
                     onOpen={useUi.getState().openDetail}
-                    onSelect={select}
+                    onSelect={(id) => !detailId && select(id)}
                     revealId={revealId}
                     onRevealed={useUi.getState().finishReveal}
                     hiddenProperties={viewPreferences?.hiddenProperties}
@@ -575,6 +578,8 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
                       : undefined
             }
             editable={Boolean(card && card.kind !== "redacted")}
+            expanded={detailExpanded}
+            onExpandedChange={useUi.getState().setDetailExpanded}
             onBack={useUi.getState().closeDetail}
             onPrevious={
               previousDetail ? () => useUi.getState().openDetail(previousDetail) : undefined

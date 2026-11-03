@@ -20,6 +20,10 @@ test("detail walkthrough in WebKit", async ({ page }) => {
     await pause();
   }
 
+  await page.getByRole("button", { name: "Expand detail" }).click();
+  await pause();
+  await page.getByRole("button", { name: "Show side panel" }).click();
+  await pause();
   await page.getByRole("button", { name: "Change assignees" }).click();
   await pause();
   await page.keyboard.press("Escape");
@@ -33,5 +37,12 @@ test("detail walkthrough in WebKit", async ({ page }) => {
   await page.keyboard.press("Escape");
 
   await expect(page.locator('[data-slot="issue-detail"]')).toHaveCount(0);
+  await pause();
+  await page.keyboard.press("Enter");
+  await page.setViewportSize({ width: 1100, height: 700 });
+
+  await expect(page.getByRole("region", { name: "Project view" })).toBeHidden();
+  await pause();
+  await page.keyboard.press("Escape");
   await pause();
 });

@@ -62,7 +62,7 @@ export const shortcuts = [
   { key: "Meta+,", command: "settings.open", scope: "detail", label: "Settings" },
   { key: "?", command: "help.open", scope: "detail", label: "All shortcuts" },
   { key: "k", command: "card.prev", scope: "detail", label: "Previous issue" },
-  { key: "Escape", command: "detail.close", scope: "detail", label: "Back to project" },
+  { key: "Escape", command: "detail.close", scope: "detail", label: "Close detail" },
   { key: "Meta+o", command: "card.github", scope: "detail", label: "Open on GitHub" },
   { key: "s", command: "card.status", scope: "detail", label: "Status" },
   { key: "i", command: "card.assignMe", scope: "detail", label: "Assign me" },

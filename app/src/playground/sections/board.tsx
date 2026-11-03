@@ -115,6 +115,8 @@ export function BoardSection() {
                           : undefined
                   }
                   editable={kind === "issue" || kind === "draft"}
+                  expanded
+                  onExpandedChange={() => {}}
                   onBack={() => {}}
                   onPrevious={() => {}}
                   onNext={() => {}}
@@ -124,6 +126,9 @@ export function BoardSection() {
                 />
               </State>
             ))}
+          </Row>
+          <Row label="issue side panel · full width in a narrow container">
+            <IssuePanelPreview />
           </Row>
           <Row label="issue description">
             {(
@@ -493,6 +498,53 @@ export function BoardSection() {
         </div>
       )}
     </Section>
+  );
+}
+
+function IssuePanelPreview() {
+  const [opened, setOpened] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div
+      data-slot="issue-panel-preview"
+      className="@container relative flex h-[440px] w-full overflow-hidden rounded-xl bg-bg shadow-panel"
+    >
+      <div
+        className={`min-w-0 flex-1 ${opened ? (expanded ? "invisible" : "@min-[960px]:visible invisible") : ""}`}
+      >
+        <IssueListGroup
+          name="Todo"
+          status="todo"
+          items={[{ ...openIssue, id: "panel-preview" }]}
+          onOpen={() => setOpened(true)}
+        />
+      </div>
+      {opened ? (
+        <IssueDetail
+          itemId="panel-preview"
+          item={openIssue}
+          project="Planche"
+          status={{ name: "Todo", tone: "todo" }}
+          editable
+          expanded={expanded}
+          onExpandedChange={setExpanded}
+          onBack={() => setOpened(false)}
+          onStatus={() => {}}
+          onAssign={() => {}}
+          onGitHub={() => {}}
+        >
+          <IssueDescriptionContent
+            status="ready"
+            body={
+              "Keep the **board or list** visible while reading an issue.\n\n- Close to return to the collection\n- Expand for more space"
+            }
+            onRetry={() => {}}
+            onOpenLink={() => {}}
+          />
+        </IssueDetail>
+      ) : null}
+    </div>
   );
 }
 
