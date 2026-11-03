@@ -9,7 +9,6 @@ import {
   commands,
   events,
   type Intent,
-  type IssueLoad,
   type ProjectId,
   type SyncPrefs,
   type SyncStatus,
@@ -180,6 +179,8 @@ export function createQueryClient() {
     client.removeQueries({ queryKey: ["board"] });
     void client.cancelQueries({ queryKey: ["issue-description"] }, { revert: false, silent: true });
     client.removeQueries({ queryKey: ["issue-description"] });
+    void client.cancelQueries({ queryKey: ["issue-activity"] }, { revert: false, silent: true });
+    client.removeQueries({ queryKey: ["issue-activity"] });
     void client.cancelQueries({ queryKey: ["issue"] }, { revert: false, silent: true });
     client.removeQueries({ queryKey: ["issue"] });
 
@@ -265,18 +266,61 @@ export const descriptionQuery = (account: string, content: string) =>
       const result = await commands.refreshIssueDescription(account, content);
 
       signal.throwIfAborted();
-      client.setQueryData(cachedDescriptionQuery(account, content).queryKey, result);
+      if (result === null) {
+        removeIssueAccess(client, account, content, "issue-description");
+      } else {
+        client.setQueryData(cachedDescriptionQuery(account, content).queryKey, result);
+      }
+
+      return result;
+    },
+  });
+
+function removeIssueAccess(client: QueryClient, account: string, content: string, source: string) {
+  for (const family of ["issue", "issue-description", "issue-activity"]) {
+    const key = [family, "github.com", account, content];
+
+    void client.cancelQueries({ queryKey: [...key, "cached"] }, { revert: false, silent: true });
+
+    if (family !== source) {
+      void client.cancelQueries({ queryKey: [...key, "fresh"] }, { revert: false, silent: true });
+    }
+
+    client.setQueryData([...key, "cached"], null);
+    client.setQueryData([...key, "fresh"], family === "issue" ? { status: "unavailable" } : null);
+  }
+
+  void client.invalidateQueries({ queryKey: ["board"] });
+}
+
+export const cachedActivityQuery = (account: string, content: string) =>
+  queryOptions({
+    queryKey: ["issue-activity", "github.com", account, content, "cached"],
+    networkMode: "always",
+    refetchOnMount: "always",
+    queryFn: async ({ signal }) => {
+      const result = await commands.cachedIssueActivity(account, content);
+
+      signal.throwIfAborted();
+
+      return result;
+    },
+  });
+
+export const activityQuery = (account: string, content: string) =>
+  queryOptions({
+    queryKey: ["issue-activity", "github.com", account, content, "fresh"],
+    networkMode: "always",
+    refetchOnMount: "always",
+    queryFn: async ({ client, signal }) => {
+      const result = await commands.refreshIssueActivity(account, content);
+
+      signal.throwIfAborted();
 
       if (result === null) {
-        void client.cancelQueries(
-          { queryKey: ["issue", "github.com", account, content] },
-          { revert: false, silent: true },
-        );
-        client.setQueryData(cachedIssueQuery(account, content).queryKey, null);
-        client.setQueryData<IssueLoad>(["issue", "github.com", account, content, "fresh"], {
-          status: "unavailable",
-        });
-        void client.invalidateQueries({ queryKey: ["board"] });
+        removeIssueAccess(client, account, content, "issue-activity");
+      } else {
+        client.setQueryData(cachedActivityQuery(account, content).queryKey, result);
       }
 
       return result;
@@ -312,12 +356,7 @@ export const issueQuery = (account: string, content: string) =>
       );
 
       if (result.status === "unavailable") {
-        void client.cancelQueries(
-          { queryKey: ["issue-description", "github.com", account, content] },
-          { revert: false, silent: true },
-        );
-        client.setQueryData(cachedDescriptionQuery(account, content).queryKey, null);
-        client.setQueryData(descriptionQuery(account, content).queryKey, null);
+        removeIssueAccess(client, account, content, "issue");
       } else if (result.status === "ready") {
         void client.invalidateQueries({
           queryKey: ["issue-description", "github.com", account, content],

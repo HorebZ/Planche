@@ -1,0 +1,28 @@
+query IssueActivity($id: ID!, $timelineAfter: String, $pullRequestsAfter: String, $timeline: Boolean!, $pullRequests: Boolean!) {
+  viewer { id }
+  node(id: $id) {
+    __typename
+    ... on Issue {
+      id
+      timelineItems(first: 100, after: $timelineAfter, itemTypes: [ISSUE_COMMENT, COMMENT_DELETED_EVENT, CLOSED_EVENT, REOPENED_EVENT, ASSIGNED_EVENT, UNASSIGNED_EVENT, LABELED_EVENT, UNLABELED_EVENT]) @include(if: $timeline) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          __typename
+          ... on IssueComment { id createdAt author { login } body isMinimized }
+          ... on CommentDeletedEvent { id createdAt actor { login } }
+          ... on ClosedEvent { id createdAt actor { login } }
+          ... on ReopenedEvent { id createdAt actor { login } }
+          ... on AssignedEvent { id createdAt actor { login } assignee { ... on User { login } ... on Bot { login } ... on Mannequin { login } } }
+          ... on UnassignedEvent { id createdAt actor { login } assignee { ... on User { login } ... on Bot { login } ... on Mannequin { login } } }
+          ... on LabeledEvent { id createdAt actor { login } label { name } }
+          ... on UnlabeledEvent { id createdAt actor { login } label { name } }
+        }
+      }
+      closedByPullRequestsReferences(first: 100, after: $pullRequestsAfter, includeClosedPrs: true) @include(if: $pullRequests) {
+        pageInfo { hasNextPage endCursor }
+        nodes { id number title url state isDraft repository { nameWithOwner } }
+      }
+    }
+  }
+  rateLimit { cost remaining limit resetAt }
+}

@@ -5,6 +5,7 @@ import { BoardFilter, type BoardFilters, emptyFilters } from "@/components/ui/bo
 import { NoFilterResults } from "@/components/ui/board-states";
 import { DisplayMenu, type DisplayProperty } from "@/components/ui/display-menu";
 import { DragHelpBar } from "@/components/ui/drag";
+import { IssueActivityContent } from "@/components/ui/issue-activity";
 import {
   CardPlaceholder,
   DraftField,
@@ -18,7 +19,57 @@ import { IssueTabPanel, IssueTabs } from "@/components/ui/issue-tabs";
 import { LabelChip } from "@/components/ui/label-chip";
 import { PriorityGlyph, ProgressRing } from "@/components/ui/planche-glyph";
 import { StatusChip, type StatusKey, StatusSquare, statusLabels } from "@/components/ui/status";
+import type { IssueActivity } from "@/ipc/bindings.types";
 import { Row, Section, State } from "../kit";
+
+const activityPreview: IssueActivity = {
+  entries: [
+    {
+      id: "comment",
+      kind: "comment",
+      author: "lea",
+      created_at: "2026-11-03T10:00:00Z",
+      body: "Ready for **review**.",
+      subject: null,
+    },
+    {
+      id: "assigned",
+      kind: "assigned",
+      author: "camille",
+      created_at: "2026-11-03T10:01:00Z",
+      body: null,
+      subject: "lea",
+    },
+    {
+      id: "label",
+      kind: "labeled",
+      author: "lea",
+      created_at: "2026-11-03T10:02:00Z",
+      body: null,
+      subject: "enhancement",
+    },
+    {
+      id: "closed",
+      kind: "closed",
+      author: null,
+      created_at: "2026-11-03T10:03:00Z",
+      body: null,
+      subject: null,
+    },
+  ],
+  pull_requests: [
+    {
+      id: "pr",
+      repo: "HorebZ/Planche",
+      number: 72,
+      title: "Retain issue details in tabs",
+      url: "https://github.com/HorebZ/Planche/pull/72",
+      state: "merged",
+      is_draft: false,
+    },
+  ],
+  fetched_at: "2026-11-03T12:00:00Z",
+};
 
 const portrait =
   "data:image/svg+xml," +
@@ -159,6 +210,39 @@ export function BoardSection() {
                       : undefined
                   }
                   onRetry={() => {}}
+                />
+              </State>
+            ))}
+          </Row>
+          <Row label="issue activity">
+            {(
+              [
+                "loading",
+                "refreshing",
+                "ready",
+                "offline",
+                "error",
+                "unavailable",
+                "empty",
+              ] as const
+            ).map((status) => (
+              <State
+                key={status}
+                label={status}
+                className="w-full rounded-xl bg-bg p-4"
+              >
+                <IssueActivityContent
+                  status={status === "empty" ? "ready" : status}
+                  activity={
+                    status === "empty"
+                      ? { ...activityPreview, entries: [], pull_requests: [] }
+                      : ["ready", "refreshing", "offline", "error"].includes(status)
+                        ? activityPreview
+                        : undefined
+                  }
+                  sourceUrl="https://github.com/HorebZ/Planche/issues/56"
+                  onRetry={() => {}}
+                  onOpenLink={() => {}}
                 />
               </State>
             ))}

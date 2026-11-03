@@ -2,7 +2,7 @@ use std::future::Future;
 use std::sync::{Arc, Mutex};
 
 use crate::cache::Cache;
-use crate::domain::{ContentId, Issue, IssueDescription, IssueLoad, UserId};
+use crate::domain::{ContentId, Issue, IssueActivity, IssueDescription, IssueLoad, UserId};
 use crate::issue::IssueIntent;
 use crate::{Error, Result};
 
@@ -14,6 +14,66 @@ pub struct Descriptions {
 }
 
 impl Descriptions {
+    pub fn cached_activity(
+        &self,
+        cache: &Mutex<Cache>,
+        account: &UserId,
+        content: &ContentId,
+    ) -> Result<Option<IssueActivity>> {
+        let current = self.account.lock().expect("description session");
+
+        if current.as_deref() != Some(account) {
+            return Err(Error::NotSignedIn);
+        }
+
+        cache
+            .lock()
+            .expect("cache lock")
+            .issue_activity(HOST, account, content)
+    }
+
+    pub async fn refresh_activity(
+        &self,
+        cache: &Mutex<Cache>,
+        account: &UserId,
+        content: &ContentId,
+        fetch: impl Future<Output = Result<Option<IssueActivity>>>,
+    ) -> Result<Option<IssueActivity>> {
+        let (session, revision) = {
+            let current = self.account.lock().expect("description session");
+            let session = current
+                .as_ref()
+                .filter(|id| id.as_ref() == account)
+                .ok_or(Error::NotSignedIn)?;
+            let revision = cache
+                .lock()
+                .expect("cache lock")
+                .begin_activity(HOST, account, content)?;
+
+            (session.clone(), revision)
+        };
+        let result = fetch.await;
+        let current = self.account.lock().expect("description session");
+
+        if !current.as_ref().is_some_and(|id| Arc::ptr_eq(id, &session)) {
+            return Err(Error::NotSignedIn);
+        }
+
+        let activity = match result {
+            Ok(activity) => activity,
+            Err(error) if access_denied(&error) => None,
+            Err(error) => return Err(error),
+        };
+
+        cache.lock().expect("cache lock").finish_activity(
+            HOST,
+            account,
+            content,
+            revision,
+            activity.as_ref(),
+        )
+    }
+
     pub fn unlock(&self, account: UserId) {
         *self.account.lock().expect("description session") = Some(Arc::new(account));
     }
@@ -193,3 +253,7 @@ fn access_denied(error: &Error) -> bool {
 #[cfg(test)]
 #[path = "description.test.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "activity.test.rs"]
+mod activity_tests;

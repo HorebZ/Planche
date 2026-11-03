@@ -73,6 +73,16 @@ export const commands = {
 	fetched_at: string,
 } | null>("cached_issue", { account, content }),
 	refreshIssue: (account: UserId, content: ContentId) => __TAURI_INVOKE<IssueLoad>("refresh_issue", { account, content }),
+	cachedIssueActivity: (account: UserId, content: ContentId) => __TAURI_INVOKE<{
+	entries: ActivityEntry[],
+	pull_requests: ClosingPullRequest[],
+	fetched_at: string,
+} | null>("cached_issue_activity", { account, content }),
+	refreshIssueActivity: (account: UserId, content: ContentId) => __TAURI_INVOKE<{
+	entries: ActivityEntry[],
+	pull_requests: ClosingPullRequest[],
+	fetched_at: string,
+} | null>("refresh_issue_activity", { account, content }),
 	/**  Syncs now and waits for the result. */
 	refreshProject: (projectId: ProjectId) => __TAURI_INVOKE<SyncReport>("refresh_project", { projectId }),
 	/**  Accepted confirms the local enqueue commit, not synchronization with GitHub. */
@@ -98,6 +108,17 @@ export const events = {
 };
 
 /* Types */
+export type ActivityEntry = {
+	id: string,
+	kind: ActivityKind,
+	author: string | null,
+	created_at: string,
+	body: string | null,
+	subject: string | null,
+};
+
+export type ActivityKind = "comment" | "comment_deleted" | "closed" | "reopened" | "assigned" | "unassigned" | "labeled" | "unlabeled";
+
 export type AppError = {
 	kind: ErrorKind,
 	message: string,
@@ -176,6 +197,16 @@ export type CardDetails = {
 	pull_request?: LinkedPullRequest | null,
 };
 
+export type ClosingPullRequest = {
+	id: string,
+	repo: string,
+	number: number,
+	title: string,
+	url: string,
+	state: PullRequestState,
+	is_draft: boolean,
+};
+
 export type Column = {
 	/**  `None` for the "No <field>" column. */
 	option_id: OptionId | null,
@@ -227,6 +258,12 @@ export type Issue = {
 	complete: boolean,
 	/**  Unknown until the issue itself has been fetched; Project access grants no issue rights. */
 	permissions: IssuePermissions | null,
+	fetched_at: string,
+};
+
+export type IssueActivity = {
+	entries: ActivityEntry[],
+	pull_requests: ClosingPullRequest[],
 	fetched_at: string,
 };
 

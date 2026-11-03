@@ -1,6 +1,7 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type { ComponentProps } from "react";
 import { cardData } from "@/board/Card";
+import { IssueActivity } from "@/board/IssueActivity";
 import { IssueDescription } from "@/board/IssueDescription";
 import { statusTone } from "@/board/statusTone";
 import { IssueDetail } from "@/components/ui/issue-detail";
@@ -57,13 +58,20 @@ export function ProjectIssueDetail({ board, account, offline, contextNotice, ...
       }
     >
       {card?.kind === "issue" && account ? (
-        <IssueDescription
-          key={`${account}:${card.id}`}
-          account={account}
-          content={card.id}
-          sourceUrl={card.url}
-          offline={offline}
-        />
+        <div key={`${account}:${card.id}`}>
+          <IssueDescription
+            account={account}
+            content={card.id}
+            sourceUrl={card.url}
+            offline={offline}
+          />
+          <IssueActivity
+            account={account}
+            content={card.id}
+            sourceUrl={card.url}
+            offline={offline}
+          />
+        </div>
       ) : null}
     </IssueDetail>
   );
