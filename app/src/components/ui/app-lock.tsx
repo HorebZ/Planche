@@ -20,7 +20,9 @@ export function AppLockContent({ pending, error, onUnlock }: LockProps) {
         <h1 className="font-semibold text-lg">
           {pending ? "Opening Planche" : "Could not open your session"}
         </h1>
-        <p className="text-fg-2 text-sm">Restoring your GitHub account and projects.</p>
+        <p className="text-fg-2 text-sm">
+          Allow Keychain access if macOS asks to restore your GitHub session.
+        </p>
       </div>
       {error ? (
         <p

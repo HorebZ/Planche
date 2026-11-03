@@ -38,7 +38,7 @@ pub fn remember_status(cache: &Cache, token: &str, status: &AuthStatus) -> Resul
     cache.set(&identity_key(token), &json)
 }
 
-/// The token from `PLANCHE_TOKEN`, else from the private session file, read once per process.
+/// The token from `PLANCHE_TOKEN`, else from macOS Keychain, read once per process.
 pub fn load_token() -> Result<String> {
     if let Some(token) = std::env::var("PLANCHE_TOKEN")
         .ok()
@@ -51,7 +51,7 @@ pub fn load_token() -> Result<String> {
 }
 
 /// The cached token, else the token `read` returns. Only a success is cached. The lock
-/// is held during `read` so concurrent first calls share one disk read.
+/// is held during `read` so concurrent first calls share one Keychain access.
 fn cached(read: impl FnOnce() -> Result<String>) -> Result<String> {
     let mut cache = TOKEN.lock().unwrap_or_else(PoisonError::into_inner);
 
@@ -95,7 +95,11 @@ pub async fn login(token: &str) -> Result<Viewer> {
         return Err(Error::MissingScopes(missing));
     }
 
-    credentials::write(token)?;
+    let saved = token.to_owned();
+
+    tokio::task::spawn_blocking(move || credentials::write(&saved))
+        .await
+        .map_err(|_| Error::Credentials("could not save the GitHub session; try again".into()))??;
     remember(Some(token.to_owned()));
 
     Ok(viewer)
@@ -124,7 +128,10 @@ impl AuthStatus {
 
 /// Checks the stored token against GitHub. No token is not an error.
 pub async fn status() -> Result<AuthStatus> {
-    let token = match load_token() {
+    let token = tokio::task::spawn_blocking(load_token)
+        .await
+        .map_err(|_| Error::Credentials("could not unlock the GitHub session; try again".into()))?;
+    let token = match token {
         Ok(token) => token,
         Err(Error::NotSignedIn) => return Ok(AuthStatus::default()),
         Err(e) => return Err(e),

@@ -253,7 +253,7 @@ export function PersonalTokenOption({ onSelect }: { onSelect: () => void }) {
       <p className="text-fg-2 text-xs">
         Or use Classic PAT with <code>repo</code>, <code>read:org</code> and <code>project</code>.
       </p>
-      <p className="text-fg-3 text-xs">Saved unencrypted in a private file on this Mac.</p>
+      <p className="text-fg-3 text-xs">Saved encrypted in macOS Keychain on this Mac.</p>
       <Button
         type="button"
         size="sm"

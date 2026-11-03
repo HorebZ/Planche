@@ -74,13 +74,16 @@ Security → Open Anyway**. Managed Macs can prohibit this exception.
 
 ## Local data
 
-Your session and board cache live in
+Your board cache lives in
 `~/Library/Application Support/dev.planche.app/`. Preferences are saved locally by
 the interface. These stay outside the application bundle and survive app updates.
-The session is shared with the CLI. The token is
-stored in an unencrypted file with private permissions, rather than the macOS
-Keychain; programs running as your user can read it. Signing out removes the
-saved token and leaves the board cache on disk.
+The token is stored encrypted in the classic macOS login Keychain, without iCloud
+synchronization or Touch ID. This needs no paid Apple Developer membership. macOS
+may ask you to authorize access, especially after a development rebuild or when
+using the CLI. Planche reads it once per process and keeps it in Rust memory for
+that session. Existing `auth/token` files are migrated and removed only after a
+Keychain read verifies the copy. Signing out removes the saved token and leaves
+the board cache on disk.
 
 ## Develop and contribute
 

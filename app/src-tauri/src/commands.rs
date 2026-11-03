@@ -378,7 +378,12 @@ pub async fn auth_oauth_copy_code(core: State<'_, Core>, user_code: String) -> R
 #[specta::specta]
 pub async fn auth_sign_out(core: State<'_, Core>) -> Result<()> {
     core.stop().await;
-    auth::sign_out()?;
+    tauri::async_runtime::spawn_blocking(auth::sign_out)
+        .await
+        .map_err(|_| AppError {
+            kind: ErrorKind::Auth,
+            message: "Could not remove the saved session. Try again.".into(),
+        })??;
 
     Ok(())
 }

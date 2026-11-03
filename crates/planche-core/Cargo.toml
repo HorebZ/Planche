@@ -25,6 +25,7 @@ semver = "1"
 flate2 = "1"
 tar = "0.4"
 plist = "1"
+security-framework = "3.7"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }

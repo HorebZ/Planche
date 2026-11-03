@@ -356,7 +356,7 @@ function TokenStep({ onDone, onBack }: { onDone: () => void; onBack: () => void 
         step={1}
         title="Connect your GitHub account"
       >
-        Use a classic PAT. It is saved locally in a private, unencrypted file.
+        Use a classic PAT. It is saved encrypted in macOS Keychain on this Mac.
       </StepHeader>
       <Field className="gap-1.5">
         <label

@@ -199,24 +199,46 @@ other owners selectable and explains how to reconnect after authorization.
 See [GitHub's Device Flow documentation](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#device-flow)
 and [organization access rules](https://docs.github.com/en/apps/oauth-apps/using-oauth-apps/authorizing-oauth-apps#oauth-apps-and-organizations).
 
-The token is saved unencrypted at
-`~/Library/Application Support/dev.planche.app/auth/token`, in a `0700` directory
-with file mode `0600`. Writes replace the file atomically. This session is shared
-with the CLI and survives rebuilds and version changes without Apple signing,
-Touch ID or a Keychain password. Other programs running as your user can read it.
-GitHub can still expire or revoke the token; sign in again if that happens.
-Signing out removes the saved token but leaves the board cache intact.
+The token is stored encrypted in the classic macOS login Keychain under service
+`dev.planche.app.auth.login-keychain.v1`, account `github.com`, with synchronization
+disabled. This uses the file-based Keychain rather than the data protection
+Keychain: no Touch ID, access-group entitlement, provisioning profile, or paid
+Apple Developer membership is required. The CLI uses the same item. macOS may ask
+for permission or the login Keychain password when a different executable accesses
+it, including after unsigned or ad hoc development rebuilds. Rust caches a
+successfully read token for the process so background sync does not repeatedly
+access the Keychain. A refused access leaves the startup lock visible, and only an
+explicit **Retry** attempts access again.
+
+On upgrade, Planche reads the legacy
+`~/Library/Application Support/dev.planche.app/auth/token` file only when the
+Keychain item does not exist. It writes the token into the Keychain, reads it back,
+checks that the copy matches, and only then removes the file. A failed write,
+cancelled access, or mismatched read preserves the file for retry without opening
+a plaintext session. An existing Keychain session takes precedence over a leftover
+legacy file. Signing out removes both saved credentials but leaves the board cache
+intact. This does not revoke the token on GitHub. Older Keychain services are left
+untouched and are not read.
 
 `PLANCHE_TOKEN` takes priority over the saved token. It is read at runtime, never
 embedded in the executable or webview, and startup does not copy it into the
-session file. With this override, remove it from `.env` and restart to switch
-accounts or stay signed out. Direct `cargo run` commands do not load `.env`;
-use `bun --env-file=.env exec 'cargo run -p planche-cli -- projects'` from the root, or export the
-variable in your terminal.
+Keychain. With this override, remove it from `.env` and restart to switch accounts
+or stay signed out. Direct `cargo run` commands do not load `.env`; use
+`bun --env-file=.env exec 'cargo run -p planche-cli -- projects'` from the root, or
+export the variable in your terminal.
 
-Existing Keychain credentials are left untouched and are no longer read. After
-upgrading from the Keychain version, sign in once through GitHub or set
-`PLANCHE_TOKEN`. This avoids a migration prompt.
+Before distributing a build, verify on a real Mac with `PLANCHE_TOKEN` unset:
+
+1. Sign in with a disposable GitHub credential, quit, and relaunch. Authorize
+   Keychain access if macOS prompts; the session must reopen without Touch ID.
+2. If prompted, refuse access. The lock must remain with no automatic retry;
+   press **Retry** and allow access. Sync must run without repeated prompts.
+3. Upgrade a legacy file session. Failed migration must preserve the file;
+   successful migration must remove it. Never print or capture the credential.
+4. Sign out and restart. The app must show onboarding and not restore a session.
+5. Rebuild or update the app and use the CLI. macOS may request access again, but
+   the saved credential must remain readable after authorization. Automated tests
+   use fake Keychain operations and do not modify the real login Keychain.
 
 The remembered account is tied to a SHA-256 fingerprint of the verified token.
 An unknown token requires one online identity check; subsequent launches can
