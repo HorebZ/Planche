@@ -38,7 +38,7 @@ export function AssigneePicker({ board, card, viewer, onToggle }: AssigneePicker
     () => ({
       current:
         document.querySelector<HTMLElement>(
-          '[data-slot="issue-detail"] [aria-label="Change assignees"]',
+          '[data-slot="issue-detail"][data-active="true"] [aria-label="Change assignees"]',
         ) ?? cardElement(card.item_id),
     }),
     [card.item_id, open],

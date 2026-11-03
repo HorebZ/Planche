@@ -4,6 +4,7 @@ export type Scope =
   | "global"
   | "board"
   | "detail"
+  | "tabs"
   | "menu"
   | "palette"
   | "dialog"
@@ -21,6 +22,8 @@ export const shortcuts = [
   { key: "f", command: "filters.open", scope: "global", label: "Filter issues" },
   { key: "?", command: "help.open", scope: "global", label: "All shortcuts" },
   { key: "Meta+,", command: "settings.open", scope: "global", label: "Settings" },
+  { key: "Meta+Shift+ArrowRight", command: "tab.next", scope: "global", label: "Next tab" },
+  { key: "Meta+Shift+ArrowLeft", command: "tab.prev", scope: "global", label: "Previous tab" },
   { key: "Meta+Shift+h", command: "sidebar.hide", scope: "sidebar", label: "Hide from sidebar" },
 
   { key: " ", command: "drag.lift", scope: "board", label: "Lift a card" },
@@ -57,6 +60,10 @@ export const shortcuts = [
   { key: "Meta+z", command: "undo", scope: "board", label: "Undo" },
 
   { key: "j", command: "card.next", scope: "detail", label: "Next issue" },
+  { key: "Meta+Enter", command: "tab.open", scope: "detail", label: "Open in tab" },
+  { key: "Meta+w", command: "tab.close", scope: "detail", label: "Close tab" },
+  { key: "Meta+Shift+ArrowRight", command: "tab.next", scope: "detail", label: "Next tab" },
+  { key: "Meta+Shift+ArrowLeft", command: "tab.prev", scope: "detail", label: "Previous tab" },
   { key: "Meta+k", command: "palette.open", scope: "detail", label: "Command palette" },
   { key: "Meta+r", command: "sync.now", scope: "detail", label: "Sync now" },
   { key: "Meta+,", command: "settings.open", scope: "detail", label: "Settings" },
@@ -91,6 +98,8 @@ export const shortcuts = [
   { key: "Escape", command: "drag.cancel", scope: "drag", label: "Cancel" },
 
   { key: "Escape", command: "dialog.close", scope: "dialog", label: "Close" },
+  { key: "Backspace", command: "tab.close", scope: "tabs", label: "Close tab" },
+  { key: "Delete", command: "tab.close", scope: "tabs", label: "Close tab" },
 ] as const satisfies readonly Shortcut[];
 
 export type CommandId = (typeof shortcuts)[number]["command"];

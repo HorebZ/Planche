@@ -144,6 +144,11 @@ export function useActions(projectId: ProjectId, viewId: ViewId | null) {
   return useMemo(() => {
     const inContext = () => {
       const state = useUi.getState();
+      const tab = state.issueTabs.find((tab) => tab.id === state.activeIssueTab);
+
+      if (tab) {
+        return tab.projectId === projectId && tab.viewId === viewId;
+      }
 
       return (
         (state.projectId ?? client.getQueryData(currentProjectQuery.queryKey) ?? projectId) ===

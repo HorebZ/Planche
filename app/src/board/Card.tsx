@@ -73,7 +73,7 @@ export const Card = memo(function Card({
   selected = false,
   hiddenProperties,
 }: CardProps) {
-  const detailing = useUi((state) => state.detailId !== null);
+  const detailing = useUi((state) => state.detailId !== null || state.activeIssueTab !== null);
   const { setNodeRef, attributes, listeners } = useSortable({
     id: card.item_id,
     disabled: detailing,
@@ -85,6 +85,7 @@ export const Card = memo(function Card({
     if (
       selected &&
       !detailing &&
+      !document.activeElement?.closest('[role="tablist"]') &&
       !useUi.getState().overlay &&
       !ref.current?.contains(document.activeElement)
     ) {
@@ -142,8 +143,9 @@ export function cardElement(id: string) {
   const selector = `[data-item-id="${CSS.escape(id)}"]`;
 
   return (
-    document.querySelector<HTMLElement>(`[data-slot="issue-detail"] ${selector}`) ??
-    document.querySelector<HTMLElement>(selector)
+    document.querySelector<HTMLElement>(
+      `[data-slot="issue-detail"][data-active="true"] ${selector}`,
+    ) ?? document.querySelector<HTMLElement>(selector)
   );
 }
 

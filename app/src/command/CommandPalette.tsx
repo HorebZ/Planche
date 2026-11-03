@@ -35,7 +35,7 @@ type CommandPaletteProps = {
 export function CommandPalette({ board, card, commands, onReveal }: CommandPaletteProps) {
   const scopeId = useId();
   const open = useUi((s) => s.overlay?.type === "palette");
-  const inDetail = useUi((s) => s.detailId !== null);
+  const inDetail = useUi((s) => s.detailId !== null || s.activeIssueTab !== null);
   const [query, setQuery] = useState("");
   const [withContext, setWithContext] = useState(true);
   const pending = useRef<(() => void) | null>(null);
@@ -83,8 +83,9 @@ export function CommandPalette({ board, card, commands, onReveal }: CommandPalet
           }
 
           // The overlay that follows, such as the assignee picker, takes the focus instead.
-          const { overlay, selectedId, detailId } = useUi.getState();
-          const id = detailId ?? selectedId;
+          const { overlay, selectedId, detailId, issueTabs, activeIssueTab } = useUi.getState();
+          const id =
+            issueTabs.find((tab) => tab.id === activeIssueTab)?.itemId ?? detailId ?? selectedId;
 
           if (!overlay && id) {
             focusCard(id);
