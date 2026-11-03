@@ -34,18 +34,19 @@ The interface is inspired by [Linear](https://linear.app), adapted to GitHub Pro
   repository.
 - Navigate with J and K, open the status menu with S, or use ⌘K to search the
   loaded project and run card actions. C starts a new project draft.
-- Open an issue to read its Markdown description and change its status or
-  assignees. Cards also show available sub-issue progress and linked PR indicators.
-- Keep working on cached boards offline. Descriptions you've already loaded are
-  saved locally too.
+- Open an issue to read its Markdown description, comments and activity, inspect
+  closing pull requests, and change its status or assignees. Cards also show
+  available sub-issue progress and linked PR indicators.
+- Keep working on cached boards offline. Descriptions and activity you've already
+  loaded are saved locally too, with the activity's last refresh time.
 
 ## Alpha scope
 
 Planche currently supports GitHub Projects v2 board views and a local list layout.
-Saved GitHub view filters are not applied. Labels are read-only; comments, Roadmap,
-other project fields and creating repository issues still need GitHub. The issue
-page shows the description and core properties, rather than the full GitHub
-conversation.
+Saved GitHub view filters are not applied. Labels are read-only; posting comments,
+Roadmap, other project fields and creating repository issues still need GitHub.
+Issue activity covers comments, closing/reopening, assignees and labels; reviews
+and the full GitHub timeline still need GitHub.
 
 The [roadmap](https://github.com/HorebZ/Planche/issues/1) tracks the next steps.
 Features are described here as they become available.

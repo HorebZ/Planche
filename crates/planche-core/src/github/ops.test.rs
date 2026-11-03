@@ -3,6 +3,139 @@ use crate::github::ops::{decode_project_items, decode_project_meta};
 use serde_json::{Value, json};
 
 #[tokio::test]
+async fn activity_paginates_independently_without_duplicates_and_keeps_every_pr_state() {
+    use crate::domain::{ActivityKind, ContentId, PullRequestState, UserId};
+
+    let mut requests = Vec::new();
+    let activity = super::load_activity(&UserId("A".into()), &ContentId("issue".into()), |timeline_after, prs_after, timeline, prs| {
+        let page = requests.len();
+        requests.push((timeline_after, prs_after, timeline, prs));
+        let mut node = json!({ "__typename": "Issue", "id": "issue" });
+
+        if timeline {
+            let mut entries = vec![json!({ "__typename": "IssueComment", "id": "comment", "createdAt": "2026-11-03T10:00:00Z", "author": null, "body": "Text", "isMinimized": false }), Value::Null];
+            if page == 1 {
+                for (index, kind) in ["ClosedEvent", "ReopenedEvent", "AssignedEvent", "UnassignedEvent", "LabeledEvent", "UnlabeledEvent", "CommentDeletedEvent"].into_iter().enumerate() {
+                    entries.push(json!({ "__typename": kind, "id": format!("event-{index}"), "createdAt": "2026-11-03T10:01:00Z", "actor": { "login": "lea" }, "assignee": { "login": "camille" }, "label": { "name": "bug" } }));
+                }
+                entries.push(json!({ "__typename": "IssueComment", "id": "hidden", "createdAt": "2026-11-03T10:02:00Z", "author": { "login": "bot" }, "body": "Hidden text", "isMinimized": true }));
+            }
+            node["timelineItems"] = json!({ "nodes": entries, "pageInfo": { "hasNextPage": page == 0, "endCursor": "timeline-1" } });
+        }
+        if prs {
+            node["closedByPullRequestsReferences"] = json!({
+                "nodes": [{ "id": format!("pr-{page}"), "number": page + 1, "title": "Fix", "url": "https://github.com/o/r/pull/1", "state": (["OPEN", "CLOSED", "MERGED"][page]), "isDraft": page == 0, "repository": { "nameWithOwner": "o/r" } }],
+                "pageInfo": { "hasNextPage": page < 2, "endCursor": format!("prs-{page}") }
+            });
+        }
+
+        std::future::ready(Ok(serde_json::from_value(json!({ "viewer": { "id": "A" }, "node": node })).unwrap()))
+    }).await.unwrap().unwrap();
+
+    assert_eq!(
+        requests,
+        [
+            (None, None, true, true),
+            (Some("timeline-1".into()), Some("prs-0".into()), true, true),
+            (None, Some("prs-1".into()), false, true),
+        ]
+    );
+    assert_eq!(activity.entries.len(), 9);
+    assert_eq!(activity.entries[0].kind, ActivityKind::Comment);
+    assert!(activity.entries[0].author.is_none());
+    assert_eq!(activity.entries[0].body.as_deref(), Some("Text"));
+    assert_eq!(activity.entries[1].kind, ActivityKind::Closed);
+    assert_eq!(activity.entries[2].kind, ActivityKind::Reopened);
+    assert_eq!(activity.entries[3].subject.as_deref(), Some("camille"));
+    assert_eq!(activity.entries[7].kind, ActivityKind::CommentDeleted);
+    assert!(activity.entries[8].body.is_none());
+    assert_eq!(
+        activity
+            .pull_requests
+            .iter()
+            .map(|pr| pr.state)
+            .collect::<Vec<_>>(),
+        [
+            PullRequestState::Open,
+            PullRequestState::Closed,
+            PullRequestState::Merged
+        ]
+    );
+    assert_eq!(activity.pull_requests[0].repo, "o/r");
+    assert!(activity.pull_requests[0].is_draft);
+}
+
+#[tokio::test]
+async fn activity_rejects_wrong_identity_missing_pages_and_broken_pagination() {
+    use crate::domain::{ContentId, UserId};
+
+    let base = json!({ "viewer": { "id": "A" }, "node": { "__typename": "Issue", "id": "issue", "timelineItems": { "nodes": [], "pageInfo": { "hasNextPage": false, "endCursor": null } }, "closedByPullRequestsReferences": { "nodes": [], "pageInfo": { "hasNextPage": false, "endCursor": null } } } });
+    for change in [
+        "viewer",
+        "identity",
+        "type",
+        "missing-page",
+        "missing-cursor",
+        "repeated-cursor",
+    ] {
+        let mut response = base.clone();
+        match change {
+            "viewer" => response["viewer"]["id"] = json!("B"),
+            "identity" => response["node"]["id"] = json!("other"),
+            "type" => response["node"]["__typename"] = json!("PullRequest"),
+            "missing-page" => response["node"]["timelineItems"] = Value::Null,
+            "missing-cursor" => {
+                response["node"]["timelineItems"]["pageInfo"]["hasNextPage"] = json!(true)
+            }
+            _ => {
+                response["node"]["timelineItems"]["pageInfo"] =
+                    json!({ "hasNextPage": true, "endCursor": "same" })
+            }
+        }
+
+        let result = super::load_activity(
+            &UserId("A".into()),
+            &ContentId("issue".into()),
+            |_, _, _, _| std::future::ready(Ok(serde_json::from_value(response.clone()).unwrap())),
+        )
+        .await;
+
+        assert!(result.is_err(), "{change}");
+    }
+
+    let missing = super::load_activity(
+        &UserId("A".into()),
+        &ContentId("issue".into()),
+        |_, _, _, _| {
+            std::future::ready(Ok(serde_json::from_value(
+                json!({ "viewer": { "id": "A" }, "node": null }),
+            )
+            .unwrap()))
+        },
+    )
+    .await
+    .unwrap();
+
+    assert!(missing.is_none());
+}
+
+#[tokio::test]
+async fn a_failed_later_activity_page_never_returns_a_partial_snapshot() {
+    use crate::domain::{ContentId, UserId};
+
+    let mut requests = 0;
+    let result = super::load_activity(&UserId("A".into()), &ContentId("issue".into()), |_, _, _, _| {
+        requests += 1;
+        std::future::ready(if requests == 1 {
+            Ok(serde_json::from_value(json!({ "viewer": { "id": "A" }, "node": { "__typename": "Issue", "id": "issue", "timelineItems": { "nodes": [], "pageInfo": { "hasNextPage": true, "endCursor": "next" } }, "closedByPullRequestsReferences": { "nodes": [], "pageInfo": { "hasNextPage": false, "endCursor": null } } } })).unwrap())
+        } else { Err(crate::Error::Network("offline".into())) })
+    }).await;
+
+    assert_eq!(requests, 2);
+    assert!(matches!(result, Err(crate::Error::Network(_))));
+}
+
+#[tokio::test]
 async fn independent_issue_load_checks_identity_and_paginates_both_connections() {
     use super::{issue_from_wire, load_issue};
     use crate::domain::{ContentId, ItemContent, UserId};

@@ -9,8 +9,8 @@ use planche_core::auth::{self, AuthStatus};
 use planche_core::cache::Cache;
 use planche_core::description::Descriptions;
 use planche_core::domain::{
-    Board, ContentId, Issue, IssueDescription, IssueLoad, ProjectId, ProjectList, ProjectMeta,
-    User, UserId, ViewId,
+    Board, ContentId, Issue, IssueActivity, IssueDescription, IssueLoad, ProjectId, ProjectList,
+    ProjectMeta, User, UserId, ViewId,
 };
 use planche_core::error::Error;
 use planche_core::github::{GithubClient, ops};
@@ -486,6 +486,38 @@ pub async fn cached_issue(
     Ok(core
         .descriptions
         .cached_issue(&core.reader, &account, &content)?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn cached_issue_activity(
+    core: State<'_, Core>,
+    account: UserId,
+    content: ContentId,
+) -> Result<Option<IssueActivity>> {
+    Ok(core
+        .descriptions
+        .cached_activity(&core.reader, &account, &content)?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn refresh_issue_activity(
+    core: State<'_, Core>,
+    account: UserId,
+    content: ContentId,
+) -> Result<Option<IssueActivity>> {
+    let client = core.client()?;
+
+    Ok(core
+        .descriptions
+        .refresh_activity(
+            &core.reader,
+            &account,
+            &content,
+            ops::issue_activity(&client, &account, &content),
+        )
+        .await?)
 }
 
 #[tauri::command]

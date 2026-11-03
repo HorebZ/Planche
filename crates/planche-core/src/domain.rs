@@ -74,6 +74,47 @@ pub struct IssueDescription {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct IssueActivity {
+    pub entries: Vec<ActivityEntry>,
+    pub pull_requests: Vec<ClosingPullRequest>,
+    pub fetched_at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct ActivityEntry {
+    pub id: String,
+    pub kind: ActivityKind,
+    pub author: Option<String>,
+    pub created_at: String,
+    pub body: Option<String>,
+    pub subject: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum ActivityKind {
+    Comment,
+    CommentDeleted,
+    Closed,
+    Reopened,
+    Assigned,
+    Unassigned,
+    Labeled,
+    Unlabeled,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct ClosingPullRequest {
+    pub id: String,
+    pub repo: String,
+    pub number: u32,
+    pub title: String,
+    pub url: String,
+    pub state: PullRequestState,
+    pub is_draft: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct IssuePermissions {
     pub assign: bool,
     pub close: bool,

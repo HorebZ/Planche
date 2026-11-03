@@ -2,11 +2,13 @@
 
 use serde::de::IgnoredAny;
 use serde_json::json;
+use std::collections::HashSet;
 
 use super::{GithubClient, decode, wire};
 use crate::domain::{
-    CardDetails, ContentId, Field, FieldId, Issue, IssuePermissions, IssueState, Item, ItemContent,
-    ItemId, Label, LinkedPullRequest, OptionId, OwnerProjects, ProjectId, ProjectList, ProjectMeta,
+    ActivityEntry, ActivityKind, CardDetails, ClosingPullRequest, ContentId, Field, FieldId, Issue,
+    IssueActivity, IssuePermissions, IssueState, Item, ItemContent, ItemId, Label,
+    LinkedPullRequest, OptionId, OwnerProjects, ProjectId, ProjectList, ProjectMeta,
     ProjectSummary, PullRequestState, SelectOption, User, UserId, View, ViewId, ViewLayout, Viewer,
 };
 use crate::error::{Error, Result};
@@ -14,6 +16,134 @@ use crate::intent::Operation;
 
 const QUERIES: &str = include_str!("../../graphql/queries.graphql");
 const MUTATIONS: &str = include_str!("../../graphql/mutations.graphql");
+
+pub async fn issue_activity(
+    client: &GithubClient,
+    account: &UserId,
+    content: &ContentId,
+) -> Result<Option<IssueActivity>> {
+    load_activity(account, content, |timeline_after, prs_after, timeline, prs| async move {
+        Ok(client.query::<wire::ActivityData>(
+            include_str!("../../graphql/issue_activity.graphql"),
+            "IssueActivity",
+            json!({ "id": content, "timelineAfter": timeline_after, "pullRequestsAfter": prs_after, "timeline": timeline, "pullRequests": prs }),
+        ).await?.data)
+    }).await
+}
+
+async fn load_activity<F: std::future::Future<Output = Result<wire::ActivityData>>>(
+    account: &UserId,
+    content: &ContentId,
+    mut fetch: impl FnMut(Option<String>, Option<String>, bool, bool) -> F,
+) -> Result<Option<IssueActivity>> {
+    let mut activity = IssueActivity {
+        entries: vec![],
+        pull_requests: vec![],
+        fetched_at: String::new(),
+    };
+    let (mut timeline_after, mut prs_after) = (None, None);
+    let (mut timeline, mut prs) = (true, true);
+    let (mut entry_ids, mut pr_ids) = (HashSet::new(), HashSet::new());
+    let (mut timeline_cursors, mut pr_cursors) = (HashSet::new(), HashSet::new());
+
+    while timeline || prs {
+        let data = fetch(timeline_after, prs_after, timeline, prs).await?;
+
+        if data.viewer.id != account.as_str() {
+            return Err(Error::Unauthorized);
+        }
+
+        let Some(node) = data.node else {
+            return Ok(None);
+        };
+
+        if node["__typename"] != "Issue" || node["id"] != content.as_str() {
+            return Err(Error::Decode(
+                "activity issue identity does not match the request".into(),
+            ));
+        }
+
+        let node: wire::ActivityNode =
+            serde_json::from_value(node).map_err(|error| Error::Decode(error.to_string()))?;
+        timeline_after = None;
+        prs_after = None;
+
+        if timeline {
+            let page = node
+                .timeline_items
+                .ok_or_else(|| Error::Decode("missing activity page".into()))?;
+
+            timeline_after = activity_cursor(page.page_info, &mut timeline_cursors)?;
+            activity.entries.extend(
+                page.nodes
+                    .into_iter()
+                    .flatten()
+                    .filter(|entry| entry_ids.insert(entry.id.clone()))
+                    .map(|entry| ActivityEntry {
+                        id: entry.id,
+                        kind: match entry.kind {
+                            wire::ActivityKind::IssueComment => ActivityKind::Comment,
+                            wire::ActivityKind::CommentDeletedEvent => ActivityKind::CommentDeleted,
+                            wire::ActivityKind::ClosedEvent => ActivityKind::Closed,
+                            wire::ActivityKind::ReopenedEvent => ActivityKind::Reopened,
+                            wire::ActivityKind::AssignedEvent => ActivityKind::Assigned,
+                            wire::ActivityKind::UnassignedEvent => ActivityKind::Unassigned,
+                            wire::ActivityKind::LabeledEvent => ActivityKind::Labeled,
+                            wire::ActivityKind::UnlabeledEvent => ActivityKind::Unlabeled,
+                        },
+                        author: entry.author.or(entry.actor).and_then(|author| author.login),
+                        created_at: entry.created_at,
+                        body: entry.body.filter(|_| !entry.is_minimized),
+                        subject: entry
+                            .assignee
+                            .and_then(|assignee| assignee.login)
+                            .or_else(|| entry.label.map(|label| label.name)),
+                    }),
+            );
+        }
+
+        if prs {
+            let page = node
+                .closed_by_pull_requests_references
+                .ok_or_else(|| Error::Decode("missing closing pull requests page".into()))?;
+
+            prs_after = activity_cursor(page.page_info, &mut pr_cursors)?;
+            activity.pull_requests.extend(
+                page.nodes
+                    .into_iter()
+                    .flatten()
+                    .filter(|pr| pr_ids.insert(pr.id.clone()))
+                    .map(|pr| ClosingPullRequest {
+                        id: pr.id,
+                        repo: pr.repository.name_with_owner,
+                        number: pr.number,
+                        title: pr.title,
+                        url: pr.url,
+                        state: pr_state(pr.state),
+                        is_draft: pr.is_draft,
+                    }),
+            );
+        }
+
+        timeline = timeline_after.is_some();
+        prs = prs_after.is_some();
+    }
+
+    Ok(Some(activity))
+}
+
+fn activity_cursor(info: wire::PageInfo, seen: &mut HashSet<String>) -> Result<Option<String>> {
+    if !info.has_next_page {
+        return Ok(None);
+    }
+
+    let cursor = info
+        .end_cursor
+        .filter(|cursor| !cursor.is_empty() && seen.insert(cursor.clone()))
+        .ok_or_else(|| Error::Decode("missing or repeated activity pagination cursor".into()))?;
+
+    Ok(Some(cursor))
+}
 
 /// Loaded on demand, never as an additional query in the Project sync loop.
 pub async fn issue(

@@ -14,6 +14,7 @@ import type {
   ProjectMeta,
   SyncPrefs,
 } from "../bindings.types";
+import { issueActivity } from "./activity.fixtures";
 import { issueDescription, MARKDOWN_BODY } from "./description.fixtures";
 import {
   boardFor,
@@ -202,6 +203,14 @@ export function installMockBackend(scenario: Scenario) {
       scenario === "offline"
         ? issueDescription()
         : (descriptions.get(`${args.account}:${args.content}`) ?? null),
+    cached_issue_activity: () => (scenario === "offline" ? issueActivity() : null),
+    refresh_issue_activity: () => {
+      if (descriptionDenied) {
+        return null;
+      }
+
+      return issueActivity();
+    },
     refresh_issue_description: async (args) => {
       const key = `${args.account}:${args.content}`;
 

@@ -3,6 +3,69 @@
 use serde::Deserialize;
 
 #[derive(Deserialize)]
+pub(super) struct ActivityData {
+    pub viewer: DescriptionViewer,
+    pub node: Option<serde_json::Value>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct ActivityNode {
+    pub timeline_items: Option<Connection<ActivityEntry>>,
+    pub closed_by_pull_requests_references: Option<Connection<ClosingPullRequest>>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct ActivityEntry {
+    pub id: String,
+    #[serde(rename = "__typename")]
+    pub kind: ActivityKind,
+    pub created_at: String,
+    pub actor: Option<Login>,
+    pub author: Option<Login>,
+    pub assignee: Option<Login>,
+    pub label: Option<ActivityLabel>,
+    pub body: Option<String>,
+    #[serde(default)]
+    pub is_minimized: bool,
+}
+
+#[derive(Deserialize)]
+pub(super) enum ActivityKind {
+    IssueComment,
+    CommentDeletedEvent,
+    ClosedEvent,
+    ReopenedEvent,
+    AssignedEvent,
+    UnassignedEvent,
+    LabeledEvent,
+    UnlabeledEvent,
+}
+
+#[derive(Deserialize)]
+pub(super) struct Login {
+    pub login: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub(super) struct ActivityLabel {
+    pub name: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct ClosingPullRequest {
+    pub id: String,
+    pub number: u32,
+    pub title: String,
+    pub url: String,
+    pub state: PullRequestState,
+    pub is_draft: bool,
+    pub repository: Repository,
+}
+
+#[derive(Deserialize)]
 pub(super) struct IssueData {
     pub viewer: DescriptionViewer,
     pub node: Option<serde_json::Value>,
