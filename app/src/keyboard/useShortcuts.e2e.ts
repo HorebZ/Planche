@@ -32,6 +32,46 @@ async function selectCard(page: Page, number: number) {
   await expect.poll(() => focused(page)).toBe(`PVTI_${number}`);
 }
 
+test("⌘⇧H hides the focused project, the menu's project, or the current project from the board", async ({
+  page,
+}) => {
+  await open(page);
+
+  const sidebar = page.locator('[data-slot="sidebar"]');
+  const project = (name: string) => sidebar.getByRole("button", { name, exact: true });
+
+  await project("Design system").focus();
+  await page.keyboard.press("Meta+Shift+h");
+
+  await expect(project("Design system")).toHaveCount(0);
+  await expect(project("Planche — v1.2 17")).toBeVisible();
+
+  await project("More options for API Gateway").click();
+  await page.keyboard.press("Meta+Shift+h");
+
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(project("API Gateway")).toHaveCount(0);
+
+  await project("2 hidden").click();
+  await project("API Gateway").click({ button: "right" });
+  await page.keyboard.press("Meta+Shift+h");
+
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(project("Show API Gateway in sidebar")).toHaveCount(0);
+  await expect(project("API Gateway")).toBeVisible();
+
+  await selectCard(page, 226);
+  await page.keyboard.press("Meta+Shift+h");
+
+  await expect(project("Show Planche — v1.2 in sidebar")).toBeVisible();
+  await expect(card(page, 226)).toBeVisible();
+
+  await project("Show Planche — v1.2 in sidebar").click();
+
+  await expect(project("Show Planche — v1.2 in sidebar")).toHaveCount(0);
+  await expect(project("Planche — v1.2 17")).toBeVisible();
+});
+
 test("⇧→ moves the card a column, ⌘Z puts it back where it was, and the toast says so", async ({
   page,
 }) => {

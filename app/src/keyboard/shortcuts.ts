@@ -24,6 +24,7 @@ export const shortcuts = [
   { key: "Meta+,", command: "settings.open", scope: "global", label: "Settings" },
   { key: "Meta+Shift+ArrowRight", command: "tab.next", scope: "global", label: "Next tab" },
   { key: "Meta+Shift+ArrowLeft", command: "tab.prev", scope: "global", label: "Previous tab" },
+  { key: "Meta+Shift+h", command: "sidebar.hide", scope: "global", label: "Hide from sidebar" },
   { key: "Meta+Shift+h", command: "sidebar.hide", scope: "sidebar", label: "Hide from sidebar" },
 
   { key: " ", command: "drag.lift", scope: "board", label: "Lift a card" },
@@ -67,6 +68,7 @@ export const shortcuts = [
   { key: "Meta+k", command: "palette.open", scope: "detail", label: "Command palette" },
   { key: "Meta+r", command: "sync.now", scope: "detail", label: "Sync now" },
   { key: "Meta+,", command: "settings.open", scope: "detail", label: "Settings" },
+  { key: "Meta+Shift+h", command: "sidebar.hide", scope: "detail", label: "Hide from sidebar" },
   { key: "?", command: "help.open", scope: "detail", label: "All shortcuts" },
   { key: "k", command: "card.prev", scope: "detail", label: "Previous issue" },
   { key: "Escape", command: "detail.close", scope: "detail", label: "Close detail" },

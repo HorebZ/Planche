@@ -257,6 +257,17 @@ test("settings send sync preferences through IPC and save the theme", async () =
   expect(button("Sync when the Mac wakes up").getAttribute("aria-checked")).toBe("false");
 });
 
+test("the hide shortcut hides the current project from the board without closing it", async () => {
+  await open();
+
+  expect(key("H", get('[aria-label="Project view"]'), { metaKey: true, shiftKey: true })).toBe(
+    false,
+  );
+
+  expect(usePreferences.getState().hiddenProjects["camille-r"]).toEqual(["PVT_planche"]);
+  expect(document.querySelectorAll('[data-slot="board-column"]')).toHaveLength(5);
+});
+
 test("project colors update only their project, and hidden projects can be restored", async () => {
   await open();
   click(button("Change color for API Gateway"));

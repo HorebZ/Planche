@@ -401,6 +401,8 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   };
 
   useShortcuts({
+    "sidebar.hide": () =>
+      usePreferences.getState().setProjectHidden(auth.data?.login ?? "", projectId, true),
     "tab.open": openTab,
     "tab.close": () =>
       activeIssueTab
