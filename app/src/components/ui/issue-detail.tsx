@@ -74,7 +74,7 @@ export function IssueDetail({
     >
       <header
         data-tauri-drag-region
-        className="flex h-12 shrink-0 items-center gap-1 border-line border-b px-3"
+        className="flex h-10 shrink-0 items-center gap-1 border-line border-b px-3 text-md [&_button]:size-6 [&_svg]:size-3.5"
       >
         <Button
           variant="ghost"
@@ -106,24 +106,28 @@ export function IssueDetail({
             {expanded ? <Minimize2 /> : <Maximize2 />}
           </Button>
         ) : null}
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Previous issue"
-          disabled={!onPrevious}
-          onClick={onPrevious}
-        >
-          <ChevronUp />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Next issue"
-          disabled={!onNext}
-          onClick={onNext}
-        >
-          <ChevronDown />
-        </Button>
+        {onPrevious || onNext ? (
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Previous issue"
+              disabled={!onPrevious}
+              onClick={onPrevious}
+            >
+              <ChevronUp />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Next issue"
+              disabled={!onNext}
+              onClick={onNext}
+            >
+              <ChevronDown />
+            </Button>
+          </>
+        ) : null}
         {onGitHub ? (
           <Button
             variant="ghost"

@@ -567,7 +567,7 @@ function IssueTabsPreview() {
   return (
     <div
       data-slot="issue-tabs-preview"
-      className="flex h-[440px] w-full overflow-hidden rounded-xl bg-bg shadow-panel"
+      className="flex h-[440px] w-full overflow-hidden bg-bg-sunken"
     >
       <IssueTabs
         source="Planche"

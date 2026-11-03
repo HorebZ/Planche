@@ -38,6 +38,15 @@ for (const colorScheme of ["light", "dark"] as const) {
         path: test.info().outputPath(`tabs-status-${width}-${colorScheme}.png`),
         animations: "disabled",
       });
+      await page.keyboard.press("Escape");
+      await page.getByRole("tab", { name: "Planche — v1.2", exact: true }).click();
+      await page.getByRole("button", { name: "Board", exact: true }).click();
+
+      await expect(page.getByRole("region", { name: "Project view" })).toBeVisible();
+      await page.screenshot({
+        path: test.info().outputPath(`tabs-board-${width}-${colorScheme}.png`),
+        animations: "disabled",
+      });
     });
   }
 

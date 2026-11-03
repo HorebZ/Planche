@@ -536,7 +536,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
         onSelect={goTo}
         onSearch={showPalette}
       />
-      <main className="relative my-2 mr-2 flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-bg shadow-panel">
+      <main className="relative my-2 mr-2 flex min-w-0 flex-1 flex-col overflow-hidden">
         <IssueTabs
           source={data?.project.title ?? "Project"}
           tabs={issueTabs.map((tab, index) => {

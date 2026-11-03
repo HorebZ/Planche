@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { Columns3, FileText, X } from "lucide-react";
 import { Tabs } from "radix-ui";
 import { type ComponentProps, type ReactNode, useLayoutEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
@@ -38,7 +38,7 @@ export function IssueTabs({
     <Tabs.Root
       value={active ?? "source"}
       onValueChange={(id) => onSelect(id === "source" ? null : id)}
-      className="flex min-h-0 min-w-0 flex-1 flex-col"
+      className="flex min-h-0 min-w-0 flex-1 flex-col gap-2"
     >
       {tabs.length ? (
         <Tabs.List
@@ -53,46 +53,56 @@ export function IssueTabs({
               close(id);
             }
           }}
-          className="flex shrink-0 overflow-x-auto border-line border-b bg-bg-sunken"
+          className="flex shrink-0 items-center gap-1 overflow-x-auto px-1 py-0.5 [&::-webkit-scrollbar]:hidden"
         >
           <Tabs.Trigger
             value="source"
             data-tab-id="source"
             title={`Return to ${source}`}
-            className="h-10 max-w-[220px] shrink-0 truncate border-line border-r px-4 text-fg-2 focus-visible:shadow-ring data-[state=active]:bg-bg data-[state=active]:text-fg"
+            className="flex h-7 max-w-[240px] shrink-0 items-center gap-1.5 rounded-lg bg-hover px-2.5 font-medium text-fg-3 text-md transition-colors hover:bg-active hover:text-fg-2 focus-visible:shadow-ring data-[state=active]:bg-active data-[state=active]:text-fg"
           >
-            {source}
+            <Columns3
+              className="size-3.5 shrink-0"
+              aria-hidden
+            />
+            <span className="truncate">{source}</span>
           </Tabs.Trigger>
           {tabs.map((tab) => (
             <div
               key={tab.id}
               data-tab-id={tab.id}
               className={cn(
-                "flex shrink-0 items-center border-line border-r",
-                active === tab.id && "bg-bg",
+                "group flex max-w-[260px] shrink-0 items-center rounded-lg bg-hover text-fg-3 transition-colors hover:bg-active hover:text-fg-2",
+                active === tab.id && "bg-active text-fg",
               )}
             >
               <Tabs.Trigger
                 value={tab.id}
                 title={`${tab.title} · ${tab.project}`}
-                className="h-10 w-[200px] truncate px-3 text-left text-fg-2 focus-visible:shadow-ring data-[state=active]:text-fg"
+                className="flex h-7 min-w-0 items-center gap-1.5 rounded-lg pr-1 pl-2.5 text-left font-medium text-md focus-visible:shadow-ring"
               >
-                {tab.title}
+                <FileText
+                  className="size-3.5 shrink-0"
+                  aria-hidden
+                />
+                <span className="truncate">{tab.title}</span>
               </Tabs.Trigger>
               <Button
                 variant="ghost"
                 size="icon"
-                className="mr-1 size-6"
+                className="mr-0.5 size-6 rounded-md opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
                 aria-label={`Close tab: ${tab.title}`}
                 onClick={() => close(tab.id)}
               >
-                <X className="size-3.5" />
+                <X className="size-3" />
               </Button>
             </div>
           ))}
         </Tabs.List>
       ) : null}
-      <div className="relative flex min-h-0 min-w-0 flex-1">{children}</div>
+      <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl bg-bg shadow-panel">
+        {children}
+      </div>
     </Tabs.Root>
   );
 }
