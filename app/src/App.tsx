@@ -19,6 +19,7 @@ import { Updates } from "@/update/Updates";
 
 export default function App() {
   const theme = usePreferences((s) => s.theme);
+  const highContrast = usePreferences((s) => s.highContrast);
 
   useEffect(() => {
     document.documentElement.classList.remove("light", "dark");
@@ -29,6 +30,13 @@ export default function App() {
       document.documentElement.dataset.theme = theme;
     }
   }, [theme]);
+  useEffect(() => {
+    if (highContrast) {
+      document.documentElement.dataset.contrast = "high";
+    } else {
+      delete document.documentElement.dataset.contrast;
+    }
+  }, [highContrast]);
   useEffect(() => {
     const stop = listenToCore(queryClient);
 

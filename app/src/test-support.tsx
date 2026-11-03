@@ -35,6 +35,7 @@ afterEach(async () => {
   vi.clearAllTimers();
   vi.useRealTimers();
   document.documentElement.removeAttribute("data-theme");
+  document.documentElement.removeAttribute("data-contrast");
 });
 
 export function render(children: ReactNode, client = createQueryClient()) {

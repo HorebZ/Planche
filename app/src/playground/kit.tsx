@@ -4,24 +4,34 @@ import { cn } from "@/lib/cn";
 
 type Theme = "light" | "dark";
 
-function ThemeScope({ theme, children }: { theme: Theme; children: ReactNode }) {
+function ThemeScope({
+  theme,
+  highContrast = false,
+  children,
+}: {
+  theme: Theme;
+  highContrast?: boolean;
+  children: ReactNode;
+}) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
 
   return (
     <div
       ref={setContainer}
-      data-theme-scope={theme}
+      data-theme-scope={highContrast ? `high-contrast-${theme}` : theme}
+      data-contrast={highContrast ? "high" : undefined}
       className={cn(
         theme,
         "relative min-w-0 rounded-window bg-bg p-6 text-fg shadow-[0_0_0_1px_var(--pl-border)]",
       )}
     >
+      {highContrast && <p className="mb-3 font-mono text-fg-3 text-xs">High contrast · {theme}</p>}
       <PortalContainerProvider value={container}>{children}</PortalContainerProvider>
     </div>
   );
 }
 
-/** Renders its children once in the light theme and once in the dark theme, side by side. */
+/** Renders each color scheme with standard and high contrast, side by side. */
 export function Section({
   id,
   title,
@@ -41,6 +51,18 @@ export function Section({
       <div className="grid grid-cols-2 gap-6">
         <ThemeScope theme="light">{children()}</ThemeScope>
         <ThemeScope theme="dark">{children()}</ThemeScope>
+        <ThemeScope
+          theme="light"
+          highContrast
+        >
+          {children()}
+        </ThemeScope>
+        <ThemeScope
+          theme="dark"
+          highContrast
+        >
+          {children()}
+        </ThemeScope>
       </div>
     </section>
   );

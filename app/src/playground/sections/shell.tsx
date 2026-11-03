@@ -377,6 +377,7 @@ export function ShellSection() {
 function SettingsPreview() {
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<"system" | "light" | "dark">("system");
+  const [highContrast, setHighContrast] = useState(false);
   const [interval, setInterval] = useState("five_minutes");
   const [wake, setWake] = useState(true);
 
@@ -394,6 +395,8 @@ function SettingsPreview() {
         onWakeChange={setWake}
         theme={theme}
         onThemeChange={setTheme}
+        highContrast={highContrast}
+        onHighContrastChange={setHighContrast}
         onSignOut={() => {}}
         shortcuts={[{ label: "Command palette", keys: "⌘K" }]}
       />

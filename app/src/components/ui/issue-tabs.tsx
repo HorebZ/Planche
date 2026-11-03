@@ -100,7 +100,10 @@ export function IssueTabs({
           ))}
         </Tabs.List>
       ) : null}
-      <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl bg-bg shadow-panel">
+      <div
+        data-slot="issue-tabs-content"
+        className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl bg-bg shadow-panel"
+      >
         {children}
       </div>
     </Tabs.Root>

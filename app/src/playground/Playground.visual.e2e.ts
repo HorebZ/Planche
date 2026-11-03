@@ -1,6 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 
-type Theme = "light" | "dark";
+type Theme = "light" | "dark" | "high-contrast-light" | "high-contrast-dark";
 
 for (const theme of ["light", "dark"] as const) {
   test(`stacked notifications stay readable without hovering in ${theme}`, async ({ page }) => {
@@ -50,12 +50,14 @@ test("each theme scope resolves its own token values", async ({ page }) => {
   await expect(scope(page, "buttons", "dark")).toHaveCSS("color", "rgb(237, 237, 238)");
 });
 
-for (const theme of ["light", "dark"] as const) {
-  test(`${theme} metadata has at least 4.5:1 contrast on every base surface`, async ({ page }) => {
+for (const theme of ["light", "dark", "high-contrast-light", "high-contrast-dark"] as const) {
+  test(`${theme} text and controls have sufficient contrast on every base surface`, async ({
+    page,
+  }) => {
+    const highContrast = theme.startsWith("high-contrast");
     const contrasts = await scope(page, "buttons", theme).evaluate((panel) => {
       const probe = document.createElement("span");
 
-      probe.style.color = "var(--pl-fg-3)";
       panel.append(probe);
 
       const luminance = (color: string) => {
@@ -68,17 +70,33 @@ for (const theme of ["light", "dark"] as const) {
         return 0.2126 * r + 0.7152 * g + 0.0722 * b;
       };
 
-      const foreground = luminance(getComputedStyle(probe).color);
-      const results = ["bg-sunken", "bg", "column", "surface", "card", "elevated"].map((name) => {
-        probe.style.backgroundColor = `var(--pl-${name})`;
+      const tokens =
+        panel.dataset.contrast === "high"
+          ? ["fg", "fg-2", "fg-3", "border", "border-strong", "ring"]
+          : ["fg-3"];
+      const surfaces = ["bg-sunken", "bg", "column", "surface", "card", "elevated"];
 
-        const background = luminance(getComputedStyle(probe).backgroundColor);
+      if (panel.dataset.contrast === "high") {
+        surfaces.push("hover", "active");
+      }
 
-        return {
-          name,
-          ratio:
-            (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05),
-        };
+      const results = tokens.flatMap((token) => {
+        probe.style.color = `var(--pl-${token})`;
+
+        const foreground = luminance(getComputedStyle(probe).color);
+
+        return surfaces.map((name) => {
+          probe.style.backgroundColor = `var(--pl-${name})`;
+
+          const background = luminance(getComputedStyle(probe).backgroundColor);
+
+          return {
+            name: `${token} on ${name}`,
+            text: token.startsWith("fg"),
+            ratio:
+              (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05),
+          };
+        });
       });
 
       probe.remove();
@@ -86,9 +104,60 @@ for (const theme of ["light", "dark"] as const) {
       return results;
     });
 
-    for (const { name, ratio } of contrasts) {
-      expect(ratio, name).toBeGreaterThanOrEqual(4.5);
+    for (const { name, ratio, text } of contrasts) {
+      expect(ratio, name).toBeGreaterThanOrEqual(text ? (highContrast ? 7 : 4.5) : 3);
     }
+  });
+}
+
+for (const theme of ["high-contrast-light", "high-contrast-dark"] as const) {
+  test(`${theme} outlines controls and marks selection independently of the background`, async ({
+    page,
+  }) => {
+    const buttons = scope(page, "buttons", theme);
+    const focusColor = theme === "high-contrast-light" ? "rgb(3, 73, 180)" : "rgb(145, 203, 255)";
+    const borderColor =
+      theme === "high-contrast-light" ? "rgb(110, 119, 129)" : "rgb(122, 130, 142)";
+    const secondary = buttons.getByRole("button", { name: "Secondary", exact: true }).first();
+
+    await expect(secondary).toHaveCSS("outline-style", "solid");
+    await expect(secondary).toHaveCSS("outline-width", "1px");
+    await expect(secondary).toHaveCSS("outline-color", borderColor);
+    await secondary.focus();
+
+    await expect(secondary).toHaveCSS("outline-width", "2px");
+    await expect(secondary).toHaveCSS("outline-color", focusColor);
+    await expect(buttons.getByRole("button", { name: "Filter", exact: true }).nth(2)).toHaveCSS(
+      "outline-color",
+      focusColor,
+    );
+    await expect(buttons.getByRole("button", { name: "Filter", exact: true }).nth(2)).toHaveCSS(
+      "outline-width",
+      "2px",
+    );
+
+    const sidebarSelection = scope(page, "shell", theme).locator(
+      '[data-slot="sidebar-item"][data-active]',
+    );
+    const commandSelection = scope(page, "overlays", theme)
+      .locator('[data-slot="command-item"][data-selected="true"]')
+      .first();
+
+    for (const selected of [sidebarSelection, commandSelection]) {
+      await expect(selected).toHaveCSS("border-style", "solid");
+      await expect(selected).toHaveCSS("border-width", "1px");
+      await expect(selected).toHaveCSS("border-color", focusColor);
+      await expect(selected).toHaveCSS("box-shadow", "none");
+    }
+
+    const column = scope(page, "board", theme).locator('[data-slot="board-column"]').first();
+
+    await expect(column.locator("header")).toHaveCSS("border-bottom-color", borderColor);
+    await expect(column.locator("header")).toHaveCSS("border-bottom-width", "1px");
+    await expect(column.locator('[data-slot="board-column-count"]')).toHaveCSS(
+      "border-top-width",
+      "1px",
+    );
   });
 }
 

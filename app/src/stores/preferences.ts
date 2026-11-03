@@ -12,6 +12,7 @@ type ViewPreferences = {
 };
 type Preferences = {
   theme: Theme;
+  highContrast: boolean;
   hiddenProjects: Record<string, string[]>;
   projectColors: Record<string, Record<string, ProjectTone>>;
   views: Record<string, ViewPreferences>;
@@ -19,6 +20,7 @@ type Preferences = {
   setGroupExpanded: (context: string, group: string, expanded: boolean) => void;
   setPropertyVisible: (context: string, property: DisplayProperty, visible: boolean) => void;
   setTheme: (theme: Theme) => void;
+  setHighContrast: (highContrast: boolean) => void;
   setProjectHidden: (account: string, id: string, hidden: boolean) => void;
   setProjectColor: (account: string, id: string, color: ProjectTone) => void;
 };
@@ -27,6 +29,7 @@ export const usePreferences = create<Preferences>()(
   persist(
     (set) => ({
       theme: "system",
+      highContrast: false,
       hiddenProjects: {},
       projectColors: {},
       views: {},
@@ -71,6 +74,7 @@ export const usePreferences = create<Preferences>()(
           };
         }),
       setTheme: (theme) => set({ theme }),
+      setHighContrast: (highContrast) => set({ highContrast }),
       setProjectColor: (account, id, color) =>
         set((state) => ({
           projectColors: {

@@ -17,6 +17,8 @@ export type SettingsProps = {
   onWakeChange: (value: boolean) => void;
   theme: "system" | "light" | "dark";
   onThemeChange: (theme: "system" | "light" | "dark") => void;
+  highContrast: boolean;
+  onHighContrastChange: (highContrast: boolean) => void;
   onSignOut: () => void;
   onCheckUpdates: () => void;
   shortcuts: { label: string; keys: string }[];
@@ -32,6 +34,8 @@ export function SettingsDialog({
   onWakeChange,
   theme,
   onThemeChange,
+  highContrast,
+  onHighContrastChange,
   onSignOut,
   onCheckUpdates,
   shortcuts,
@@ -151,6 +155,14 @@ export function SettingsDialog({
                     </button>
                   ))}
                 </fieldset>
+                <div className="mt-3 flex items-center justify-between">
+                  High contrast
+                  <Switch
+                    aria-label="High contrast"
+                    checked={highContrast}
+                    onCheckedChange={onHighContrastChange}
+                  />
+                </div>
               </SettingsGroup>
               <SettingsGroup title="Updates">
                 <Button onClick={onCheckUpdates}>Check for updates…</Button>

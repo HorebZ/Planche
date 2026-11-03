@@ -2,8 +2,30 @@
 import { beforeEach, expect, test } from "vitest";
 import { usePreferences } from "./preferences";
 
-beforeEach(() =>
-  usePreferences.setState({ theme: "system", hiddenProjects: {}, projectColors: {}, views: {} }),
+beforeEach(() => usePreferences.setState(usePreferences.getInitialState()));
+
+test.each(["system", "light", "dark"] as const)(
+  "high contrast persists independently of the %s theme",
+  async (theme) => {
+    usePreferences.getState().setTheme(theme);
+    usePreferences.getState().setHighContrast(true);
+
+    const saved = localStorage.getItem("planche-ui-preferences");
+
+    if (!saved) {
+      throw new Error("Missing saved preferences");
+    }
+
+    usePreferences.setState({ theme: "system", highContrast: false });
+    localStorage.setItem("planche-ui-preferences", saved);
+    await usePreferences.persist.rehydrate();
+
+    expect(usePreferences.getState()).toMatchObject({ theme, highContrast: true });
+
+    usePreferences.getState().setHighContrast(false);
+
+    expect(usePreferences.getState()).toMatchObject({ theme, highContrast: false });
+  },
 );
 
 test("project colors persist independently for each account and project", async () => {
@@ -39,6 +61,7 @@ test("existing preferences load without saved project colors", async () => {
 
   expect(usePreferences.getState()).toMatchObject({
     theme: "dark",
+    highContrast: false,
     hiddenProjects: { alice: ["board"] },
     projectColors: {},
     views: {},

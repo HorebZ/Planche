@@ -257,6 +257,29 @@ test("settings send sync preferences through IPC and save the theme", async () =
   expect(button("Sync when the Mac wakes up").getAttribute("aria-checked")).toBe("false");
 });
 
+test("high contrast applies to every theme and can be turned off", async () => {
+  await open();
+  click(button("Settings ⌘,"));
+
+  await expect.poll(() => document.querySelector('[role="dialog"]')).not.toBeNull();
+  click(button("High contrast"));
+
+  for (const theme of ["Light", "Dark", "System"]) {
+    click(button(theme));
+
+    expect(document.documentElement.dataset.contrast).toBe("high");
+    expect(document.documentElement.dataset.theme).toBe(
+      theme === "System" ? undefined : theme.toLowerCase(),
+    );
+    expect(usePreferences.getState().highContrast).toBe(true);
+  }
+
+  click(button("High contrast"));
+
+  expect(document.documentElement.dataset.contrast).toBeUndefined();
+  expect(usePreferences.getState().highContrast).toBe(false);
+});
+
 test("the hide shortcut hides the current project from the board without closing it", async () => {
   await open();
 

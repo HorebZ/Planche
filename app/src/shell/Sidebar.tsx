@@ -143,7 +143,7 @@ function SyncFooter({ syncedAt, error }: { syncedAt: string | null; error?: stri
   const queryClient = useQueryClient();
   const prefs = useSyncPrefs();
   const setPrefs = useSetSyncPrefs();
-  const { theme, setTheme } = usePreferences();
+  const { theme, setTheme, highContrast, setHighContrast } = usePreferences();
   const settingsOpen = useUi((s) => s.overlay?.type === "settings");
   const setSettingsOpen = (open: boolean) =>
     useUi.getState().open(open ? { type: "settings" } : null);
@@ -185,6 +185,8 @@ function SyncFooter({ syncedAt, error }: { syncedAt: string | null; error?: stri
         onWakeChange={(on_wake) => prefs.data && setPrefs.mutate({ ...prefs.data, on_wake })}
         theme={theme}
         onThemeChange={setTheme}
+        highContrast={highContrast}
+        onHighContrastChange={setHighContrast}
         onSignOut={async () => {
           await commands.authSignOut();
           await queryClient.invalidateQueries({ queryKey: ["auth"] });

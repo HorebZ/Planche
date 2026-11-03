@@ -149,13 +149,71 @@
   --pl-shadow-window: var(--pl-shadow-window-dark);
 }
 @media (prefers-color-scheme: dark) {
-  :root:not(.light):not([data-theme="light"]) {
+  :root:where(:not(.light):not([data-theme="light"])) {
     --pl-shadow-card: var(--pl-shadow-card-dark);
     --pl-shadow-drag: var(--pl-shadow-drag-dark);
     --pl-shadow-pop: var(--pl-shadow-pop-dark);
     --pl-shadow-panel: var(--pl-shadow-panel-dark);
     --pl-shadow-window: var(--pl-shadow-window-dark);
   }
+}
+[data-contrast="high"] {
+  --pl-bg: light-dark(#ffffff, #0a0c10);
+  --pl-bg-sunken: light-dark(#e7ecf0, #010409);
+  --pl-surface: var(--pl-bg);
+  --pl-column: light-dark(#f4f6f8, #0d1117);
+  --pl-column-background: linear-gradient(var(--pl-column), var(--pl-column));
+  --pl-column-mask: none;
+  --pl-card: var(--pl-bg);
+  --pl-elevated: var(--pl-bg);
+  --pl-overlay: light-dark(rgba(14, 17, 22, 0.35), rgba(1, 4, 9, 0.7));
+  --pl-fg: light-dark(#0e1116, #ffffff);
+  --pl-fg-2: light-dark(#24292f, #f0f3f6);
+  --pl-fg-3: light-dark(#353d46, #c9d1d9);
+  --pl-primary: var(--pl-fg);
+  --pl-primary-fg: var(--pl-bg);
+  --pl-border: light-dark(#6e7781, #7a828e);
+  --pl-border-strong: light-dark(#3f4750, #b4bdc7);
+  --pl-ring: light-dark(#0349b4, #91cbff);
+  --pl-focus: var(--pl-ring);
+  --pl-hover: light-dark(#edf2f8, #182332);
+  --pl-active: light-dark(#d9e9ff, #163657);
+  --pl-skeleton: light-dark(#d4dae2, #343d4a);
+  --pl-accent: light-dark(#8a2600, #ffb68c);
+  --pl-accent-soft: light-dark(#fff0e8, #3c2415);
+  --pl-danger: light-dark(#a00020, #ffb3bd);
+  --pl-danger-soft: light-dark(#ffe8ed, #3f1420);
+  --pl-success: light-dark(#145c2e, #9ce5b1);
+  --pl-warning: light-dark(#664b00, #ffe07a);
+  --pl-s-draft: var(--pl-fg-3);
+  --pl-s-todo: var(--pl-fg-3);
+  --pl-s-doing: var(--pl-warning);
+  --pl-s-review: light-dark(#6b288c, #e1bbff);
+  --pl-s-done: var(--pl-success);
+  --pl-s-cancelled: var(--pl-fg-3);
+  --pl-s-deleted: var(--pl-danger);
+  --pl-danger-surface: color-mix(in srgb, var(--pl-danger) 12%, var(--pl-elevated));
+  --pl-project-red: var(--pl-danger);
+  --pl-project-orange: light-dark(#8a3000, #ffbe8b);
+  --pl-project-yellow: light-dark(#665000, #ffe07a);
+  --pl-project-lime: light-dark(#395500, #cde98a);
+  --pl-project-green: var(--pl-success);
+  --pl-project-teal: light-dark(#005959, #8ee0da);
+  --pl-project-cyan: light-dark(#005278, #96dbff);
+  --pl-project-blue: light-dark(#004ba0, #b0d1ff);
+  --pl-project-indigo: light-dark(#34318a, #c6c2ff);
+  --pl-project-purple: var(--pl-s-review);
+  --pl-project-pink: light-dark(#8a205e, #ffb8dd);
+  --pl-project-gray: light-dark(#484848, #d5d5d5);
+  --pl-shadow-card: 0 0 0 1px var(--pl-border);
+  --pl-shadow-drag: 0 0 0 1px var(--pl-border-strong), 0 18px 40px -10px var(--pl-overlay);
+  --pl-shadow-pop: 0 0 0 1px var(--pl-border-strong), 0 12px 32px -8px var(--pl-overlay);
+  --pl-shadow-panel: 0 0 0 1px var(--pl-border);
+  --pl-shadow-window: 0 0 0 1px var(--pl-border-strong), 0 30px 80px -20px var(--pl-overlay);
+  --pl-shadow-ring: 0 0 0 2px var(--pl-ring);
+  --pl-shadow-thumb: var(--pl-shadow-card);
+  --pl-logo-ink: var(--pl-fg);
+  --pl-logo-dot: var(--pl-accent);
 }
 @media (prefers-reduced-motion: reduce) {
   :root,
