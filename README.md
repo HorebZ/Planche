@@ -79,8 +79,9 @@ Your board cache lives in
 the interface. These stay outside the application bundle and survive app updates.
 The token is stored encrypted in the classic macOS login Keychain, without iCloud
 synchronization or Touch ID. This needs no paid Apple Developer membership. macOS
-may ask you to authorize access, especially after a development rebuild or when
-using the CLI. Planche reads it once per process and keeps it in Rust memory for
+may ask you to unlock the Keychain and authorize access, including when using the
+CLI. Development and alpha builds reuse a free local signing identity so rebuilds
+can retain **Always Allow** authorization. Planche reads it once per process and keeps it in Rust memory for
 that session. Existing `auth/token` files are migrated and removed only after a
 Keychain read verifies the copy. Signing out removes the saved token and leaves
 the board cache on disk.
@@ -103,6 +104,7 @@ Set the public `PLANCHE_GITHUB_CLIENT_ID` for a GitHub OAuth App with Device Flo
 enabled, or use a classic PAT in `PLANCHE_TOKEN` for local testing. Then run:
 
 ```sh
+bun run setup:signing
 bun run dev
 ```
 

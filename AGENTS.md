@@ -18,6 +18,7 @@ Native macOS client for GitHub Projects v2. Tauri 2 shell, React webview, all lo
 - `cargo test -p planche-core` runs the core tests.
 - `cargo run -p planche-cli -- board @me/<number>` prints a board.
 - `bun run dev` at the root loads the ignored root `.env` and runs the app. In dev, `http://localhost:1420/playground` shows every UI component in every state.
+- `bun run setup:signing` creates or reuses a free local macOS signing identity. Root `dev` signs before launch and `release:alpha` uses the same certificate; preserve it across builds so Keychain access survives recompilation. An existing identity can be supplied through `APPLE_SIGNING_IDENTITY`. Never regenerate a distributed identity or silently fall back to ad hoc signing.
 - `bun run dev:website` serves `website/` at `http://localhost:1421` with Python's standard HTTP server.
 - `cd app && bun run test:e2e` runs the focused WebKit e2e suite. Run `bunx playwright install webkit` once first. `test:visual`, `test:perf` and `test:video` run the optional browser checks and captures.
 - Live tests run against the real tracking project "Planche" (`@me/2`). A scenario that changes a card restores it at the end.

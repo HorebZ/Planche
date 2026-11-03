@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
+import { signingIdentity } from "./macos-signing";
 
 export function releaseManifest(version: string, arch: string, signature: string, notes: string) {
   assert(/^\d+\.\d+\.\d+-alpha\.\d+$/.test(version), "Use a version such as 0.1.0-alpha.1");
@@ -63,7 +64,7 @@ async function build() {
     ...process.env,
     PLANCHE_TOKEN: undefined,
     VITE_MOCK: undefined,
-    APPLE_SIGNING_IDENTITY: process.env.APPLE_SIGNING_IDENTITY || "-",
+    APPLE_SIGNING_IDENTITY: await signingIdentity(),
   };
   const buildEnv = {
     ...env,
@@ -159,9 +160,7 @@ async function build() {
 
   console.log(`Alpha ready: ${output}`);
   console.log(
-    env.APPLE_SIGNING_IDENTITY === "-"
-      ? "Ad hoc signature: testers may need Open Anyway in macOS Privacy & Security."
-      : "Developer ID signature: verify the notarization result before publishing.",
+    "Stable macOS signature. Without notarization, testers may need Open Anyway in macOS Privacy & Security.",
   );
 }
 

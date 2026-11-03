@@ -20,6 +20,7 @@ cd Planche
 bun install
 cp .env.example .env
 # Optionally set PLANCHE_TOKEN in .env for local development.
+bun run setup:signing
 bun run dev
 ```
 
@@ -29,6 +30,28 @@ The file is ignored by Git. Use a classic PAT in `PLANCHE_TOKEN` to skip GitHub
 sign-in during development; it never needs the macOS Keychain. Keep this file
 private (`chmod 600 .env`). Never name a credential `VITE_*`: those variables are
 exposed to the webview.
+
+`bun run setup:signing` creates a free, self-signed code-signing identity in your
+default user Keychain. It grants `/usr/bin/codesign` access to that signing key;
+it changes neither the GitHub credentials nor system certificate trust. The
+temporary private key is removed after import. The public certificate and its
+fingerprint remain in the ignored `.local/signing/` directory. Repeating setup
+reuses the same certificate; restore a missing identity instead of regenerating it.
+Back up the identity **with its private key** using Keychain Access before sharing
+builds. Keep the same identity on every machine that builds updates.
+
+`bun run dev` signs the executable before Cargo launches it, including after a
+Rust rebuild. Alpha builds use the same identity. Once you authorize the newly
+signed app with **Always Allow**, its stable signature lets Keychain recognize
+later builds. A locked login Keychain still needs to be unlocked; macOS can ask
+for both unlock and app authorization on the first access. This does not enable
+Touch ID or notarization and needs no Apple Developer subscription. To use an
+existing signing identity instead, set `APPLE_SIGNING_IDENTITY` in `.env`.
+The first signature may ask you to allow `codesign` to use the new signing key.
+To check the native runner after setup, run
+`PLANCHE_TEST_SIGNING=1 bun test scripts/macos-signing.integration.test.ts`.
+It rebuilds two tiny programs and checks that their code hashes differ while their
+designated requirements remain identical. This opt-in test uses the real Keychain.
 
 ## Development
 
@@ -49,8 +72,9 @@ the installed app needs neither Bun, Rust, a development server nor an `.env` fi
 On first launch, sign in with GitHub. The session, preferences, cache and queued
 actions stay outside the application bundle and survive replacement of the app.
 
-For the first small tester group, the release script uses an ad hoc macOS signature
-when `APPLE_SIGNING_IDENTITY` is absent. This is free, but the downloaded app is not
+For the first small tester group, the release script uses the stable local signature
+created by `bun run setup:signing` when `APPLE_SIGNING_IDENTITY` is absent.
+This is free, but the downloaded app is not
 notarized: after trying to open it, testers may need **System Settings → Privacy &
 Security → Open Anyway**. Managed Macs can prohibit that exception. A Developer ID
 certificate and notarization credentials can be supplied later to the same build.
@@ -117,6 +141,9 @@ Run these commands from `app/`.
 | `bun run tauri dev`   | Run the desktop app with hot reload             |
 | `bun run dev`         | Run the frontend only, at http://localhost:1420 |
 | `bun run tauri build` | Build the macOS app bundle                      |
+
+Direct Tauri commands bypass the root signing workflow. Use root `bun run dev`
+and `bun run release:alpha` when testing Keychain authorization across builds.
 
 While `bun run dev` is running, http://localhost:1420/playground shows every UI component in every state, in light and dark mode. The playground is excluded from production builds.
 

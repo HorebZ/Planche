@@ -6,7 +6,8 @@
     "app"
   ],
   "scripts": {
-    "dev": "bun run --cwd app --env-file=../.env tauri dev",
+    "dev": "bun --env-file=.env scripts/dev.ts",
+    "setup:signing": "bun scripts/macos-signing.ts",
     "dev:website": "python3 -m http.server 1421 --bind 127.0.0.1 --directory website",
     "release:alpha": "bun --env-file=.env scripts/release-alpha.ts",
     "publish:alpha": "bun scripts/publish-alpha.ts",
