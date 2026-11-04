@@ -1,0 +1,6 @@
+mutation AddComment($id: ID!, $body: String!, $request: String!) {
+  addComment(input: { subjectId: $id, body: $body, clientMutationId: $request }) {
+    clientMutationId
+    commentEdge { node { id body createdAt viewerDidAuthor isMinimized author { login } } }
+  }
+}

@@ -2,10 +2,13 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import type { ComponentProps } from "react";
 import { cardData } from "@/board/Card";
 import { IssueActivity } from "@/board/IssueActivity";
+import { IssueComments } from "@/board/IssueComments";
 import { IssueDescription } from "@/board/IssueDescription";
 import { statusTone } from "@/board/statusTone";
 import { IssueDetail } from "@/components/ui/issue-detail";
+import { notify } from "@/components/ui/toast";
 import type { Board } from "@/ipc/bindings.types";
+import { errorMessage } from "@/ipc/queries";
 
 type Props = Pick<
   ComponentProps<typeof IssueDetail>,
@@ -70,6 +73,17 @@ export function ProjectIssueDetail({ board, account, offline, contextNotice, ...
             content={card.id}
             sourceUrl={card.url}
             offline={offline}
+          />
+          <IssueComments
+            account={account}
+            content={card.id}
+            sourceUrl={card.url}
+            offline={offline}
+            onOpenLink={(url) =>
+              void openUrl(url).catch((error) =>
+                notify(`Could not open link: ${errorMessage(error)}`, "error"),
+              )
+            }
           />
         </div>
       ) : null}

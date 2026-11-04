@@ -1,0 +1,13 @@
+query IssueComments($id: ID!, $before: String) {
+  viewer { id }
+  node(id: $id) {
+    __typename id
+    ... on Issue {
+      comments(last: 100, before: $before) {
+        pageInfo { hasPreviousPage startCursor }
+        nodes { id body createdAt viewerDidAuthor isMinimized author { login } }
+      }
+    }
+  }
+  rateLimit { cost remaining resetAt }
+}

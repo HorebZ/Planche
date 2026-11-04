@@ -8,14 +8,18 @@ import { applyIntent } from "../../board/moveCard";
 import type {
   AppError,
   Board,
+  CommentSubmission,
   Intent,
+  IssueActivity,
   IssueDescription,
+  IssueIntent,
   ProjectList,
   ProjectMeta,
   SyncPrefs,
 } from "../bindings.types";
 import { issueActivity } from "./activity.fixtures";
 import { issueDescription, MARKDOWN_BODY } from "./description.fixtures";
+import { issueRecord } from "./issue.fixtures";
 import {
   boardFor,
   mockupBoard,
@@ -59,6 +63,17 @@ export function installMockBackend(scenario: Scenario) {
   );
   const changed = (project = PROJECT) => emit("board-changed", { project_id: project });
   let dispatchSeq = 0;
+  const comments = new Map<string, CommentSubmission[]>();
+  const commentSequences = new Map<string, number>();
+  const activities = new Map<string, IssueActivity>();
+  let failNextComment = false;
+  const issueFor = (content: string) =>
+    issueRecord({
+      content:
+        board?.columns
+          .flatMap((column) => column.cards)
+          .find((card) => card.kind === "issue" && card.id === content) ?? issueRecord().content,
+    });
   const descriptions = new Map<string, IssueDescription>();
   let descriptionError = scenario === "description-error";
   let descriptionDenied = scenario === "description-denied";
@@ -212,17 +227,88 @@ export function installMockBackend(scenario: Scenario) {
         ? { ...source, view: { number: 2, name: "Planning", manual_order: true } }
         : source;
     },
+    cached_issue: (args) => (descriptionDenied ? null : issueFor(String(args.content))),
+    refresh_issue: (args) =>
+      descriptionDenied
+        ? { status: "unavailable" }
+        : {
+            status: scenario === "offline" ? "offline" : "ready",
+            issue: issueFor(String(args.content)),
+          },
+    cached_issue_comments: (args) =>
+      structuredClone(comments.get(`${args.account}:${args.content}`) ?? []),
+    dispatch_issue_intent: (args) => {
+      const intent = args.intent as IssueIntent;
+      if (intent.type !== "add_comment" || !intent.body.trim() || descriptionDenied) {
+        return { type: "rejected", error: { kind: "Invalid", message: "Commenting unavailable" } };
+      }
+      const key = `${args.account}:${intent.content_id}`;
+      const submissions = comments.get(key) ?? [];
+      const existing = submissions.find((comment) => comment.request_id === intent.request_id);
+      if (existing && existing.status !== "failed") {
+        return { type: "accepted", seq: commentSequences.get(intent.request_id) };
+      }
+      const comment: CommentSubmission = {
+        request_id: intent.request_id,
+        body: intent.body,
+        status: "queued",
+        error: null,
+        entry: null,
+      };
+      comments.set(key, [
+        ...submissions.filter((saved) => saved.request_id !== intent.request_id),
+        comment,
+      ]);
+      const seq = ++dispatchSeq;
+      commentSequences.set(intent.request_id, seq);
+      void emit("issue-changed", {
+        account: args.account,
+        content: intent.content_id,
+        error: null,
+      });
+      if (scenario !== "offline") {
+        const refused = failNextComment;
+        failNextComment = false;
+        setTimeout(async () => {
+          if (auth.id !== args.account) {
+            return;
+          }
+          comment.status = refused ? "failed" : "sent";
+          comment.error = refused ? "GitHub refused this comment. Your text is saved." : null;
+          if (!refused) {
+            const activity = activities.get(key) ?? issueActivity();
+            comment.entry = {
+              id: `IC_${intent.request_id}`,
+              kind: "comment",
+              author: auth.login,
+              created_at: new Date().toISOString(),
+              body: intent.body,
+              subject: null,
+            };
+            activities.set(key, { ...activity, entries: [...activity.entries, comment.entry] });
+          }
+          await emit("issue-changed", {
+            account: args.account,
+            content: intent.content_id,
+            error: comment.error,
+          });
+        }, 300);
+      }
+      return { type: "accepted", seq };
+    },
     cached_issue_description: (args) =>
       scenario === "offline"
         ? issueDescription()
         : (descriptions.get(`${args.account}:${args.content}`) ?? null),
-    cached_issue_activity: () => (scenario === "offline" ? issueActivity() : null),
-    refresh_issue_activity: () => {
+    cached_issue_activity: (args) =>
+      activities.get(`${args.account}:${args.content}`) ??
+      (scenario === "offline" ? issueActivity() : null),
+    refresh_issue_activity: (args) => {
       if (descriptionDenied) {
         return null;
       }
 
-      return issueActivity();
+      return activities.get(`${args.account}:${args.content}`) ?? issueActivity();
     },
     refresh_issue_description: async (args) => {
       const key = `${args.account}:${args.content}`;
@@ -349,6 +435,9 @@ export function installMockBackend(scenario: Scenario) {
     { shouldMockEvents: true },
   );
   const backend = {
+    failNextComment: () => {
+      failNextComment = true;
+    },
     offerUpdate: async () => {
       update = updateStatus({
         phase: "available",

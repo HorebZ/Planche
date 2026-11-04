@@ -10,7 +10,7 @@ use tokio::task::JoinHandle;
 use crate::Error;
 use crate::cache::Cache;
 use crate::description::Descriptions;
-use crate::domain::{ContentId, ItemContent, User, UserId};
+use crate::domain::{ActivityEntry, ContentId, ItemContent, User, UserId};
 use crate::intent::Operation;
 use crate::sync::Remote;
 
@@ -19,6 +19,28 @@ pub struct IssueChange {
     pub account: UserId,
     pub content: ContentId,
     pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct CommentSubmission {
+    pub request_id: String,
+    pub body: String,
+    pub status: CommentStatus,
+    pub error: Option<String>,
+    pub entry: Option<ActivityEntry>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum CommentStatus {
+    Queued,
+    Uncertain,
+    Sent,
+    Failed,
+}
+
+pub(crate) fn comment_marker(request_id: &str) -> String {
+    format!("<!-- planche-comment:{request_id} -->")
 }
 
 pub struct IssueSender {
@@ -106,6 +128,11 @@ pub fn spawn(
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum IssueIntent {
+    AddComment {
+        content_id: ContentId,
+        request_id: String,
+        body: String,
+    },
     SetAssignees {
         content_id: ContentId,
         add: Vec<User>,
@@ -116,7 +143,9 @@ pub enum IssueIntent {
 impl IssueIntent {
     pub fn content_id(&self) -> &ContentId {
         match self {
-            Self::SetAssignees { content_id, .. } => content_id,
+            Self::SetAssignees { content_id, .. } | Self::AddComment { content_id, .. } => {
+                content_id
+            }
         }
     }
 
@@ -130,6 +159,7 @@ impl IssueIntent {
         }
 
         match self {
+            Self::AddComment { .. } => {}
             Self::SetAssignees { add, remove, .. } => {
                 for user in add {
                     if !assignees.iter().any(|assigned| assigned.id == user.id) {
@@ -143,11 +173,27 @@ impl IssueIntent {
     }
 
     pub fn to_operations(&self) -> Vec<Operation> {
+        if let Self::AddComment {
+            content_id,
+            request_id,
+            body,
+        } = self
+        {
+            return vec![Operation::AddComment {
+                content_id: content_id.clone(),
+                request_id: request_id.clone(),
+                body: body.clone(),
+            }];
+        }
+
         let Self::SetAssignees {
             content_id,
             add,
             remove,
-        } = self;
+        } = self
+        else {
+            unreachable!("comment handled above")
+        };
         let mut operations = Vec::new();
 
         if !add.is_empty() {
@@ -171,3 +217,7 @@ impl IssueIntent {
 #[cfg(test)]
 #[path = "issue.test.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "issue.comments.test.rs"]
+mod comment_tests;

@@ -116,6 +116,8 @@ pub struct ClosingPullRequest {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct IssuePermissions {
+    #[serde(default)]
+    pub comment: bool,
     pub assign: bool,
     pub close: bool,
     pub reopen: bool,

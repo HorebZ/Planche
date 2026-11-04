@@ -15,6 +15,7 @@ export const issueRecord = fixtureFactory<Issue>({
   },
   complete: true,
   permissions: {
+    comment: true,
     assign: true,
     close: true,
     reopen: false,

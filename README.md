@@ -37,14 +37,17 @@ The interface is inspired by [Linear](https://linear.app), adapted to GitHub Pro
 - Open an issue to read its Markdown description, comments and activity, inspect
   closing pull requests, and change its status or assignees. Cards also show
   available sub-issue progress and linked PR indicators.
+- Post Markdown comments from the issue panel or tab with ⌘Enter. Unsent text stays
+  with its account and issue; queued comments survive restarting the app. If a
+  publication cannot be confirmed, check GitHub before choosing Retry.
 - Keep working on cached boards offline. Descriptions and activity you've already
   loaded are saved locally too, with the activity's last refresh time.
 
 ## Alpha scope
 
 Planche currently supports GitHub Projects v2 board views and a local list layout.
-Saved GitHub view filters are not applied. Labels are read-only; posting comments,
-Roadmap, other project fields and creating repository issues still need GitHub.
+Saved GitHub view filters are not applied. Labels are read-only; Roadmap, other
+project fields and creating repository issues still need GitHub.
 Issue activity covers comments, closing/reopening, assignees and labels; reviews
 and the full GitHub timeline still need GitHub.
 

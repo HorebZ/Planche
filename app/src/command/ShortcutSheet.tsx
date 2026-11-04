@@ -10,6 +10,7 @@ import { keysOf, type Scope, shortcuts } from "@/keyboard/shortcuts";
 import { useUi } from "@/stores/ui";
 
 const scopes: Record<Scope, string> = {
+  comment: "Comment editor",
   tabs: "In the issue tab bar",
   global: "Anywhere",
   board: "On the board or list",

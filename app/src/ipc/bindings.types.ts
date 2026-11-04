@@ -77,6 +77,7 @@ export const commands = {
 	permissions: IssuePermissions | null,
 	fetched_at: string,
 } | null>("cached_issue", { account, content }),
+	cachedIssueComments: (account: UserId, content: ContentId) => __TAURI_INVOKE<CommentSubmission[]>("cached_issue_comments", { account, content }),
 	refreshIssue: (account: UserId, content: ContentId) => __TAURI_INVOKE<IssueLoad>("refresh_issue", { account, content }),
 	cachedIssueActivity: (account: UserId, content: ContentId) => __TAURI_INVOKE<{
 	entries: ActivityEntry[],
@@ -227,6 +228,16 @@ export type Column = {
 	cards: Card[],
 };
 
+export type CommentStatus = "queued" | "uncertain" | "sent" | "failed";
+
+export type CommentSubmission = {
+	request_id: string,
+	body: string,
+	status: CommentStatus,
+	error: string | null,
+	entry: ActivityEntry | null,
+};
+
 /**  Node ID of the item content, an `Issue`, `PullRequest` or `DraftIssue`. */
 export type ContentId = string;
 
@@ -292,13 +303,14 @@ export type IssueDescription = {
 	fetched_at: string,
 };
 
-export type IssueIntent = { type: "set_assignees"; content_id: ContentId; add: User[]; remove: User[] };
+export type IssueIntent = { type: "add_comment"; content_id: ContentId; request_id: string; body: string } | { type: "set_assignees"; content_id: ContentId; add: User[]; remove: User[] };
 
 export type IssueLoad = { status: "ready"; issue: Issue } | { status: "offline"; issue: Issue | null } | 
 /**  GitHub does not distinguish a deleted issue from one the token cannot see. */
 { status: "unavailable" };
 
 export type IssuePermissions = {
+	comment?: boolean,
 	assign: boolean,
 	close: boolean,
 	reopen: boolean,

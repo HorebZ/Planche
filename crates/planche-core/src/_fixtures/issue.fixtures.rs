@@ -5,6 +5,7 @@ pub(crate) fn issue_record() -> Issue {
         content: super::issue("standalone", 53, "HorebZ/Planche", "Standalone issue").content,
         complete: true,
         permissions: Some(IssuePermissions {
+            comment: true,
             assign: true,
             close: true,
             reopen: false,

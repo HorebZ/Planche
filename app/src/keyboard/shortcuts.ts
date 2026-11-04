@@ -9,13 +9,15 @@ export type Scope =
   | "palette"
   | "dialog"
   | "sidebar"
-  | "drag";
+  | "drag"
+  | "comment";
 
 /** One key per row. `key` is `KeyboardEvent.key`, after `Meta+` and `Shift+` when held. */
 type Shortcut = { key: string; command: string; scope: Scope; label: string };
 
 /** Every keyboard shortcut of the app. The handlers, the palette hints and the `?` sheet read it. */
 export const shortcuts = [
+  { key: "Meta+Enter", command: "comment.send", scope: "comment", label: "Send comment" },
   { key: "Meta+k", command: "palette.open", scope: "global", label: "Command palette" },
   { key: "c", command: "issue.new", scope: "global", label: "New draft" },
   { key: "Meta+r", command: "sync.now", scope: "global", label: "Sync now" },

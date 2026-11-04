@@ -62,6 +62,11 @@ pub enum Placement {
 /// One GitHub mutation, named after its operation in `graphql/mutations.graphql`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Operation {
+    AddComment {
+        content_id: ContentId,
+        request_id: String,
+        body: String,
+    },
     SetSingleSelect {
         project_id: ProjectId,
         item_id: ItemId,

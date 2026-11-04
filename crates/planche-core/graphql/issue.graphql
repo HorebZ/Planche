@@ -23,6 +23,8 @@ query Issue($id: ID!, $assigneesAfter: String, $labelsAfter: String) {
       }
       viewerCanAssign viewerCanClose viewerCanReopen
       viewerCanLabel viewerCanUpdate viewerCanDelete
+      locked viewerCanReact
+      commentRepository: repository { isArchived isDisabled }
     }
   }
   rateLimit { cost remaining resetAt }

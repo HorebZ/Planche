@@ -3,7 +3,8 @@ use std::sync::{Arc, Mutex};
 
 use crate::cache::Cache;
 use crate::domain::{ContentId, Issue, IssueActivity, IssueDescription, IssueLoad, UserId};
-use crate::issue::IssueIntent;
+use crate::intent::Operation;
+use crate::issue::{CommentSubmission, IssueIntent};
 use crate::sync::Remote;
 use crate::{Error, Result};
 
@@ -230,14 +231,44 @@ impl Descriptions {
             .issue(HOST, account, intent.content_id())?
             .ok_or(Error::Http(404))?;
 
-        if !issue
-            .permissions
-            .is_some_and(|permissions| permissions.assign)
-        {
+        if !issue.permissions.is_some_and(|permissions| match intent {
+            IssueIntent::SetAssignees { .. } => permissions.assign,
+            IssueIntent::AddComment { .. } => permissions.comment,
+        }) {
             return Err(Error::Http(403));
         }
 
         cache.enqueue_issue(account, intent)
+    }
+
+    pub fn comments(
+        &self,
+        cache: &Mutex<Cache>,
+        account: &UserId,
+        content: &ContentId,
+    ) -> Result<Vec<CommentSubmission>> {
+        let current = self.account.lock().expect("description session");
+
+        if current.as_deref() != Some(account) {
+            return Err(Error::NotSignedIn);
+        }
+
+        cache.lock().expect("cache lock").comments(account, content)
+    }
+
+    fn in_session<T>(
+        &self,
+        cache: &Mutex<Cache>,
+        session: &Arc<UserId>,
+        action: impl FnOnce(&mut Cache) -> Result<T>,
+    ) -> Result<T> {
+        let current = self.account.lock().expect("description session");
+
+        if !current.as_ref().is_some_and(|id| Arc::ptr_eq(id, session)) {
+            return Err(Error::NotSignedIn);
+        }
+
+        action(&mut cache.lock().expect("cache lock"))
     }
 
     /// The caller binds `remote` to this account. Never hold the cache across a network call.
@@ -271,6 +302,7 @@ impl Descriptions {
                 return Ok(());
             };
             let mut failure = None;
+            let mut comment = None;
 
             for operation in mutation.intent.to_operations() {
                 {
@@ -281,7 +313,45 @@ impl Descriptions {
                     }
                 }
 
-                if let Err(error) = remote.execute(&operation).await {
+                let result = if let Operation::AddComment {
+                    content_id,
+                    request_id,
+                    body,
+                } = &operation
+                {
+                    match remote.find_comment(account, content_id, request_id).await {
+                        Ok(Some(entry)) => {
+                            comment = Some(entry);
+                            Ok(())
+                        }
+                        Ok(None) => {
+                            let uncertain = self.in_session(cache, &session, |cache| {
+                                cache.comment_uncertain(account, request_id)
+                            })?;
+
+                            if uncertain {
+                                Err(Error::InvalidComment("Publication could not be confirmed. Check GitHub before retrying.".into()))
+                            } else {
+                                self.in_session(cache, &session, |cache| {
+                                    cache.mark_comment_uncertain(account, request_id)
+                                })?;
+
+                                match remote.post_comment(content_id, request_id, body).await {
+                                    Ok(entry) => {
+                                        comment = Some(entry);
+                                        Ok(())
+                                    }
+                                    Err(error) => Err(error),
+                                }
+                            }
+                        }
+                        Err(error) => Err(error),
+                    }
+                } else {
+                    remote.execute(&operation).await.map(|_| ())
+                };
+
+                if let Err(error) = result {
                     failure = Some(error);
                     break;
                 }
@@ -293,14 +363,27 @@ impl Descriptions {
                 return Err(Error::NotSignedIn);
             }
 
-            let cache = cache.lock().expect("cache lock");
+            let mut cache = cache.lock().expect("cache lock");
 
             match &failure {
+                None if comment.is_some() => {
+                    cache.finish_comment(mutation.seq, comment.as_ref(), None)?
+                }
                 None => cache.ack(mutation.seq)?,
                 Some(error) if error.is_transient() || matches!(error, Error::NotSignedIn) => {
                     cache.release(mutation.seq, &error.to_string())?;
+                    if matches!(mutation.intent, IssueIntent::AddComment { .. }) {
+                        changed(crate::issue::IssueChange {
+                            account: account.clone(),
+                            content: mutation.intent.content_id().clone(),
+                            error: None,
+                        });
+                    }
 
                     return Err(failure.expect("transient failure"));
+                }
+                Some(error) if matches!(mutation.intent, IssueIntent::AddComment { .. }) => {
+                    cache.finish_comment(mutation.seq, None, Some(&error.to_string()))?
                 }
                 Some(_) => cache.remove(mutation.seq)?,
             }

@@ -10,12 +10,14 @@ import { useUi } from "@/stores/ui";
 import { button, calls, click, fill, get, installMockBackend, key, render } from "@/test-support";
 
 async function open() {
-  installMockBackend("board");
+  const backend = installMockBackend("board");
 
   render(<App />, queryClient);
 
   await expect.poll(() => document.querySelectorAll('[data-slot="board-column"]').length).toBe(5);
   click(button("List"));
+
+  return backend;
 }
 
 const row = (id: number) => get(`[data-slot="issue-list-row"][data-item-id="PVTI_${id}"]`);
@@ -76,33 +78,31 @@ test("status and assignee menus act on the detail, then Escape returns to a visi
 });
 
 test("a removed item stays explicit and returns to the next row, or the view when none remains", async () => {
-  await open();
+  const backend = await open();
   click(row(226));
   const source = mockupBoard();
 
-  queryClient.setQueryData(
-    boardQuery(PROJECT, null).queryKey,
-    (): Board => ({
-      ...source,
-      columns: source.columns.map((column) => ({
-        ...column,
-        cards: column.cards.filter((card) => card.item_id !== "PVTI_226"),
-      })),
-    }),
-  );
+  const removed: Board = {
+    ...source,
+    columns: source.columns.map((column) => ({
+      ...column,
+      cards: column.cards.filter((card) => card.item_id !== "PVTI_226"),
+    })),
+  };
+  backend.setBoard(removed);
+  queryClient.setQueryData(boardQuery(PROJECT, null).queryKey, removed);
 
   await expect.poll(() => detail().textContent).toContain("Item no longer available");
   key("Escape", detail());
 
   expect(document.activeElement).toBe(row(223));
   click(row(223));
-  queryClient.setQueryData(
-    boardQuery(PROJECT, null).queryKey,
-    (): Board => ({
-      ...source,
-      columns: source.columns.map((column) => ({ ...column, cards: [] })),
-    }),
-  );
+  const empty: Board = {
+    ...source,
+    columns: source.columns.map((column) => ({ ...column, cards: [] })),
+  };
+  backend.setBoard(empty);
+  queryClient.setQueryData(boardQuery(PROJECT, null).queryKey, empty);
 
   await expect.poll(() => detail().textContent).toContain("Item no longer available");
   key("Escape", detail());

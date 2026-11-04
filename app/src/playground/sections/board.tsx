@@ -3,6 +3,7 @@ import { Avatar, AvatarStack } from "@/components/ui/avatar";
 import { BoardColumn, BoardColumnScroll } from "@/components/ui/board-column";
 import { BoardFilter, type BoardFilters, emptyFilters } from "@/components/ui/board-filter";
 import { NoFilterResults } from "@/components/ui/board-states";
+import { CommentComposer } from "@/components/ui/comment-composer";
 import { DisplayMenu, type DisplayProperty } from "@/components/ui/display-menu";
 import { DragHelpBar } from "@/components/ui/drag";
 import { IssueActivityContent } from "@/components/ui/issue-activity";
@@ -210,6 +211,52 @@ export function BoardSection() {
                       : undefined
                   }
                   onRetry={() => {}}
+                />
+              </State>
+            ))}
+          </Row>
+          <Row label="comment composer">
+            {(
+              [
+                "empty",
+                "ready",
+                "saving",
+                "locked",
+                "queued",
+                "uncertain",
+                "failed",
+                "sent",
+              ] as const
+            ).map((state) => (
+              <State
+                key={state}
+                label={state}
+                className="w-full rounded-xl bg-bg p-4"
+              >
+                <CommentComposer
+                  value={state === "empty" ? "" : "Ready for **review**."}
+                  onChange={() => {}}
+                  onSubmit={() => {}}
+                  permitted={state !== "locked"}
+                  submitting={state === "saving"}
+                  onRetry={() => {}}
+                  onOpenLink={() => {}}
+                  submissions={
+                    ["queued", "uncertain", "failed", "sent"].includes(state)
+                      ? [
+                          {
+                            request_id: "preview",
+                            body: "Saved comment text.",
+                            status: state as "queued" | "uncertain" | "failed" | "sent",
+                            error:
+                              state === "failed"
+                                ? "Publication could not be confirmed. Check GitHub before retrying."
+                                : null,
+                            entry: null,
+                          },
+                        ]
+                      : []
+                  }
                 />
               </State>
             ))}

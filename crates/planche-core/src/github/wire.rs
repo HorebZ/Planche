@@ -74,6 +74,12 @@ pub(super) struct IssueData {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct IssueNode {
+    #[serde(default)]
+    pub locked: bool,
+    #[serde(default)]
+    pub viewer_can_react: bool,
+    #[serde(default)]
+    pub comment_repository: CommentRepository,
     #[serde(flatten)]
     pub content: Content,
     pub body: String,
@@ -83,6 +89,62 @@ pub(super) struct IssueNode {
     pub viewer_can_label: bool,
     pub viewer_can_update: bool,
     pub viewer_can_delete: bool,
+}
+
+#[derive(Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct CommentRepository {
+    pub is_archived: bool,
+    pub is_disabled: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct CommentNode {
+    pub comments: CommentConnection,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct CommentConnection {
+    pub nodes: Vec<Option<Comment>>,
+    pub page_info: CommentPageInfo,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct CommentPageInfo {
+    pub has_previous_page: bool,
+    pub start_cursor: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct Comment {
+    pub id: String,
+    pub body: String,
+    pub created_at: String,
+    pub author: Option<Login>,
+    pub viewer_did_author: bool,
+    pub is_minimized: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct AddCommentData {
+    pub add_comment: AddCommentPayload,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct AddCommentPayload {
+    pub client_mutation_id: Option<String>,
+    pub comment_edge: Option<CommentEdge>,
+}
+
+#[derive(Deserialize)]
+pub(super) struct CommentEdge {
+    pub node: Comment,
 }
 
 #[derive(Deserialize)]

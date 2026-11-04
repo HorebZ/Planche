@@ -30,6 +30,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../migrations/0005_issue_complete.sql"),
     include_str!("../migrations/0006_issue_activity.sql"),
     include_str!("../migrations/0007_project_permissions.sql"),
+    include_str!("../migrations/0008_issue_comments.sql"),
 ];
 
 /// An acked row stays replayed until the snapshot reflects it, or for this many syncs.
@@ -126,15 +127,22 @@ impl Cache {
             |row| Ok((row.get(0)?, row.get(1)?)),
         ).optional()?;
 
-        row.map(|(json, fetched_at)| {
-            let mut activity: IssueActivity =
-                serde_json::from_str(&json).map_err(|error| Error::Cache(error.to_string()))?;
+        let activity = row
+            .map(|(json, fetched_at)| {
+                let mut activity: IssueActivity =
+                    serde_json::from_str(&json).map_err(|error| Error::Cache(error.to_string()))?;
 
-            activity.fetched_at = fetched_at;
+                activity.fetched_at = fetched_at;
 
+                Ok::<_, Error>(activity)
+            })
+            .transpose()?;
+
+        if host == crate::description::HOST {
+            self.with_confirmed_comments(account, content, activity)
+        } else {
             Ok(activity)
-        })
-        .transpose()
+        }
     }
 
     pub fn begin_activity(&self, host: &str, account: &UserId, content: &ContentId) -> Result<i64> {
@@ -165,6 +173,13 @@ impl Cache {
         if updated == 1 && activity.is_none() {
             self.invalidate_issue(host, account, content)?;
             tx.execute("UPDATE issue_description SET body = NULL, fetched_at = NULL, revision = revision + 1 WHERE host = ?1 AND account_id = ?2 AND content_id = ?3", params![host, account.as_str(), content.as_str()])?;
+        }
+
+        if updated == 1
+            && host == crate::description::HOST
+            && let Some(activity) = activity
+        {
+            comments::settle(&tx, account, content, activity)?;
         }
 
         tx.commit()?;
@@ -337,6 +352,7 @@ impl Cache {
 
                 tx.execute("UPDATE issue SET revision = ?4 WHERE host = ?1 AND account_id = ?2 AND content_id = ?3", params![host, account.as_str(), content.as_str(), revision])?;
                 tx.execute("DELETE FROM pending_mutation WHERE account_id = ?1 AND content_id = ?2 AND project_id IS NULL", params![account.as_str(), content.as_str()])?;
+                tx.execute("UPDATE issue_comment SET entry = NULL, status = CASE WHEN status = 'sent' THEN 'sent' ELSE 'failed' END, error = 'Issue no longer accessible' WHERE account_id = ?1 AND content_id = ?2", params![account.as_str(), content.as_str()])?;
                 tx.execute("UPDATE issue_activity SET activity = NULL, fetched_at = NULL, revision = revision + 1 WHERE host = ?1 AND account_id = ?2 AND content_id = ?3", params![host, account.as_str(), content.as_str()])?;
             }
         }
@@ -356,6 +372,7 @@ impl Cache {
         )?;
         self.conn.execute("DELETE FROM pending_mutation WHERE account_id = ?1 AND content_id = ?2 AND project_id IS NULL", params![account.as_str(), content.as_str()])?;
         self.conn.execute("UPDATE issue_activity SET activity = NULL, fetched_at = NULL, revision = revision + 1 WHERE host = ?1 AND account_id = ?2 AND content_id = ?3", params![host, account.as_str(), content.as_str()])?;
+        self.conn.execute("UPDATE issue_comment SET entry = NULL, status = CASE WHEN status = 'sent' THEN 'sent' ELSE 'failed' END, error = 'Issue no longer accessible' WHERE account_id = ?1 AND content_id = ?2", params![account.as_str(), content.as_str()])?;
 
         Ok(())
     }
@@ -602,11 +619,57 @@ impl Cache {
     pub fn enqueue_issue(&mut self, account: &UserId, intent: &IssueIntent) -> Result<i64> {
         let tx = self.write()?;
 
+        if let IssueIntent::AddComment {
+            content_id,
+            request_id,
+            body,
+        } = intent
+        {
+            if body.trim().is_empty()
+                || request_id.is_empty()
+                || request_id.len() > 64
+                || !request_id
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+            {
+                return Err(Error::InvalidComment(
+                    "A comment needs text and a valid request ID.".into(),
+                ));
+            }
+
+            let existing: Option<(i64, String, String, String)> = tx.query_row(
+                "SELECT seq, content_id, body, status FROM issue_comment WHERE account_id = ?1 AND request_id = ?2",
+                params![account.as_str(), request_id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            ).optional()?;
+
+            if let Some((seq, content, saved, status)) = existing {
+                if content != content_id.as_str() || saved != *body {
+                    return Err(Error::InvalidComment(
+                        "This request ID already belongs to a different comment.".into(),
+                    ));
+                }
+
+                if status != "failed" {
+                    return Ok(seq);
+                }
+            }
+        }
+
         tx.execute(&format!(
             "INSERT INTO pending_mutation (account_id, content_id, intent, created_at) VALUES (?1, ?2, ?3, {NOW})"),
             params![account.as_str(), intent.content_id().as_str(), serde_json::to_string(intent).expect("intent serializes")],
         )?;
         let seq = tx.last_insert_rowid();
+
+        if let IssueIntent::AddComment {
+            content_id,
+            request_id,
+            body,
+        } = intent
+        {
+            tx.execute("INSERT INTO issue_comment (account_id, request_id, content_id, seq, body, status) VALUES (?1, ?2, ?3, ?4, ?5, 'queued') ON CONFLICT (account_id, request_id) DO UPDATE SET seq = excluded.seq, status = 'queued', error = NULL",
+                params![account.as_str(), request_id, content_id.as_str(), seq, body])?;
+        }
 
         tx.commit()?;
 
@@ -1088,6 +1151,8 @@ impl Cache {
             .collect()
     }
 }
+
+mod comments;
 
 fn migrate(conn: &mut Connection) -> Result<()> {
     let version = |conn: &Connection| -> Result<usize> {

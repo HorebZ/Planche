@@ -79,6 +79,20 @@ export function Field({ className, ...props }: ComponentProps<"div">) {
   );
 }
 
+export function Textarea({ className, ...props }: ComponentProps<"textarea">) {
+  return (
+    <div
+      data-slot="textarea"
+      className={cn(fieldVariants(), "h-auto w-full py-2", className)}
+    >
+      <textarea
+        {...props}
+        className="min-h-24 w-full resize-y bg-transparent text-base text-fg outline-none placeholder:text-fg-3 disabled:text-fg-3"
+      />
+    </div>
+  );
+}
+
 export function FieldMessage({ className, children, ...props }: ComponentProps<"p">) {
   return (
     <p

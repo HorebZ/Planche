@@ -17,6 +17,10 @@ use crate::intent::Operation;
 const QUERIES: &str = include_str!("../../graphql/queries.graphql");
 const MUTATIONS: &str = include_str!("../../graphql/mutations.graphql");
 
+#[path = "comments.rs"]
+mod comments;
+pub use comments::{find_comment, post_comment};
+
 pub async fn issue_activity(
     client: &GithubClient,
     account: &UserId,
@@ -162,6 +166,7 @@ pub async fn issue(
         && let Some((issue, _)) = &mut loaded
     {
         issue.permissions = Some(IssuePermissions {
+            comment: false,
             assign: false,
             close: false,
             reopen: false,
@@ -237,6 +242,10 @@ async fn load_issue<F: std::future::Future<Output = Result<wire::IssueData>>>(
                     content: page_content,
                     complete: true,
                     permissions: Some(IssuePermissions {
+                        comment: !node.locked
+                            && node.viewer_can_react
+                            && !node.comment_repository.is_archived
+                            && !node.comment_repository.is_disabled,
                         assign: node.viewer_can_assign,
                         close: node.viewer_can_close,
                         reopen: node.viewer_can_reopen,
@@ -554,6 +563,15 @@ pub async fn items_page(
 /// Sends one mutation. `AddDraftIssue` answers with the new item's ID.
 pub async fn execute(client: &GithubClient, operation: &Operation) -> Result<Option<ItemId>> {
     let (name, variables) = match operation {
+        Operation::AddComment {
+            content_id,
+            request_id,
+            body,
+        } => {
+            post_comment(client, content_id, request_id, body).await?;
+
+            return Ok(None);
+        }
         Operation::SetSingleSelect {
             project_id,
             item_id,

@@ -179,6 +179,8 @@ export function createQueryClient() {
     client.removeQueries({ queryKey: ["board"] });
     void client.cancelQueries({ queryKey: ["issue-description"] }, { revert: false, silent: true });
     client.removeQueries({ queryKey: ["issue-description"] });
+    void client.cancelQueries({ queryKey: ["issue-comments"] }, { revert: false, silent: true });
+    client.removeQueries({ queryKey: ["issue-comments"] });
     void client.cancelQueries({ queryKey: ["issue-activity"] }, { revert: false, silent: true });
     client.removeQueries({ queryKey: ["issue-activity"] });
     void client.cancelQueries({ queryKey: ["issue"] }, { revert: false, silent: true });
@@ -338,6 +340,18 @@ export const cachedIssueQuery = (account: string, content: string) =>
       signal.throwIfAborted();
 
       return issue;
+    },
+  });
+
+export const commentsQuery = (account: string, content: string) =>
+  queryOptions({
+    queryKey: ["issue-comments", "github.com", account, content],
+    networkMode: "always",
+    refetchOnMount: "always",
+    queryFn: async ({ signal }) => {
+      const result = await commands.cachedIssueComments(account, content);
+      signal.throwIfAborted();
+      return result;
     },
   });
 
@@ -504,6 +518,13 @@ export async function listenToCore(client: QueryClient) {
       if (client.getQueryData(authQuery.queryKey)?.id !== payload.account) {
         return;
       }
+
+      void client.invalidateQueries({
+        queryKey: ["issue-comments", "github.com", payload.account, payload.content],
+      });
+      void client.invalidateQueries({
+        queryKey: ["issue-activity", "github.com", payload.account, payload.content],
+      });
 
       void client.invalidateQueries({
         queryKey: ["issue", "github.com", payload.account, payload.content],

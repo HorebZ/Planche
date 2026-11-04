@@ -6,6 +6,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, vi } from "vitest";
 import { calls, installMockBackend } from "./ipc/_fixtures/backend.fixtures";
 import { createQueryClient, queryClient } from "./ipc/queries";
+import { useCommentDrafts } from "./stores/comment-drafts";
 import { useDrafts } from "./stores/drafts";
 import { usePreferences } from "./stores/preferences";
 import { useUi } from "./stores/ui";
@@ -19,6 +20,7 @@ beforeEach(() => {
   localStorage.clear();
   useUi.setState(useUi.getInitialState());
   useDrafts.setState(useDrafts.getInitialState());
+  useCommentDrafts.setState(useCommentDrafts.getInitialState());
   usePreferences.setState(usePreferences.getInitialState());
   queryClient.clear();
 });
@@ -84,9 +86,13 @@ export function click(element: HTMLElement) {
   flushSync(() => element.click());
 }
 
-export function fill(input: HTMLInputElement, value: string) {
+export function fill(input: HTMLInputElement | HTMLTextAreaElement, value: string) {
   // Bypass React's value tracker, as a browser edit does.
-  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, value);
+  const prototype =
+    input instanceof HTMLTextAreaElement
+      ? HTMLTextAreaElement.prototype
+      : HTMLInputElement.prototype;
+  Object.getOwnPropertyDescriptor(prototype, "value")?.set?.call(input, value);
   flushSync(() => input.dispatchEvent(new Event("input", { bubbles: true })));
 }
 

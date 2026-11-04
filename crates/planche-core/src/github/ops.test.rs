@@ -143,6 +143,9 @@ async fn independent_issue_load_checks_identity_and_paginates_both_connections()
     let mut base: Value = serde_json::from_str(ITEM_PAGES[0]).unwrap();
     let mut node = base["data"]["node"]["items"]["nodes"][0]["content"].take();
     node["body"] = json!("Shared body");
+    node["viewerCanReact"] = json!(true);
+    node["locked"] = json!(false);
+    node["commentRepository"] = json!({ "isArchived": false, "isDisabled": false });
     for permission in [
         "viewerCanAssign",
         "viewerCanClose",
@@ -155,6 +158,29 @@ async fn independent_issue_load_checks_identity_and_paginates_both_connections()
     }
     let content = ContentId(node["id"].as_str().unwrap().into());
     let account = UserId("A".into());
+    for restriction in ["locked", "archived", "disabled", "interaction"] {
+        let mut restricted = node.clone();
+        restricted["assignees"]["pageInfo"] = json!({ "hasNextPage": false, "endCursor": null });
+        restricted["labels"]["pageInfo"] = json!({ "hasNextPage": false, "endCursor": null });
+        match restriction {
+            "locked" => restricted["locked"] = json!(true),
+            "archived" => restricted["commentRepository"]["isArchived"] = json!(true),
+            "disabled" => restricted["commentRepository"]["isDisabled"] = json!(true),
+            _ => restricted["viewerCanReact"] = json!(false),
+        }
+        let (issue, _) = load_issue(&account, &content, |_, _| {
+            std::future::ready(Ok(serde_json::from_value(
+                json!({ "viewer": { "id": "A" }, "node": restricted }),
+            )
+            .unwrap()))
+        })
+        .await
+        .unwrap()
+        .unwrap();
+
+        assert!(!issue.permissions.unwrap().comment, "{restriction}");
+    }
+
     let mut requests = Vec::new();
     let result = load_issue(&account, &content, |users_after, labels_after| {
         let page = requests.len();
@@ -165,6 +191,8 @@ async fn independent_issue_load_checks_identity_and_paginates_both_connections()
 
         std::future::ready(Ok(serde_json::from_value(json!({ "viewer": { "id": "A" }, "node": node })).unwrap()))
     }).await.unwrap().unwrap();
+    assert!(result.0.permissions.as_ref().unwrap().comment);
+
     let ItemContent::Issue {
         assignees, labels, ..
     } = result.0.content

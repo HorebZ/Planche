@@ -75,6 +75,7 @@ impl FakeGithub {
         let index = |items: &[Item], id: &ItemId| items.iter().position(|i| &i.id == id).unwrap();
 
         match operation {
+            Operation::AddComment { .. } => panic!("use the comment remote for comments"),
             Operation::SetSingleSelect {
                 item_id,
                 field_id,

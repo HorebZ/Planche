@@ -13,7 +13,9 @@ use tokio::sync::{broadcast, mpsc};
 
 use crate::board::project_board;
 use crate::cache::{Cache, Mutation};
-use crate::domain::{Board, ItemId, ProjectId, ProjectMeta, RateUsage};
+use crate::domain::{
+    ActivityEntry, Board, ContentId, ItemId, ProjectId, ProjectMeta, RateUsage, UserId,
+};
 use crate::error::{Error, GraphqlError, Result};
 use crate::github::GithubClient;
 use crate::github::ops::{self, ItemsPage};
@@ -21,6 +23,30 @@ use crate::intent::{Intent, Operation, Placement, to_operations};
 
 /// The GitHub calls the engine makes. Tests swap in a fake.
 pub trait Remote: Send + Sync + 'static {
+    fn find_comment(
+        &self,
+        _account: &UserId,
+        _content: &ContentId,
+        _request: &str,
+    ) -> impl Future<Output = Result<Option<ActivityEntry>>> + Send {
+        async {
+            Err(Error::Decode(
+                "comment lookup is not supported by this remote".into(),
+            ))
+        }
+    }
+    fn post_comment(
+        &self,
+        _content: &ContentId,
+        _request: &str,
+        _body: &str,
+    ) -> impl Future<Output = Result<ActivityEntry>> + Send {
+        async {
+            Err(Error::Decode(
+                "comment publication is not supported by this remote".into(),
+            ))
+        }
+    }
     /// The metadata and the first page of `<owner>/<number>`.
     fn board_page(
         &self,
@@ -39,6 +65,22 @@ pub trait Remote: Send + Sync + 'static {
 }
 
 impl Remote for GithubClient {
+    fn find_comment(
+        &self,
+        account: &UserId,
+        content: &ContentId,
+        request: &str,
+    ) -> impl Future<Output = Result<Option<ActivityEntry>>> + Send {
+        ops::find_comment(self, account, content, request)
+    }
+    fn post_comment(
+        &self,
+        content: &ContentId,
+        request: &str,
+        body: &str,
+    ) -> impl Future<Output = Result<ActivityEntry>> + Send {
+        ops::post_comment(self, content, request, body)
+    }
     fn board_page(
         &self,
         owner: &str,

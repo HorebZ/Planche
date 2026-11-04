@@ -15,7 +15,7 @@ use planche_core::domain::{
 use planche_core::error::Error;
 use planche_core::github::{GithubClient, ops};
 use planche_core::intent::Intent;
-use planche_core::issue::{self, IssueChange, IssueIntent, IssueSender};
+use planche_core::issue::{self, CommentSubmission, IssueChange, IssueIntent, IssueSender};
 use planche_core::sync::{
     self, SyncCommand, SyncConfig, SyncEvent, SyncHandle, SyncPrefs, SyncReport, SyncStatus,
     SystemClock,
@@ -570,6 +570,18 @@ pub async fn cached_issue(
     Ok(core
         .descriptions
         .cached_issue(&core.reader, &account, &content)?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn cached_issue_comments(
+    core: State<'_, Core>,
+    account: UserId,
+    content: ContentId,
+) -> Result<Vec<CommentSubmission>> {
+    Ok(core
+        .descriptions
+        .comments(&core.reader, &account, &content)?)
 }
 
 #[tauri::command]
