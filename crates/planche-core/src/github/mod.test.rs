@@ -26,6 +26,8 @@ fn projects_and_issue_operations_use_their_own_connection_without_a_pat_fallback
         "IssueDescription",
         "IssueActivity",
         "IssueComments",
+        "RepositoryIssues",
+        "RepositoryIssueOptions",
         "AddComment",
         "AssignableUsers",
         "AddAssignees",

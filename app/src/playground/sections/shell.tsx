@@ -4,6 +4,7 @@ import { AppLockContent } from "@/components/ui/app-lock";
 import { BoardErrorCard, EmptyBoardCard, SkeletonColumn } from "@/components/ui/board-states";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { IssueDetail } from "@/components/ui/issue-detail";
 import {
   AccountBlock,
   AppIcon,
@@ -14,6 +15,7 @@ import {
   ProjectAccessState,
   ScopeRow,
 } from "@/components/ui/onboarding";
+import { RepositoryIssueFilters, RepositoryIssueList } from "@/components/ui/repository-issues";
 import { RepositoryPickerContent } from "@/components/ui/repository-picker";
 import { SettingsDialog } from "@/components/ui/settings";
 import {
@@ -54,6 +56,66 @@ export function ShellSection() {
     >
       {() => (
         <div className="flex flex-col gap-5">
+          <State label="Repository issues · GitHub states">
+            <RepositoryIssueFilters
+              filter={{ state: "all", milestone: 1, labels: ["bug"] }}
+              options={{
+                milestones: [{ number: 1, title: "v1.3" }],
+                labels: [{ name: "bug", color: "d73a4a" }],
+              }}
+              onChange={() => {}}
+            />
+            <RepositoryIssueList
+              issues={[
+                {
+                  id: "open",
+                  kind: "issue",
+                  state: "open",
+                  title: "Browse repository issues",
+                  number: 59,
+                  labels: [],
+                  assignees: [],
+                },
+                {
+                  id: "closed",
+                  kind: "issue",
+                  state: "closed",
+                  title: "Save sidebar repositories",
+                  number: 58,
+                  labels: [],
+                  assignees: [],
+                },
+              ]}
+              onOpen={() => {}}
+            />
+            <p className="text-fg-3 text-xs">
+              Offline · Partial cache · More pages remain on GitHub
+            </p>
+          </State>
+
+          <State
+            label="Repository issue detail"
+            className="relative h-[400px] overflow-hidden rounded-xl bg-bg shadow-panel"
+          >
+            <IssueDetail
+              itemId="repository-preview"
+              item={{
+                kind: "issue",
+                state: "closed",
+                repo: "Planche",
+                number: 58,
+                title: "Save sidebar repositories",
+                labels: [],
+                assignees: [],
+              }}
+              project="HorebZ/Planche"
+              status={null}
+              githubState="closed"
+              editable
+              active={false}
+              onBack={() => {}}
+            />
+          </State>
           <Row label="onboarding intro">
             <State
               label="summary"

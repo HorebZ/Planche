@@ -3,7 +3,7 @@ import { memo, useLayoutEffect, useRef } from "react";
 import type { DisplayProperty } from "@/components/ui/display-menu";
 import { IssueCard, type IssueCardData } from "@/components/ui/issue-card";
 import type { StatusKey } from "@/components/ui/status";
-import type { Card as BoardCard } from "@/ipc/bindings.types";
+import type { Card as BoardCard, ItemContent } from "@/ipc/bindings.types";
 import { commandFor } from "@/keyboard/shortcuts";
 import { useUi } from "@/stores/ui";
 
@@ -12,7 +12,7 @@ function shortRepo(repo: string) {
   return repo.slice(repo.indexOf("/") + 1);
 }
 
-export function cardData(card: BoardCard): IssueCardData {
+export function cardData(card: ItemContent): IssueCardData {
   switch (card.kind) {
     case "issue":
       return {

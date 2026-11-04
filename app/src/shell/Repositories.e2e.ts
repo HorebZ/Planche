@@ -44,7 +44,7 @@ test("repository favorites paginate, include organizations and external URLs, an
   await page.reload();
 
   await expect(
-    repositories.getByRole("link", { name: "Open external/public on GitHub", exact: true }),
+    repositories.getByRole("link", { name: "Open issues in external/public", exact: true }),
   ).toBeVisible();
   await expect(repositories.locator('[data-slot="sidebar-repository"]')).toHaveCount(3);
   await expect(page.locator('[data-slot="board-column"]')).toHaveCount(5);
@@ -68,7 +68,7 @@ test("repository refresh follows renames, preserves inaccessible entries, and re
     window.dispatchEvent(new Event("visibilitychange"));
   });
   const repository = page.getByRole("link", {
-    name: "Open new-owner/new-name on GitHub",
+    name: "Open issues in new-owner/new-name",
     exact: true,
   });
   await expect(repository).toBeVisible();
@@ -121,7 +121,7 @@ test("repositories are available before choosing a Project, and submitting their
 
   await expect(page.getByRole("heading", { name: "Pick a project", exact: true })).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Open external/public on GitHub", exact: true }),
+    page.getByRole("link", { name: "Open issues in external/public", exact: true }),
   ).toBeVisible();
   await expect(page.locator('[data-slot="board-column"]')).toHaveCount(0);
 });

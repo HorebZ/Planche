@@ -9,6 +9,7 @@ import { createQueryClient, queryClient } from "./ipc/queries";
 import { useCommentDrafts } from "./stores/comment-drafts";
 import { useDrafts } from "./stores/drafts";
 import { usePreferences } from "./stores/preferences";
+import { useRepositoryViews } from "./stores/repository-views";
 import { useUi } from "./stores/ui";
 
 export { calls, installMockBackend };
@@ -20,6 +21,7 @@ beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
   useUi.setState(useUi.getInitialState());
+  useRepositoryViews.setState(useRepositoryViews.getInitialState());
   useDrafts.setState(useDrafts.getInitialState());
   useCommentDrafts.setState(useCommentDrafts.getInitialState());
   usePreferences.setState(usePreferences.getInitialState());

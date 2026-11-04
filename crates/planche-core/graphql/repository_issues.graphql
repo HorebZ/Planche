@@ -1,0 +1,38 @@
+query RepositoryIssues($id: ID!, $after: String, $states: [IssueState!], $labels: [String!], $filter: IssueFilters) {
+  viewer { id }
+  node(id: $id) {
+    __typename
+    id
+    ... on Repository {
+      issues(first: 50, after: $after, states: $states, labels: $labels, filterBy: $filter, orderBy: { field: CREATED_AT, direction: DESC }) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          __typename id number title url issueState: state createdAt
+          repository { nameWithOwner }
+          assignees(first: 100) { nodes { id login avatarUrl } }
+          labels(first: 100) { nodes { name color } }
+        }
+      }
+    }
+  }
+  rateLimit { cost remaining resetAt }
+}
+
+query RepositoryIssueOptions($id: ID!, $labelsAfter: String, $milestonesAfter: String, $labels: Boolean!, $milestones: Boolean!) {
+  viewer { id }
+  node(id: $id) {
+    __typename
+    id
+    ... on Repository {
+      labels(first: 100, after: $labelsAfter) @include(if: $labels) {
+        pageInfo { hasNextPage endCursor }
+        nodes { name color }
+      }
+      milestones(first: 100, after: $milestonesAfter, states: [OPEN, CLOSED]) @include(if: $milestones) {
+        pageInfo { hasNextPage endCursor }
+        nodes { number title }
+      }
+    }
+  }
+  rateLimit { cost remaining resetAt }
+}

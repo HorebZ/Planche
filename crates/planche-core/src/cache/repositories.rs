@@ -93,7 +93,10 @@ impl Cache {
 
         let data = repository
             .map(|repository| serde_json::to_string(repository).expect("repository serializes"));
-        self.conn.execute("UPDATE selected_repository SET data = COALESCE(?4, data), unavailable = ?5 WHERE account_id = ?1 AND repository_id = ?2 AND revision = ?3", params![account.as_str(), id, revision, data, repository.is_none()])?;
+        let updated = self.conn.execute("UPDATE selected_repository SET data = COALESCE(?4, data), unavailable = ?5 WHERE account_id = ?1 AND repository_id = ?2 AND revision = ?3", params![account.as_str(), id, revision, data, repository.is_none()])?;
+        if updated == 1 && repository.is_none() {
+            self.clear_repository_data(account, id)?;
+        }
 
         self.selected_repository(account, id)
     }

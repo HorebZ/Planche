@@ -1,0 +1,125 @@
+import { expect, type Page, test } from "@playwright/test";
+
+async function openRepository(page: Page, scenario = "board") {
+  await page.goto(`/?mock=${scenario}`);
+  await page.getByRole("button", { name: "Add repositories", exact: true }).click();
+  const picker = page.getByRole("dialog", { name: "Add repositories", exact: true });
+  await picker.getByRole("button", { name: "Add HorebZ/Planche", exact: true }).click();
+  await expect(
+    picker.getByRole("button", { name: "HorebZ/Planche already added", exact: true }),
+  ).toBeDisabled();
+  await picker.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("link", { name: "Open issues in HorebZ/Planche", exact: true }).click();
+  await expect(
+    page.getByRole("list", { name: "Repository issues", exact: true }).getByRole("listitem"),
+  ).toHaveCount(50);
+}
+
+test("source pagination, AND milestone and OR labels, and persistent deletable filter shortcuts", async ({
+  page,
+}) => {
+  await openRepository(page);
+  const rows = page
+    .getByRole("list", { name: "Repository issues", exact: true })
+    .getByRole("listitem");
+  await page.getByRole("button", { name: "All", exact: true }).click();
+  await expect(rows).toHaveCount(50);
+  await page.getByRole("button", { name: "Load more issues", exact: true }).click();
+  await expect(rows).toHaveCount(100);
+  await page.getByRole("button", { name: "Load more issues", exact: true }).click();
+  await expect(rows).toHaveCount(123);
+  await expect(page.getByText(/123 issues loaded · Complete result/)).toBeVisible();
+  await page.getByRole("button", { name: "Filter by milestone", exact: true }).click();
+  await page.getByRole("menuitemradio", { name: "Backlog", exact: true }).click();
+  await expect(rows).toHaveCount(50);
+  await page.getByRole("button", { name: "Filter by labels", exact: true }).click();
+  await page.getByRole("menuitemcheckbox", { name: "bug", exact: true }).click();
+  await expect(rows).toHaveCount(0);
+  await page.getByRole("menuitemcheckbox", { name: "help", exact: true }).click();
+  await page.keyboard.press("Escape");
+  await expect(rows).toHaveCount(21);
+  await expect(
+    page.getByRole("button", { name: "Open issue #3: Repository issue 3", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("textbox", { name: "Saved filter name", exact: true }).fill("Triage");
+  await page.getByRole("button", { name: "Save filter", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Triage", exact: true })).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "Triage", exact: true }).click();
+  await expect(rows).toHaveCount(21);
+  await expect(
+    page.getByRole("button", { name: "Filter by milestone", exact: true }),
+  ).toContainText("Backlog");
+  await page.getByRole("button", { name: "Triage", exact: true }).hover();
+  await page.getByRole("button", { name: "Delete filter Triage", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Triage", exact: true })).toHaveCount(0);
+});
+
+test("native issue detail without a Project preserves source scroll and state when returning", async ({
+  page,
+}) => {
+  await openRepository(page, "projects-empty");
+  await page.getByRole("button", { name: "Closed", exact: true }).click();
+  const list = page.getByRole("list", { name: "Repository issues", exact: true });
+  await expect(list.getByRole("listitem")).toHaveCount(41);
+  await list.evaluate((element) => {
+    if (element.parentElement) {
+      element.parentElement.scrollTop = 600;
+    }
+  });
+  const firstVisible = page.getByRole("button", {
+    name: "Open issue #90: Repository issue 90",
+    exact: true,
+  });
+  await firstVisible.focus();
+  await firstVisible.press("Enter");
+  const detail = page.getByRole("article", { name: "Issue detail", exact: true });
+  await expect(
+    detail.getByRole("heading", { name: "Repository issue 90", exact: true }),
+  ).toBeVisible();
+  await expect(detail.getByText("State", { exact: true })).toBeVisible();
+  await expect(detail.getByText("Closed", { exact: true })).toBeVisible();
+  await expect(detail.getByText("Project", { exact: true })).toHaveCount(0);
+  await expect(
+    detail.getByRole("button", { name: "Change project status", exact: true }),
+  ).toHaveCount(0);
+  await expect(detail.getByRole("textbox", { name: "Add a comment", exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(detail).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Closed", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  expect(await list.evaluate((element) => element.parentElement?.scrollTop ?? 0)).toBeGreaterThan(
+    500,
+  );
+});
+
+test("a partial offline cache remains partial, can resume, and does not invent cached filters", async ({
+  page,
+}) => {
+  await openRepository(page);
+  await page.goto("/?mock=offline");
+  await page.getByRole("link", { name: "Open issues in HorebZ/Planche", exact: true }).click();
+  const rows = page
+    .getByRole("list", { name: "Repository issues", exact: true })
+    .getByRole("listitem");
+  await expect(rows).toHaveCount(50);
+  await expect(
+    page.getByText(/Offline · Saved issues · 50 issues loaded · Partial cache/),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Closed", exact: true }).click();
+  await expect(
+    page.getByText("Offline · No saved issues for these filters.", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Open", exact: true }).click();
+  await expect(rows).toHaveCount(50);
+  await page.evaluate(() =>
+    (
+      window as unknown as { __planche: { setRepositoryOffline: (offline: boolean) => void } }
+    ).__planche.setRepositoryOffline(false),
+  );
+  await page.getByRole("button", { name: "Load more issues", exact: true }).click();
+  await expect(rows).toHaveCount(82);
+  await expect(page.getByText(/82 issues loaded · Complete result/)).toBeVisible();
+});

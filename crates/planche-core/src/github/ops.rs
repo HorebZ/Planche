@@ -21,6 +21,10 @@ const MUTATIONS: &str = include_str!("../../graphql/mutations.graphql");
 mod comments;
 pub use comments::{find_comment, post_comment};
 
+#[path = "repository_issues.rs"]
+mod repository_issues;
+pub use repository_issues::{repository_issue_options, repository_issues};
+
 #[path = "repositories.rs"]
 mod repositories;
 pub use repositories::{repository_by_id, repository_by_reference, repository_catalog};

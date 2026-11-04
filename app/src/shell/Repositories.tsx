@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,6 +20,9 @@ import {
   repositoryCatalogQuery,
   repositoryQuery,
 } from "@/ipc/repositories.queries";
+import { growWindow } from "@/lib/growWindow";
+import { useRepositoryViews } from "@/stores/repository-views";
+import { RepositoryShortcuts } from "./RepositoryShortcuts";
 
 export function RepositorySection() {
   const account = useAuth().data?.id;
@@ -33,6 +36,7 @@ export function RepositorySection() {
 }
 
 function AccountRepositories({ account }: { account: string }) {
+  const active = useRepositoryViews((state) => state.active);
   const client = useQueryClient();
   const selected = useQuery(repositoriesQuery(account));
   const refreshes = useQueries({
@@ -60,6 +64,16 @@ function AccountRepositories({ account }: { account: string }) {
         return;
       }
 
+      if (useRepositoryViews.getState().active?.repository === id) {
+        useRepositoryViews.getState().close();
+      }
+      for (const family of ["repository-issues", "repository-options", "repository-shortcuts"]) {
+        await client.cancelQueries(
+          { queryKey: [family, account, id] },
+          { revert: false, silent: true },
+        );
+        client.removeQueries({ queryKey: [family, account, id] });
+      }
       client.setQueryData(repositoriesQuery(account).queryKey, result);
       client.removeQueries({ queryKey: repositoryQuery(account, id).queryKey });
       requestAnimationFrame(() => {
@@ -90,18 +104,32 @@ function AccountRepositories({ account }: { account: string }) {
           }
         >
           {(selected.data ?? []).map((saved, index) => (
-            <SidebarRepository
-              key={saved.repository.id}
-              selected={saved}
-              removing={removing === saved.repository.id}
-              warning={refreshes[index]?.error ? "Saved repository · Could not refresh" : undefined}
-              onOpen={() =>
-                void openUrl(saved.repository.url).catch((error) =>
-                  notify(`Could not open repository: ${errorMessage(error)}`, "error"),
-                )
-              }
-              onRemove={() => void remove(saved.repository.id)}
-            />
+            <Fragment key={saved.repository.id}>
+              <SidebarRepository
+                active={active?.account === account && active.repository === saved.repository.id}
+                selected={saved}
+                removing={removing === saved.repository.id}
+                warning={
+                  refreshes[index]?.error ? "Saved repository · Could not refresh" : undefined
+                }
+                onOpen={() => {
+                  useRepositoryViews.getState().open(account, saved.repository.id);
+                  if (window.innerWidth < 1100) {
+                    void growWindow().catch((error) => notify(errorMessage(error), "error"));
+                  }
+                }}
+                onOpenGitHub={() =>
+                  void openUrl(saved.repository.url).catch((error) =>
+                    notify(`Could not open repository: ${errorMessage(error)}`, "error"),
+                  )
+                }
+                onRemove={() => void remove(saved.repository.id)}
+              />
+              <RepositoryShortcuts
+                account={account}
+                id={saved.repository.id}
+              />
+            </Fragment>
           ))}
           {selected.isPending ? (
             <p

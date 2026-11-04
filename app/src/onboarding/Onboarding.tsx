@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { ArrowUpRight, CircleCheck } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
@@ -27,6 +27,7 @@ import {
   useAuth,
   useProjects,
 } from "@/ipc/queries";
+import { growWindow } from "@/lib/growWindow";
 import { RepositorySection } from "@/shell/Repositories";
 import { useUi } from "@/stores/ui";
 import { showUpdates } from "@/update/Updates";
@@ -736,13 +737,4 @@ function Footer({ children }: { children: React.ReactNode }) {
       {children}
     </div>
   );
-}
-
-/** From the 780×540 onboarding to the 1440×900 board window. */
-async function growWindow() {
-  const window = getCurrentWindow();
-
-  await window.setMinSize(new LogicalSize(1100, 700));
-  await window.setSize(new LogicalSize(1440, 900));
-  await window.center();
 }

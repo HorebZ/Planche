@@ -1,6 +1,7 @@
 import { QueryClient, queryOptions, useMutation, useQuery } from "@tanstack/react-query";
 import { cardRect } from "@/board/flip";
 import { notify } from "@/components/ui/toast";
+import { useRepositoryViews } from "@/stores/repository-views";
 import { useUi } from "@/stores/ui";
 import { describe, verbs } from "@/undo/inverse";
 import {
@@ -171,11 +172,19 @@ export function createQueryClient() {
     }
 
     identity = next;
+    useRepositoryViews.getState().close();
 
     const current = state(client);
 
     current.accountEpoch++;
-    for (const family of ["repositories", "repository", "repository-catalog"]) {
+    for (const family of [
+      "repositories",
+      "repository",
+      "repository-catalog",
+      "repository-issues",
+      "repository-options",
+      "repository-shortcuts",
+    ]) {
       void client.cancelQueries({ queryKey: [family] }, { revert: false, silent: true });
       client.removeQueries({ queryKey: [family] });
     }
@@ -296,6 +305,10 @@ function removeIssueAccess(client: QueryClient, account: string, content: string
     client.setQueryData([...key, "fresh"], family === "issue" ? { status: "unavailable" } : null);
   }
 
+  void client.invalidateQueries({
+    queryKey: ["repository-issues", account],
+    predicate: (query) => query.queryKey.at(-1) === "cached",
+  });
   void client.invalidateQueries({ queryKey: ["board"] });
 }
 
@@ -381,6 +394,10 @@ export const issueQuery = (account: string, content: string) =>
         });
       }
 
+      void client.invalidateQueries({
+        queryKey: ["repository-issues", account],
+        predicate: (query) => query.queryKey.at(-1) === "cached",
+      });
       void client.invalidateQueries({ queryKey: ["board"] });
 
       return result;

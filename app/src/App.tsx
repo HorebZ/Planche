@@ -12,8 +12,10 @@ import {
 } from "@/ipc/queries";
 import { useSettledError } from "@/lib/useSettledError";
 import { Onboarding } from "@/onboarding/Onboarding";
+import { RepositoryShell } from "@/shell/RepositoryShell";
 import { Shell } from "@/shell/Shell";
 import { usePreferences } from "@/stores/preferences";
+import { useRepositoryViews } from "@/stores/repository-views";
 import { useUi } from "@/stores/ui";
 import { Updates } from "@/update/Updates";
 
@@ -68,6 +70,7 @@ function Root() {
   }, []);
 
   const current = useCurrentProject();
+  const repository = useRepositoryViews((state) => state.active);
   const picked = useUi((s) => s.projectId);
   const projectId = picked ?? current.data ?? null;
   const open = useOpenProject();
@@ -92,6 +95,16 @@ function Root() {
         pending={auth.isPending || auth.isFetching || current.isPending}
         error={authError ?? undefined}
         onUnlock={() => void auth.refetch()}
+      />
+    );
+  }
+
+  if (auth.data?.id && repository?.account === auth.data.id) {
+    return (
+      <RepositoryShell
+        key={`${repository.account}:${repository.repository}`}
+        account={repository.account}
+        id={repository.repository}
       />
     );
   }

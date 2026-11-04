@@ -10,7 +10,9 @@ use planche_core::cache::Cache;
 use planche_core::description::Descriptions;
 use planche_core::domain::{
     Board, ContentId, Issue, IssueActivity, IssueDescription, IssueLoad, ProjectId, ProjectList,
-    ProjectMeta, RepositoryPage, RepositorySource, SelectedRepository, User, UserId, ViewId,
+    ProjectMeta, RepositoryIssueFilter, RepositoryIssueOptions, RepositoryIssueShortcut,
+    RepositoryIssues, RepositoryIssuesLoad, RepositoryPage, RepositorySource, SelectedRepository,
+    User, UserId, ViewId,
 };
 use planche_core::error::Error;
 use planche_core::github::{GithubClient, ops};
@@ -953,3 +955,133 @@ pub fn perf_mark(core: State<'_, Core>, name: String, ms: f64) {
 #[cfg(test)]
 #[path = "commands.test.rs"]
 mod tests;
+
+#[tauri::command]
+#[specta::specta]
+pub fn cached_repository_issues(
+    core: State<'_, Core>,
+    account: UserId,
+    id: String,
+    filter: RepositoryIssueFilter,
+) -> Result<Option<RepositoryIssues>> {
+    Ok(core
+        .repositories
+        .read_repository(&core.reader, &account, &id, |cache| {
+            cache.repository_issues(&account, &id, &filter)
+        })?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn refresh_repository_issues(
+    core: State<'_, Core>,
+    account: UserId,
+    id: String,
+    filter: RepositoryIssueFilter,
+    after: Option<String>,
+) -> Result<RepositoryIssuesLoad> {
+    let client = core.client()?;
+    Ok(core
+        .repositories
+        .refresh_issues(
+            &core.reader,
+            &account,
+            &id,
+            &filter,
+            after.as_deref(),
+            ops::repository_issues(&client, &account, &id, &filter, after.as_deref()),
+        )
+        .await?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn cached_repository_issue_options(
+    core: State<'_, Core>,
+    account: UserId,
+    id: String,
+) -> Result<Option<RepositoryIssueOptions>> {
+    Ok(core
+        .repositories
+        .read_repository(&core.reader, &account, &id, |cache| {
+            cache.repository_issue_options(&account, &id)
+        })?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn refresh_repository_issue_options(
+    core: State<'_, Core>,
+    account: UserId,
+    id: String,
+) -> Result<Option<RepositoryIssueOptions>> {
+    let client = core.client()?;
+    Ok(core
+        .repositories
+        .refresh_issue_options(
+            &core.reader,
+            &account,
+            &id,
+            ops::repository_issue_options(&client, &account, &id),
+        )
+        .await?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn repository_issue_shortcuts(
+    core: State<'_, Core>,
+    account: UserId,
+    id: String,
+) -> Result<Vec<RepositoryIssueShortcut>> {
+    Ok(core
+        .repositories
+        .read_repository(&core.reader, &account, &id, |cache| {
+            cache.repository_issue_shortcuts(&account, &id)
+        })?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn save_repository_issue_shortcut(
+    core: State<'_, Core>,
+    account: UserId,
+    id: String,
+    name: String,
+    filter: RepositoryIssueFilter,
+) -> Result<Vec<RepositoryIssueShortcut>> {
+    let installing = core.installing.lock().expect("installation gate");
+    if *installing {
+        return Err(AppError {
+            kind: ErrorKind::Invalid,
+            message: "Planche is installing an update".into(),
+        });
+    }
+    Ok(core
+        .repositories
+        .read_repository(&core.reader, &account, &id, |cache| {
+            cache.save_repository_issue_shortcut(&account, &id, &name, &filter)
+        })?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn delete_repository_issue_shortcut(
+    core: State<'_, Core>,
+    account: UserId,
+    id: String,
+    shortcut: String,
+) -> Result<Vec<RepositoryIssueShortcut>> {
+    let installing = core.installing.lock().expect("installation gate");
+    if *installing {
+        return Err(AppError {
+            kind: ErrorKind::Invalid,
+            message: "Planche is installing an update".into(),
+        });
+    }
+    Ok(core
+        .repositories
+        .read_repository(&core.reader, &account, &id, |cache| {
+            cache.delete_repository_issue_shortcut(&account, &id, &shortcut)
+        })?)
+}

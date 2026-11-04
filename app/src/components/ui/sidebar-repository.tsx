@@ -22,12 +22,16 @@ export function SidebarRepository({
   warning,
   removing = false,
   onOpen,
+  onOpenGitHub = onOpen,
+  active = false,
   onRemove,
 }: {
   selected: SelectedRepository;
   warning?: string;
   removing?: boolean;
   onOpen: () => void;
+  onOpenGitHub?: () => void;
+  active?: boolean;
   onRemove: () => void;
 }) {
   const removeItem = useRef<HTMLDivElement>(null);
@@ -62,9 +66,10 @@ export function SidebarRepository({
           <a
             onKeyDown={onKeyDown}
             href={repository.url}
-            title={`${repository.full_name} · Open on GitHub${note ? ` · ${note}` : ""}`}
-            aria-label={`Open ${repository.full_name} on GitHub`}
-            className="flex min-h-row min-w-0 items-center gap-2 rounded-md py-1.5 pr-8 pl-2.5 text-fg-2 hover:bg-hover focus-visible:shadow-ring"
+            title={`${repository.full_name} · Issues${note ? ` · ${note}` : ""}`}
+            aria-label={`Open issues in ${repository.full_name}`}
+            aria-current={active ? "page" : undefined}
+            className="flex min-h-row min-w-0 items-center gap-2 rounded-md py-1.5 pr-8 pl-2.5 text-fg-2 hover:bg-hover focus-visible:shadow-ring aria-[current=page]:bg-active"
             onClick={(event) => {
               event.preventDefault();
               onOpen();
@@ -94,7 +99,7 @@ export function SidebarRepository({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent onKeyDown={onKeyDown}>
-              <DropdownMenuItem onSelect={onOpen}>
+              <DropdownMenuItem onSelect={onOpenGitHub}>
                 <ExternalLink />
                 Open on GitHub
               </DropdownMenuItem>
@@ -110,7 +115,7 @@ export function SidebarRepository({
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent onKeyDown={onKeyDown}>
-        <ContextMenuItem onSelect={onOpen}>
+        <ContextMenuItem onSelect={onOpenGitHub}>
           <ExternalLink />
           Open on GitHub
         </ContextMenuItem>

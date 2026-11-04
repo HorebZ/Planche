@@ -33,6 +33,24 @@ export const commands = {
 	/**  The projects in the cache, at once, while `list_projects` asks GitHub. */
 	cachedProjects: () => __TAURI_INVOKE<ProjectList>("cached_projects"),
 	cachedRepositories: (account: UserId) => __TAURI_INVOKE<SelectedRepository[]>("cached_repositories", { account }),
+	cachedRepositoryIssues: (account: UserId, id: string, filter: RepositoryIssueFilter) => __TAURI_INVOKE<{
+	issues: ItemContent[],
+	next_cursor: string | null,
+	complete: boolean,
+	fetched_at: string,
+} | null>("cached_repository_issues", { account, id, filter }),
+	refreshRepositoryIssues: (account: UserId, id: string, filter: RepositoryIssueFilter, after: string | null) => __TAURI_INVOKE<RepositoryIssuesLoad>("refresh_repository_issues", { account, id, filter, after }),
+	cachedRepositoryIssueOptions: (account: UserId, id: string) => __TAURI_INVOKE<{
+	labels: Label[],
+	milestones: RepositoryMilestone[],
+} | null>("cached_repository_issue_options", { account, id }),
+	refreshRepositoryIssueOptions: (account: UserId, id: string) => __TAURI_INVOKE<{
+	labels: Label[],
+	milestones: RepositoryMilestone[],
+} | null>("refresh_repository_issue_options", { account, id }),
+	repositoryIssueShortcuts: (account: UserId, id: string) => __TAURI_INVOKE<RepositoryIssueShortcut[]>("repository_issue_shortcuts", { account, id }),
+	saveRepositoryIssueShortcut: (account: UserId, id: string, name: string, filter: RepositoryIssueFilter) => __TAURI_INVOKE<RepositoryIssueShortcut[]>("save_repository_issue_shortcut", { account, id, name, filter }),
+	deleteRepositoryIssueShortcut: (account: UserId, id: string, shortcut: string) => __TAURI_INVOKE<RepositoryIssueShortcut[]>("delete_repository_issue_shortcut", { account, id, shortcut }),
 	repositoryCatalog: (account: UserId, source: RepositorySource, search: string, after: string | null) => __TAURI_INVOKE<RepositoryPage>("repository_catalog", { account, source, search, after }),
 	selectRepository: (account: UserId, reference: string) => __TAURI_INVOKE<SelectedRepository[]>("select_repository", { account, reference }),
 	removeRepository: (account: UserId, id: string) => __TAURI_INVOKE<SelectedRepository[]>("remove_repository", { account, id }),
@@ -408,6 +426,39 @@ export type RateUsage = {
 	limit: number | null,
 	/**  Unix time of the next quota reset, from `x-ratelimit-reset`. */
 	reset_at: number | null,
+};
+
+export type RepositoryIssueFilter = {
+	state: RepositoryIssueState,
+	milestone: number | null,
+	labels: string[],
+};
+
+export type RepositoryIssueOptions = {
+	labels: Label[],
+	milestones: RepositoryMilestone[],
+};
+
+export type RepositoryIssueShortcut = {
+	id: string,
+	name: string,
+	filter: RepositoryIssueFilter,
+};
+
+export type RepositoryIssueState = "open" | "closed" | "all";
+
+export type RepositoryIssues = {
+	issues: ItemContent[],
+	next_cursor: string | null,
+	complete: boolean,
+	fetched_at: string,
+};
+
+export type RepositoryIssuesLoad = { kind: "ready"; data: RepositoryIssues } | { kind: "offline"; data: RepositoryIssues | null } | { kind: "unavailable" };
+
+export type RepositoryMilestone = {
+	number: number,
+	title: string,
 };
 
 export type RepositoryPage = {

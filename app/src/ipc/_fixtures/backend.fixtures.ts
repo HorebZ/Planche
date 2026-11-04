@@ -15,6 +15,9 @@ import type {
   IssueIntent,
   ProjectList,
   ProjectMeta,
+  RepositoryIssueFilter,
+  RepositoryIssueShortcut,
+  RepositoryIssues,
   SelectedRepository,
   SyncPrefs,
 } from "../bindings.types";
@@ -22,6 +25,11 @@ import { issueActivity } from "./activity.fixtures";
 import { issueDescription, MARKDOWN_BODY } from "./description.fixtures";
 import { issueRecord } from "./issue.fixtures";
 import { repository } from "./repository.fixtures";
+import {
+  repositoryIssueOptions,
+  repositoryIssueSource,
+  repositoryIssues,
+} from "./repository-issues.fixtures";
 import {
   boardFor,
   mockupBoard,
@@ -87,6 +95,16 @@ export function installMockBackend(scenario: Scenario) {
 
     return structuredClone(selected);
   };
+  let repositoryOffline = scenario === "offline";
+  const repositorySource = repositoryIssueSource();
+  const issueCacheKey = (args: Record<string, unknown>) =>
+    `planche:mock:repository-issues:${args.account}:${args.id}:${JSON.stringify(args.filter)}`;
+  const shortcutKey = (args: Record<string, unknown>) =>
+    `planche:mock:repository-shortcuts:${args.account}:${args.id}`;
+  const savedShortcuts = (args: Record<string, unknown>): RepositoryIssueShortcut[] =>
+    JSON.parse(sessionStorage.getItem(shortcutKey(args)) ?? "[]");
+  const savedIssues = (args: Record<string, unknown>): RepositoryIssues | null =>
+    JSON.parse(sessionStorage.getItem(issueCacheKey(args)) ?? "null");
   let prefs: SyncPrefs = { interval: "five_minutes", on_wake: true };
   let auth = structuredClone(onboarding(scenario) ? signedOut : signedIn);
   let board = boardFor(scenario);
@@ -114,7 +132,9 @@ export function installMockBackend(scenario: Scenario) {
       content:
         board?.columns
           .flatMap((column) => column.cards)
-          .find((card) => card.kind === "issue" && card.id === content) ?? issueRecord().content,
+          .find((card) => card.kind === "issue" && card.id === content) ??
+        repositorySource.find(({ issue }) => issue.id === content)?.issue ??
+        issueRecord().content,
     });
   const descriptions = new Map<string, IssueDescription>();
   let descriptionError = scenario === "description-error";
@@ -292,6 +312,59 @@ export function installMockBackend(scenario: Scenario) {
       );
 
       return structuredClone(refreshed);
+    },
+
+    cached_repository_issues: (args) => savedIssues(args),
+    refresh_repository_issues: (args) => {
+      if (repositoryOffline) {
+        return { kind: "offline", data: savedIssues(args) };
+      }
+      if (!repositoryMetadata.some((repository) => repository.id === args.id)) {
+        sessionStorage.removeItem(issueCacheKey(args));
+        return { kind: "unavailable" };
+      }
+      const filter = args.filter as RepositoryIssueFilter;
+      const matches = repositorySource.filter(
+        ({ issue, milestone }) =>
+          (filter.state === "all" || filter.state === issue.state) &&
+          (filter.milestone === null || filter.milestone === milestone) &&
+          (!filter.labels.length ||
+            issue.labels.some((label) => filter.labels.includes(label.name))),
+      );
+      const start = args.after ? Number(args.after) : 0;
+      const end = Math.min(start + 50, matches.length);
+      const data = repositoryIssues({
+        issues: [
+          ...(start ? (savedIssues(args)?.issues ?? []) : []),
+          ...matches.slice(start, end).map(({ issue }) => issue),
+        ],
+        next_cursor: end < matches.length ? String(end) : null,
+        complete: end === matches.length,
+      });
+      sessionStorage.setItem(issueCacheKey(args), JSON.stringify(data));
+      return { kind: "ready", data };
+    },
+    cached_repository_issue_options: () => repositoryIssueOptions(),
+    refresh_repository_issue_options: () => repositoryIssueOptions(),
+    repository_issue_shortcuts: (args) => savedShortcuts(args),
+    save_repository_issue_shortcut: (args) => {
+      const name = String(args.name).trim();
+      const existing = savedShortcuts(args);
+      const shortcut = {
+        id:
+          existing.find((shortcut) => shortcut.name.toLowerCase() === name.toLowerCase())?.id ??
+          crypto.randomUUID(),
+        name,
+        filter: args.filter as RepositoryIssueFilter,
+      };
+      const result = [...existing.filter((item) => item.id !== shortcut.id), shortcut];
+      sessionStorage.setItem(shortcutKey(args), JSON.stringify(result));
+      return structuredClone(result);
+    },
+    delete_repository_issue_shortcut: (args) => {
+      const result = savedShortcuts(args).filter((shortcut) => shortcut.id !== args.shortcut);
+      sessionStorage.setItem(shortcutKey(args), JSON.stringify(result));
+      return result;
     },
 
     open_project: () => null,
@@ -547,6 +620,9 @@ export function installMockBackend(scenario: Scenario) {
     { shouldMockEvents: true },
   );
   const backend = {
+    setRepositoryOffline: (offline: boolean) => {
+      repositoryOffline = offline;
+    },
     renameRepository: (id: string, fullName: string) => {
       const repository = repositoryMetadata.find((repository) => repository.id === id);
       if (repository) {

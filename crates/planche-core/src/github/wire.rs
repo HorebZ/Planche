@@ -532,3 +532,21 @@ pub(super) struct AssignableUsersData {
 pub(super) struct AssignableRepository {
     pub assignable_users: Nodes<User>,
 }
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct RepositoryIssuesNode {
+    pub issues: Connection<Content>,
+}
+
+#[derive(Deserialize)]
+pub(super) struct RepositoryOptionsNode {
+    pub labels: Option<Connection<Label>>,
+    pub milestones: Option<Connection<RepositoryMilestone>>,
+}
+
+#[derive(Deserialize)]
+pub(super) struct RepositoryMilestone {
+    pub number: u32,
+    pub title: String,
+}

@@ -208,3 +208,6 @@ impl Repositories {
 #[cfg(test)]
 #[path = "repositories.test.rs"]
 mod tests;
+
+#[path = "repository_issues.rs"]
+mod issues;

@@ -20,6 +20,7 @@ export function IssueDetail({
   item,
   project,
   status,
+  githubState,
   notice,
   editable,
   expanded = false,
@@ -38,6 +39,7 @@ export function IssueDetail({
   item: IssueCardData | null;
   project: string;
   status: { name: string; tone: StatusKey } | null;
+  githubState?: "open" | "closed";
   notice?: string;
   editable: boolean;
   expanded?: boolean;
@@ -47,8 +49,8 @@ export function IssueDetail({
   onBack: () => void;
   onPrevious?: () => void;
   onNext?: () => void;
-  onStatus: () => void;
-  onAssign: () => void;
+  onStatus?: () => void;
+  onAssign?: () => void;
   onGitHub?: () => void;
   children?: ReactNode;
 }) {
@@ -163,33 +165,42 @@ export function IssueDetail({
             {notice ? <p className="mb-6 text-fg-2">{notice}</p> : null}
             {item ? (
               <dl className="grid grid-cols-[100px_minmax(0,1fr)] items-center gap-x-5 gap-y-4 border-line border-y py-5 text-sm">
-                <dt className="text-fg-3">Project</dt>
-                <dd className="break-words">{project}</dd>
-                <dt className="text-fg-3">Status</dt>
-                <dd>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={!editable || !status}
-                    onClick={onStatus}
-                    aria-label="Change project status"
-                  >
-                    {status ? (
-                      <StatusChip
-                        status={status.tone}
-                        label={status.name}
-                      />
-                    ) : (
-                      "No status"
-                    )}
-                  </Button>
-                </dd>
+                {githubState ? (
+                  <>
+                    <dt className="text-fg-3">State</dt>
+                    <dd>{githubState === "open" ? "Open" : "Closed"}</dd>
+                  </>
+                ) : (
+                  <>
+                    <dt className="text-fg-3">Project</dt>
+                    <dd className="break-words">{project}</dd>
+                    <dt className="text-fg-3">Status</dt>
+                    <dd>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={!editable || !status || !onStatus}
+                        onClick={onStatus}
+                        aria-label="Change project status"
+                      >
+                        {status ? (
+                          <StatusChip
+                            status={status.tone}
+                            label={status.name}
+                          />
+                        ) : (
+                          "No status"
+                        )}
+                      </Button>
+                    </dd>
+                  </>
+                )}
                 <dt className="text-fg-3">Assignees</dt>
                 <dd>
                   <Button
                     variant="ghost"
                     size="sm"
-                    disabled={!editable}
+                    disabled={!editable || !onAssign}
                     onClick={onAssign}
                     aria-label="Change assignees"
                     className="h-auto min-h-6 max-w-full py-1"
@@ -201,7 +212,7 @@ export function IssueDetail({
                     />
                     <span className="whitespace-normal break-words text-left">
                       {item.assignees.map((user) => user.login).join(", ") ||
-                        (editable ? "Unassigned" : "Unavailable")}
+                        (editable || githubState ? "Unassigned" : "Unavailable")}
                     </span>
                   </Button>
                 </dd>

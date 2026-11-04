@@ -141,6 +141,8 @@ impl GithubClient {
                 | "IssueDescription"
                 | "IssueActivity"
                 | "IssueComments"
+                | "RepositoryIssues"
+                | "RepositoryIssueOptions"
                 | "AddComment"
                 | "AssignableUsers"
                 | "AddAssignees"

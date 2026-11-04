@@ -32,6 +32,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../migrations/0007_project_permissions.sql"),
     include_str!("../migrations/0008_issue_comments.sql"),
     include_str!("../migrations/0009_selected_repositories.sql"),
+    include_str!("../migrations/0010_repository_issues.sql"),
 ];
 
 /// An acked row stays replayed until the snapshot reflects it, or for this many syncs.
@@ -349,6 +350,7 @@ impl Cache {
                     }
                 }
             } else {
+                repository_issues::redact_issue(&tx, account, content)?;
                 let revision = Self::next_issue_revision(&tx)?;
 
                 tx.execute("UPDATE issue SET revision = ?4 WHERE host = ?1 AND account_id = ?2 AND content_id = ?3", params![host, account.as_str(), content.as_str(), revision])?;
@@ -364,6 +366,7 @@ impl Cache {
     }
 
     fn invalidate_issue(&self, host: &str, account: &UserId, content: &ContentId) -> Result<()> {
+        repository_issues::redact_issue(&self.conn, account, content)?;
         let revision = Self::next_issue_revision(&self.conn)?;
 
         self.conn.execute(
@@ -1155,6 +1158,7 @@ impl Cache {
 
 mod comments;
 mod repositories;
+mod repository_issues;
 
 fn migrate(conn: &mut Connection) -> Result<()> {
     let version = |conn: &Connection| -> Result<usize> {

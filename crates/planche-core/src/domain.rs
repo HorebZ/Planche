@@ -30,6 +30,65 @@ pub enum RepositorySource {
     Organizations,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum RepositoryIssueState {
+    Open,
+    Closed,
+    All,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct RepositoryIssueFilter {
+    pub state: RepositoryIssueState,
+    pub milestone: Option<u32>,
+    pub labels: Vec<String>,
+}
+
+impl RepositoryIssueFilter {
+    pub fn normalized(&self) -> Self {
+        let mut filter = self.clone();
+        filter.labels.sort();
+        filter.labels.dedup();
+        filter
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct RepositoryIssues {
+    pub issues: Vec<ItemContent>,
+    pub next_cursor: Option<String>,
+    pub complete: bool,
+    pub fetched_at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum RepositoryIssuesLoad {
+    Ready { data: RepositoryIssues },
+    Offline { data: Option<RepositoryIssues> },
+    Unavailable,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct RepositoryMilestone {
+    pub number: u32,
+    pub title: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct RepositoryIssueOptions {
+    pub labels: Vec<Label>,
+    pub milestones: Vec<RepositoryMilestone>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct RepositoryIssueShortcut {
+    pub id: String,
+    pub name: String,
+    pub filter: RepositoryIssueFilter,
+}
+
 macro_rules! id_type {
     ($($(#[$doc:meta])* $name:ident),+ $(,)?) => {$(
         $(#[$doc])*
