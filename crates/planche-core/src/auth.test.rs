@@ -1,6 +1,29 @@
 use super::*;
 
 #[test]
+fn personal_oauth_never_accepts_a_previously_granted_repository_or_org_scope() {
+    assert!(restricted_scopes(Some("project")).unwrap().is_empty());
+    assert_eq!(restricted_scopes(Some("")).unwrap(), ["project"]);
+
+    for scopes in [
+        "repo,project",
+        "read:org,project",
+        "public_repo,project",
+        "admin:org,project",
+    ] {
+        assert!(matches!(
+            restricted_scopes(Some(scopes)),
+            Err(Error::OAuth(_))
+        ));
+    }
+
+    assert!(matches!(
+        restricted_scopes(None),
+        Err(Error::ClassicTokenRequired)
+    ));
+}
+
+#[test]
 fn auth_missing_scopes_names_each_absent_scope() {
     assert_eq!(missing_scopes(Some("repo, read:org")).unwrap(), ["project"]);
     assert_eq!(missing_scopes(Some("gist")).unwrap(), REQUIRED_SCOPES);
@@ -12,36 +35,21 @@ fn auth_missing_scopes_names_each_absent_scope() {
 }
 
 #[test]
-fn auth_token_cache_reads_once_until_cleared() {
-    use std::cell::Cell;
-
-    let reads = Cell::new(0);
-    let read = |result: Result<String>| {
-        reads.set(reads.get() + 1);
-
-        result
-    };
-
-    remember(None);
-
+fn github_app_tokens_do_not_require_legacy_oauth_scopes() {
+    assert!(token_scopes("ghu_user-token", None).unwrap().is_empty());
+    assert!(token_scopes("ghu_user-token", Some("")).unwrap().is_empty());
     assert!(matches!(
-        cached(|| read(Err(Error::NotSignedIn))),
-        Err(Error::NotSignedIn)
+        token_scopes("github_pat_fine-grained", None),
+        Err(Error::ClassicTokenRequired)
     ));
-    assert_eq!(cached(|| read(Ok("a".into()))).unwrap(), "a");
-    assert_eq!(cached(|| read(Ok("b".into()))).unwrap(), "a");
-    assert_eq!(reads.get(), 2);
-
-    remember(Some("c".into()));
-
-    assert_eq!(cached(|| read(Ok("d".into()))).unwrap(), "c");
-
-    remember(None);
-
-    assert_eq!(cached(|| read(Ok("e".into()))).unwrap(), "e");
-    assert_eq!(reads.get(), 3);
-
-    remember(None);
+    assert!(matches!(
+        token_scopes("ghs_installation", None),
+        Err(Error::ClassicTokenRequired)
+    ));
+    assert_eq!(
+        token_scopes("ghp_classic", Some("repo, read:org")).unwrap(),
+        ["project"]
+    );
 }
 
 #[test]

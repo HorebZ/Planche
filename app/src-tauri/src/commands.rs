@@ -205,6 +205,8 @@ impl Core {
             }
         };
         let config = SyncConfig::load(&self.cache(), &owner, number)?;
+        let known_organization = self.cache().meta(project)?.map(|meta| meta.owner_is_org);
+        let client = client.for_owner(&owner, known_organization).await?;
         let handle = sync::spawn(
             Cache::open_default()?,
             client,
@@ -320,8 +322,10 @@ fn remember_account(core: &Core, status: &AuthStatus, token: &str) -> Result<()>
 #[tauri::command]
 #[specta::specta]
 pub async fn auth_set_token(core: State<'_, Core>, token: String) -> Result<AuthStatus> {
+    core.oauth.cancel_all().await;
     let status = auth::set_token(&token).await?;
 
+    core.stop().await;
     accept_account(&core, &status)?;
 
     Ok(status)
@@ -331,6 +335,7 @@ fn accept_account(core: &Core, status: &AuthStatus) -> Result<()> {
     let token = auth::load_token()?;
 
     core.descriptions.lock();
+    *core.projects.lock().expect("projects lock") = None;
     remember_account(core, status, &token)?;
     *core.token.lock().expect("token lock") = Some(token);
     core.descriptions
@@ -347,6 +352,12 @@ pub async fn auth_oauth_start(core: State<'_, Core>) -> Result<DeviceCode> {
 
 #[tauri::command]
 #[specta::specta]
+pub async fn auth_organizations_start(core: State<'_, Core>) -> Result<DeviceCode> {
+    Ok(core.oauth.start_organizations().await?)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn auth_oauth_poll(
     core: State<'_, Core>,
     user_code: String,
@@ -354,6 +365,7 @@ pub async fn auth_oauth_poll(
     let status = core.oauth.poll(&user_code).await?;
 
     if let Some(status) = &status {
+        core.stop().await;
         accept_account(&core, status)?;
     }
 
@@ -377,6 +389,7 @@ pub async fn auth_oauth_copy_code(core: State<'_, Core>, user_code: String) -> R
 #[tauri::command]
 #[specta::specta]
 pub async fn auth_sign_out(core: State<'_, Core>) -> Result<()> {
+    core.oauth.cancel_all().await;
     core.stop().await;
     tauri::async_runtime::spawn_blocking(auth::sign_out)
         .await

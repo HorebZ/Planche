@@ -50,7 +50,7 @@ query ProjectItems($projectId: ID!, $after: String) {
 }
 
 fragment ProjectMetaFields on ProjectV2 {
-  id number title url updatedAt
+  id number title url updatedAt viewerCanUpdate
   owner {
     __typename
     ... on User { login }

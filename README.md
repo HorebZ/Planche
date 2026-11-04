@@ -64,9 +64,15 @@ preferences and cached boards survive updates; submit or discard unsent drafts
 before installing.
 
 On first launch, choose **Sign in with GitHub** and authorize the app using the
-code shown. Planche requests `repo`, `read:org` and `project` access. Organization
-policies may require approval from an administrator. A classic personal access
-token is also supported.
+code shown. OAuth requests only `project`. Choose **Connect organizations…** to
+add the GitHub App using the same GitHub account, while keeping personal projects.
+The App needs read/write access to organization Projects, Issues and Pull requests,
+with no Contents permission, and organization owners must approve installation.
+OAuth alone can read public issues; private personal repository cards may be
+redacted because `project` does not grant repository access. A classic PAT with
+`repo`, `read:org` and `project` remains the full-compatibility alternative; `repo`
+also permits code access. These modes never fall back to one another on refusal.
+Existing broad OAuth grants must be revoked on GitHub before reduced-scope sign-in.
 
 The alpha is not notarized. If macOS blocks the downloaded app after the first
 launch attempt, approval may be available in **System Settings → Privacy &
@@ -100,8 +106,11 @@ cp .env.example .env
 chmod 600 .env
 ```
 
-Set the public `PLANCHE_GITHUB_CLIENT_ID` for a GitHub OAuth App with Device Flow
-enabled, or use a classic PAT in `PLANCHE_TOKEN` for local testing. Then run:
+Set the public `PLANCHE_GITHUB_CLIENT_ID` for the primary OAuth App with Device Flow.
+Optionally add `PLANCHE_GITHUB_APP_CLIENT_ID` for the companion GitHub App used to
+connect organizations. A classic PAT in `PLANCHE_TOKEN` selects token mode for
+local testing. See the development guide for permissions and installation.
+Then run:
 
 ```sh
 bun run setup:signing

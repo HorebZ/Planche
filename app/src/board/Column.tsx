@@ -17,6 +17,7 @@ const GAP = 8;
 export type Landing = { index: number; height: number; fromHere: boolean };
 
 type ColumnProps = {
+  readOnly?: boolean;
   hiddenProperties?: DisplayProperty[];
   column: BoardColumnData;
   projectId: string;
@@ -40,6 +41,7 @@ export function Column({
   landing,
   onCreateDraft,
   hiddenProperties,
+  readOnly = false,
 }: ColumnProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { setNodeRef } = useDroppable({ id: `column:${index}` });
@@ -100,12 +102,16 @@ export function Column({
       status={statusTone(column.color, column.name)}
       name={column.name}
       count={column.cards.length}
-      onAddDraft={() => useUi.getState().open({ type: "draft", column: column.option_id })}
+      onAddDraft={
+        readOnly
+          ? undefined
+          : () => useUi.getState().open({ type: "draft", column: column.option_id })
+      }
       dropTarget={incoming}
       empty={column.cards.length === 0 && !incoming && !drafting}
       className="h-full"
     >
-      {drafting ? (
+      {drafting && !readOnly ? (
         <NewDraft
           key={drafting}
           projectId={projectId}
@@ -135,6 +141,7 @@ export function Column({
                 >
                   {row.kind === "card" ? (
                     <Card
+                      readOnly={readOnly}
                       status={statusTone(column.color, column.name)}
                       card={row.card}
                       hiddenProperties={hiddenProperties}

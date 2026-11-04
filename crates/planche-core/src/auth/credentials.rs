@@ -1,6 +1,6 @@
-use std::fs::{self, OpenOptions};
+use std::fs::{self, File, OpenOptions};
 use std::io::Read;
-use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 
 use security_framework::passwords::{self, PasswordOptions};
@@ -15,6 +15,37 @@ fn legacy_path() -> Result<PathBuf> {
         std::env::var_os("HOME").ok_or_else(|| Error::Credentials("HOME is not set".into()))?;
 
     Ok(PathBuf::from(home).join("Library/Application Support/dev.planche.app/auth/token"))
+}
+
+pub(super) fn lock() -> Result<File> {
+    lock_at(&legacy_path()?.with_file_name("session.lock"))
+}
+
+fn lock_at(path: &Path) -> Result<File> {
+    let dir = path
+        .parent()
+        .ok_or_else(|| Error::Credentials("invalid session path".into()))?;
+
+    fs::DirBuilder::new()
+        .recursive(true)
+        .mode(0o700)
+        .create(dir)
+        .map_err(storage_error)?;
+    fs::set_permissions(dir, fs::Permissions::from_mode(0o700)).map_err(storage_error)?;
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW)
+        .open(path)
+        .map_err(storage_error)?;
+    file.set_permissions(fs::Permissions::from_mode(0o600))
+        .map_err(storage_error)?;
+    file.lock().map_err(storage_error)?;
+
+    Ok(file)
 }
 
 fn options() -> PasswordOptions {

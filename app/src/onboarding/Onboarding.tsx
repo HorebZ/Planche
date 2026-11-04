@@ -24,6 +24,7 @@ import {
   currentProjectQuery,
   errorMessage,
   projectsQuery,
+  useAuth,
   useProjects,
 } from "@/ipc/queries";
 import { useUi } from "@/stores/ui";
@@ -34,7 +35,7 @@ const TOKEN_URL =
   "https://github.com/settings/tokens/new?scopes=repo,read:org,project&description=Planche";
 
 const scopes = [
-  { name: "repo", why: "Read issues and pull requests" },
+  { name: "repo", why: "Read/write repositories, including code" },
   { name: "read:org", why: "List your organizations" },
   { name: "project", why: "Read and move project cards" },
 ];
@@ -94,6 +95,7 @@ const panelClass =
 
 function SignInStep({ onDone }: { onDone: () => void }) {
   const [manual, setManual] = useState(false);
+  const [organizations, setOrganizations] = useState(false);
 
   return manual ? (
     <TokenStep
@@ -102,13 +104,28 @@ function SignInStep({ onDone }: { onDone: () => void }) {
     />
   ) : (
     <GitHubStep
+      key={organizations ? "organizations" : "personal"}
+      organizations={organizations}
       onDone={onDone}
-      onManual={() => setManual(true)}
+      onManual={() => (organizations ? setOrganizations(false) : setManual(true))}
+      onOrganizations={() => setOrganizations(true)}
     />
   );
 }
 
-function GitHubStep({ onDone, onManual }: { onDone: () => void; onManual: () => void }) {
+export function GitHubStep({
+  onDone,
+  onManual,
+  onOrganizations,
+  organizations = false,
+  embedded = false,
+}: {
+  onDone: () => void;
+  onManual: () => void;
+  onOrganizations?: () => void;
+  organizations?: boolean;
+  embedded?: boolean;
+}) {
   const client = useQueryClient();
   const [device, setDevice] = useState<DeviceCode | null>(null);
   const [starting, setStarting] = useState(false);
@@ -154,6 +171,14 @@ function GitHubStep({ onDone, onManual }: { onDone: () => void; onManual: () => 
           client.setQueryData(authQuery.queryKey, status);
           setAuth(status);
           setDevice(null);
+          if (organizations) {
+            await client.invalidateQueries({ queryKey: ["issue"] });
+            const selected =
+              useUi.getState().projectId ?? client.getQueryData(currentProjectQuery.queryKey);
+            if (selected) {
+              await commands.openProject(selected);
+            }
+          }
         } else {
           timer = setTimeout(poll, device.interval * 1000);
         }
@@ -173,7 +198,7 @@ function GitHubStep({ onDone, onManual }: { onDone: () => void; onManual: () => 
       clearTimeout(timer);
       void commands.authOauthCancel(device.user_code).catch(() => {});
     };
-  }, [device, client]);
+  }, [device, client, organizations]);
 
   async function start() {
     if (pending) {
@@ -186,7 +211,9 @@ function GitHubStep({ onDone, onManual }: { onDone: () => void; onManual: () => 
     setCopied(false);
 
     try {
-      const code = await commands.authOauthStart();
+      const code = await (organizations
+        ? commands.authOrganizationsStart()
+        : commands.authOauthStart());
 
       if (generation.current !== attempt) {
         await commands.authOauthCancel(code.user_code);
@@ -245,7 +272,7 @@ function GitHubStep({ onDone, onManual }: { onDone: () => void; onManual: () => 
 
   return (
     <form
-      className={panelClass}
+      className={embedded ? "flex flex-col gap-4 p-6" : panelClass}
       onSubmit={(event) => {
         event.preventDefault();
         if (auth) {
@@ -253,10 +280,25 @@ function GitHubStep({ onDone, onManual }: { onDone: () => void; onManual: () => 
         }
       }}
     >
-      <StepHeader
-        step={1}
-        title="Connect to GitHub"
-      />
+      {organizations ? (
+        <div className="flex flex-col gap-2">
+          <h2 className="font-semibold text-xl">Connect organizations</h2>
+          <p className="text-fg-2">
+            Authorize Planche with the same GitHub account. Your personal connection stays active.
+          </p>
+        </div>
+      ) : (
+        <>
+          <StepHeader
+            step={1}
+            title="Connect to GitHub"
+          />
+          <p className="text-fg-2">
+            Connect your personal projects with project access only. Organization access is added
+            separately.
+          </p>
+        </>
+      )}
       <GitHubSignIn
         pending={pending}
         code={device?.user_code}
@@ -276,25 +318,56 @@ function GitHubStep({ onDone, onManual }: { onDone: () => void; onManual: () => 
         }}
         onCancel={cancel}
       />
-      {!auth && !pending ? <PersonalTokenOption onSelect={onManual} /> : null}
+      {!organizations && !auth && !pending ? <PersonalTokenOption onSelect={onManual} /> : null}
       {auth ? (
         <AccountBlock
           login={auth.login ?? ""}
           avatarUrl={auth.avatar_url ?? undefined}
         />
       ) : null}
+      {!organizations &&
+      auth?.mode === "oauth" &&
+      auth.organizations_available &&
+      onOrganizations ? (
+        <Button
+          type="button"
+          onClick={onOrganizations}
+        >
+          Connect organizations…
+        </Button>
+      ) : null}
       <span className="flex-1" />
-      <Footer>
-        {auth ? (
+      {organizations ? (
+        <div className="flex justify-end gap-2">
           <Button
-            type="submit"
-            variant="primary"
-            ref={continueButton}
+            type="button"
+            onClick={onManual}
           >
-            Continue<Kbd variant="onAccent">↵</Kbd>
+            {embedded ? "Cancel" : "Back"}
           </Button>
-        ) : null}
-      </Footer>
+          {auth ? (
+            <Button
+              type="submit"
+              variant="primary"
+              ref={continueButton}
+            >
+              Continue<Kbd variant="onAccent">↵</Kbd>
+            </Button>
+          ) : null}
+        </div>
+      ) : (
+        <Footer>
+          {auth ? (
+            <Button
+              type="submit"
+              variant="primary"
+              ref={continueButton}
+            >
+              Continue<Kbd variant="onAccent">↵</Kbd>
+            </Button>
+          ) : null}
+        </Footer>
+      )}
     </form>
   );
 }
@@ -486,6 +559,8 @@ function TokenStatus({ check }: { check: Check }) {
 function ProjectStep({ onBack }: { onBack: () => void }) {
   const queryClient = useQueryClient();
   const projects = useProjects();
+  const auth = useAuth();
+  const [connecting, setConnecting] = useState(false);
   const selectProject = useUi((s) => s.selectProject);
   const [picked, setPicked] = useState<ProjectId | null>(null);
   const [opening, setOpening] = useState(false);
@@ -519,6 +594,16 @@ function ProjectStep({ onBack }: { onBack: () => void }) {
     }
   }
 
+  if (connecting) {
+    return (
+      <GitHubStep
+        organizations
+        onDone={() => setConnecting(false)}
+        onManual={() => setConnecting(false)}
+      />
+    );
+  }
+
   return (
     <form
       className={panelClass}
@@ -530,6 +615,16 @@ function ProjectStep({ onBack }: { onBack: () => void }) {
       >
         Planche opens this board first. You can switch projects from the sidebar at any time.
       </StepHeader>
+      {auth.data?.mode === "oauth" && auth.data.organizations_available ? (
+        <Button
+          type="button"
+          onClick={() => setConnecting(true)}
+        >
+          {auth.data.organizations_connected
+            ? "Reconnect organizations…"
+            : "Connect organizations…"}
+        </Button>
+      ) : null}
       <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto">
         {projects.isFetching ? (
           <span

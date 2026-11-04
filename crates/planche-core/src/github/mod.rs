@@ -23,6 +23,9 @@ const REST_ENDPOINT: &str = "https://api.github.com";
 pub struct GithubClient {
     http: reqwest::Client,
     token: String,
+    restricted_oauth: bool,
+    app_token: Option<String>,
+    managed: bool,
     usage: Mutex<RateUsage>,
 }
 
@@ -34,6 +37,10 @@ pub(crate) struct Reply<T> {
 
 impl GithubClient {
     pub fn new(token: impl Into<String>) -> Result<Self> {
+        let token = token.into();
+        let connection = crate::auth::session::connection(&token);
+        let managed = connection.is_some();
+        let (restricted_oauth, app_token) = connection.unwrap_or_default();
         let http = reqwest::Client::builder()
             .user_agent(concat!("planche/", env!("CARGO_PKG_VERSION")))
             .connect_timeout(Duration::from_secs(5))
@@ -44,8 +51,97 @@ impl GithubClient {
 
         Ok(Self {
             http,
-            token: token.into(),
+            token,
+            restricted_oauth,
+            app_token,
+            managed,
             usage: Mutex::default(),
+        })
+    }
+
+    pub(super) fn uses_app_permissions(&self) -> bool {
+        self.token.starts_with("ghu_")
+    }
+
+    pub(crate) fn restricted_oauth(&self) -> bool {
+        self.restricted_oauth
+    }
+
+    pub(crate) fn can_write_issues(&self) -> bool {
+        !self.restricted_oauth || self.app_token.is_some()
+    }
+
+    pub(crate) fn organization_client(&self) -> Result<Option<Self>> {
+        self.app_token.as_ref().map(Self::new).transpose()
+    }
+
+    /// Resolve the owner before sending project queries; organization access never falls back to OAuth.
+    pub async fn for_owner(&self, owner: &str, known_organization: Option<bool>) -> Result<Self> {
+        if !self.restricted_oauth || owner == "@me" {
+            return self.project_client(false);
+        }
+        if let Some(organization) = known_organization {
+            return self.project_client(organization);
+        }
+        if owner.is_empty()
+            || !owner
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+        {
+            return Err(Error::Decode("invalid GitHub owner".into()));
+        }
+        #[derive(Deserialize)]
+        struct Owner {
+            #[serde(rename = "type")]
+            kind: String,
+        }
+        let owner: Owner = self.rest_get(&format!("/users/{}", owner)).await?;
+
+        match owner.kind.as_str() {
+            "Organization" => self.project_client(true),
+            "User" => self.project_client(false),
+            _ => Err(Error::Decode("unsupported GitHub project owner".into())),
+        }
+    }
+
+    fn project_client(&self, organization: bool) -> Result<Self> {
+        if self.restricted_oauth && organization {
+            self.organization_client()?.ok_or_else(|| {
+                Error::OAuth(
+                    "Connect organizations with the GitHub App to open this project".into(),
+                )
+            })
+        } else {
+            let mut client = Self::new(&self.token)?;
+            client.restricted_oauth = self.restricted_oauth;
+            client.app_token = self.app_token.clone();
+            client.managed = self.managed;
+
+            Ok(client)
+        }
+    }
+
+    fn operation_token(&self, operation: &str) -> Result<&str> {
+        let content = matches!(
+            operation,
+            "Issue"
+                | "IssueDescription"
+                | "IssueActivity"
+                | "AssignableUsers"
+                | "AddAssignees"
+                | "RemoveAssignees"
+        );
+        if content
+            && !self.can_write_issues()
+            && matches!(operation, "AddAssignees" | "RemoveAssignees")
+        {
+            return Err(Error::OAuth("This connection can only read public issues. Connect the GitHub App or use a PAT to change assignees.".into()));
+        }
+
+        Ok(if content {
+            self.app_token.as_deref().unwrap_or(&self.token)
+        } else {
+            &self.token
         })
     }
 
@@ -62,7 +158,8 @@ impl GithubClient {
         let request = self.http.post(GRAPHQL_ENDPOINT).json(
             &json!({ "query": document, "operationName": operation, "variables": variables }),
         );
-        let (headers, body) = self.send(request).await?;
+        let token = self.operation_token(operation)?;
+        let (headers, body) = self.send(request, token).await?;
         let (data, rate_limit) = decode::<T>(&body)?;
 
         self.record(
@@ -80,14 +177,19 @@ impl GithubClient {
     /// A REST `GET` on `https://api.github.com{path}`, for data GraphQL does not expose.
     pub(crate) async fn rest_get<T: DeserializeOwned>(&self, path: &str) -> Result<T> {
         let request = self.http.get(format!("{REST_ENDPOINT}{path}"));
-        let (_, body) = self.send(request).await?;
+        let (_, body) = self.send(request, &self.token).await?;
 
         serde_json::from_str(&body).map_err(|e| Error::Decode(e.to_string()))
     }
 
-    async fn send(&self, request: reqwest::RequestBuilder) -> Result<(HeaderMap, String)> {
+    async fn send(
+        &self,
+        request: reqwest::RequestBuilder,
+        token: &str,
+    ) -> Result<(HeaderMap, String)> {
+        let token = crate::auth::session::request_token(token, self.managed).await?;
         let response = request
-            .bearer_auth(&self.token)
+            .bearer_auth(token)
             .send()
             .await
             .map_err(network_error)?;
@@ -128,6 +230,10 @@ impl GithubClient {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "mod.test.rs"]
+mod tests;
 
 #[derive(Deserialize)]
 struct Envelope {

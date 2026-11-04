@@ -152,8 +152,8 @@ export function GitHubSignIn({
     >
       {!connected ? (
         <p className="text-pretty text-fg-2 leading-[19px]">
-          Connect through GitHub OAuth. Organizations using SSO may require additional authorization
-          or admin approval.
+          Connect your GitHub account. Your organization may require app installation, SSO
+          authorization or admin approval.
         </p>
       ) : null}
       {code ? (
@@ -251,7 +251,8 @@ export function PersonalTokenOption({ onSelect }: { onSelect: () => void }) {
   return (
     <div className="flex flex-col items-start gap-2 border-line border-t pt-4">
       <p className="text-fg-2 text-xs">
-        Or use Classic PAT with <code>repo</code>, <code>read:org</code> and <code>project</code>.
+        For personal projects or legacy access, use a classic PAT with <code>repo</code>,
+        <code>read:org</code> and <code>project</code>. The repo scope also permits code access.
       </p>
       <p className="text-fg-3 text-xs">Saved encrypted in macOS Keychain on this Mac.</p>
       <Button

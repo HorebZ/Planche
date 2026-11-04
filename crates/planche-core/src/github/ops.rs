@@ -151,13 +151,27 @@ pub async fn issue(
     account: &UserId,
     content: &ContentId,
 ) -> Result<Option<(Issue, String)>> {
-    load_issue(account, content, |assignees_after, labels_after| async move {
+    let mut loaded = load_issue(account, content, |assignees_after, labels_after| async move {
         Ok(client.query::<wire::IssueData>(
             include_str!("../../graphql/issue.graphql"),
             "Issue",
             json!({ "id": content, "assigneesAfter": assignees_after, "labelsAfter": labels_after }),
         ).await?.data)
-    }).await
+    }).await?;
+    if !client.can_write_issues()
+        && let Some((issue, _)) = &mut loaded
+    {
+        issue.permissions = Some(IssuePermissions {
+            assign: false,
+            close: false,
+            reopen: false,
+            label: false,
+            update: false,
+            delete: false,
+        });
+    }
+
+    Ok(loaded)
 }
 
 async fn load_issue<F: std::future::Future<Output = Result<wire::IssueData>>>(
@@ -315,12 +329,16 @@ pub async fn viewer(client: &GithubClient) -> Result<(Viewer, Option<String>)> {
     Ok((viewer, reply.scopes))
 }
 
-/// Logins of every organization the viewer belongs to.
+/// Active installed organizations for GitHub Apps; viewer memberships for legacy tokens.
 ///
 /// Uses REST `/user/orgs`: GraphQL `viewer.organizations` leaves out some memberships
 /// that REST returns, and their projects would silently disappear.
 pub async fn viewer_organizations(client: &GithubClient) -> Result<Vec<String>> {
     const PER_PAGE: usize = 100;
+
+    if client.uses_app_permissions() {
+        return app_organizations(client).await;
+    }
 
     let mut logins = Vec::new();
 
@@ -340,23 +358,76 @@ pub async fn viewer_organizations(client: &GithubClient) -> Result<Vec<String>> 
     Ok(logins)
 }
 
-/// Projects of the viewer, then of each organization by login. An organization that
+async fn app_organizations(client: &GithubClient) -> Result<Vec<String>> {
+    let mut logins = Vec::new();
+
+    for page in 1.. {
+        let reply: wire::UserInstallations = client
+            .rest_get(&format!("/user/installations?per_page=100&page={page}"))
+            .await?;
+        let last = reply.installations.len() < 100;
+
+        logins.extend(installation_organizations(reply));
+
+        if last {
+            break;
+        }
+    }
+
+    logins.sort_by_key(|login| login.to_lowercase());
+    logins.dedup_by(|a, b| a.eq_ignore_ascii_case(b));
+
+    Ok(logins)
+}
+
+fn installation_organizations(reply: wire::UserInstallations) -> Vec<String> {
+    reply
+        .installations
+        .into_iter()
+        .filter(|installation| {
+            installation.account.kind == "Organization" && installation.suspended_at.is_none()
+        })
+        .map(|installation| installation.account.login)
+        .collect()
+}
+
+/// Organization projects, plus the viewer's projects for legacy tokens. An organization that
 /// refuses the token goes into `sso_blocked` instead of failing the list.
 pub async fn list_projects(client: &GithubClient) -> Result<ProjectList> {
     let (viewer, _) = viewer(client).await?;
-    let mut orgs = viewer_organizations(client).await?;
+    let organization_client = client.organization_client()?;
+    let organization_client = if client.restricted_oauth() {
+        organization_client.as_ref()
+    } else {
+        Some(client)
+    };
+    let mut orgs = match organization_client {
+        Some(client) => viewer_organizations(client).await?,
+        None => Vec::new(),
+    };
 
     orgs.sort_by_key(|login| login.to_lowercase());
 
-    let mut owners = vec![OwnerProjects {
-        projects: owner_projects(client, &viewer.login, false).await?,
-        login: viewer.login,
-        is_org: false,
-    }];
+    let mut owners = Vec::new();
+
+    // GitHub App project permissions cover organizations, not private user-owned projects.
+    if !client.uses_app_permissions() {
+        owners.push(OwnerProjects {
+            projects: owner_projects(client, &viewer.login, false).await?,
+            login: viewer.login,
+            is_org: false,
+        });
+    }
     let mut sso_blocked = Vec::new();
 
     for login in orgs {
-        match owner_projects(client, &login, true).await {
+        match owner_projects(
+            organization_client.ok_or(Error::Unauthorized)?,
+            &login,
+            true,
+        )
+        .await
+        {
             Ok(projects) => owners.push(OwnerProjects {
                 login,
                 is_org: true,
@@ -620,6 +691,7 @@ fn meta_from_wire(p: wire::Project) -> Result<ProjectMeta> {
         title: p.title,
         url: p.url,
         owner_is_org: p.owner.typename == "Organization",
+        can_update: p.viewer_can_update,
         owner: p.owner.login,
         updated_at: p.updated_at,
         fields: p

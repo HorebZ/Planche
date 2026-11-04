@@ -29,6 +29,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../migrations/0004_issues.sql"),
     include_str!("../migrations/0005_issue_complete.sql"),
     include_str!("../migrations/0006_issue_activity.sql"),
+    include_str!("../migrations/0007_project_permissions.sql"),
 ];
 
 /// An acked row stays replayed until the snapshot reflects it, or for this many syncs.
@@ -380,6 +381,14 @@ impl Cache {
             .map(ProjectId))
     }
 
+    pub fn project_owner_is_org(&self, owner: &str, number: u32) -> Result<Option<bool>> {
+        let Some(project) = self.project_id(owner, number)? else {
+            return Ok(None);
+        };
+
+        Ok(self.meta(&project)?.map(|meta| meta.owner_is_org))
+    }
+
     /// When the last full sync of the project finished, in UTC.
     pub fn synced_at(&self, project: &ProjectId) -> Result<Option<String>> {
         Ok(self
@@ -535,6 +544,11 @@ impl Cache {
     /// card, so only the last one is sent. A `Keep` placement inherits the replaced one's.
     pub fn enqueue(&mut self, intent: &Intent) -> Result<i64> {
         let (project_id, item_id) = (intent.project_id(), intent.item_id());
+        if !matches!(intent, Intent::SetAssignees { .. })
+            && self.meta(project_id)?.is_some_and(|meta| !meta.can_update)
+        {
+            return Err(Error::ReadOnlyProject);
+        }
         let tx = self.write()?;
         let mut intent = intent.clone();
 
@@ -752,13 +766,13 @@ impl Cache {
         tx.execute(
             &format!(
                 "INSERT INTO project (id, owner_login, owner_kind, number, title, url, updated_at,
-                                      meta_synced_at, items_synced_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, {NOW}, {NOW})
+                                      meta_synced_at, items_synced_at, can_update)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, {NOW}, {NOW}, ?8)
                  ON CONFLICT (id) DO UPDATE SET
                    owner_login = excluded.owner_login, owner_kind = excluded.owner_kind,
                    number = excluded.number, title = excluded.title, url = excluded.url,
                    updated_at = excluded.updated_at, meta_synced_at = excluded.meta_synced_at,
-                   items_synced_at = excluded.items_synced_at"
+                   items_synced_at = excluded.items_synced_at, can_update = excluded.can_update"
             ),
             params![
                 project,
@@ -768,6 +782,7 @@ impl Cache {
                 meta.title,
                 meta.url,
                 meta.updated_at,
+                meta.can_update,
             ],
         )?;
 
@@ -843,7 +858,7 @@ impl Cache {
         let Some(mut meta) = self
             .conn
             .query_row(
-                "SELECT number, title, url, owner_login, owner_kind, updated_at
+                "SELECT number, title, url, owner_login, owner_kind, updated_at, can_update
                  FROM project WHERE id = ?1",
                 [id],
                 |r| {
@@ -855,6 +870,7 @@ impl Cache {
                         owner: r.get(3)?,
                         owner_is_org: r.get::<_, String>(4)? == "org",
                         updated_at: r.get(5)?,
+                        can_update: r.get(6)?,
                         fields: Vec::new(),
                         views: Vec::new(),
                     })

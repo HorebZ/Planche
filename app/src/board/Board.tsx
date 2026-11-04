@@ -71,6 +71,7 @@ const collision: CollisionDetection = (args) => {
 };
 
 type BoardProps = {
+  readOnly?: boolean;
   hiddenProperties?: DisplayProperty[];
   board: BoardData;
   canonicalBoard: BoardData;
@@ -90,6 +91,7 @@ export const Board = memo(function Board({
   onCreateDraft,
   hiddenProperties,
   canonicalBoard,
+  readOnly = false,
 }: BoardProps) {
   usePaintedMark();
 
@@ -185,7 +187,7 @@ export const Board = memo(function Board({
       const id = String(active.id);
       const from = locate(id);
 
-      if (!from) {
+      if (!from || readOnly) {
         return;
       }
 
@@ -203,7 +205,7 @@ export const Board = memo(function Board({
       setDragging(true);
       startFrames();
     },
-    [locate, setDrag, setDragging],
+    [locate, setDrag, setDragging, readOnly],
   );
 
   const onDragMove = useCallback(
@@ -383,6 +385,7 @@ export const Board = memo(function Board({
         >
           {board.columns.map((column, index) => (
             <Column
+              readOnly={readOnly}
               key={column.option_id ?? "none"}
               column={column}
               hiddenProperties={hiddenProperties}

@@ -11,6 +11,7 @@ export type Scenario =
   | "description-loading"
   | "relations"
   | "board"
+  | "readonly-project"
   | "locked"
   | "unlock-cancelled"
   | "six-statuses"

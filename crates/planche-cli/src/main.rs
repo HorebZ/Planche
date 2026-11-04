@@ -127,6 +127,7 @@ fn exit_code(error: &Error) -> u8 {
         | Error::ViewNotBoard(_)
         | Error::NoStatusField
         | Error::UnsupportedColumnField(_)
+        | Error::ReadOnlyProject
         | Error::CardNotFound(_)
         | Error::AmbiguousCard { .. }
         | Error::UnknownColumn { .. }
@@ -156,7 +157,7 @@ async fn run(command: Command) -> Result<(), Failure> {
             let mut list = ops::list_projects(&client).await?;
 
             if let Some(owner) = owner {
-                let viewer_login = list.owners[0].login.clone();
+                let viewer_login = ops::viewer(&client).await?.0.login;
                 let wanted = if owner == "@me" { viewer_login } else { owner };
 
                 list.owners
@@ -211,7 +212,9 @@ async fn board(project: &str, view: Option<u32>, json: bool, offline: bool) -> R
     }
 
     let refreshed = async {
-        let client = GithubClient::new(auth::load_token()?)?;
+        let client = GithubClient::new(auth::load_token()?)?
+            .for_owner(owner, cache.project_owner_is_org(owner, number)?)
+            .await?;
         let sent = flush_known(&mut cache, &client, owner, number).await;
         let report = sync::full_sync(&mut cache, &client, owner, number, |_, _, _| {}).await?;
 
@@ -276,8 +279,10 @@ async fn move_card(
     after: Option<&str>,
 ) -> Result<(), Failure> {
     let (owner, number) = parse_project(project)?;
-    let client = GithubClient::new(auth::load_token()?)?;
     let mut cache = Cache::open_default()?;
+    let client = GithubClient::new(auth::load_token()?)?
+        .for_owner(owner, cache.project_owner_is_org(owner, number)?)
+        .await?;
     let id = match cache.project_id(owner, number)? {
         Some(id) => id,
         None => {
@@ -350,8 +355,10 @@ async fn sync_project(
     interval: Option<SyncInterval>,
 ) -> Result<(), Failure> {
     let (owner, number) = parse_project(project)?;
-    let client = GithubClient::new(auth::load_token()?)?;
     let cache = Cache::open_default()?;
+    let client = GithubClient::new(auth::load_token()?)?
+        .for_owner(owner, cache.project_owner_is_org(owner, number)?)
+        .await?;
     // A second connection names the cards in the log. The engine owns the first.
     let reader = Cache::open_default()?;
     let mut config = SyncConfig::load(&cache, owner, number)?;

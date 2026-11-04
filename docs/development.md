@@ -181,33 +181,118 @@ cargo run -p planche-cli -- sync --watch @me/2 --interval 1m   # 1m, 5m, 15m or 
 
 ### GitHub sign-in and local sessions
 
-The desktop app uses GitHub OAuth Device Flow: choose **Sign in with GitHub** to copy
+The desktop app uses GitHub Device Flow: choose **Sign in with GitHub** to copy
 the verification code and open GitHub, then paste the code and authorize Planche.
-Click the code to copy it again while waiting. Only Rust makes the OAuth
-and API requests; neither the access token nor the private device code reaches
-the webview. The scopes are `repo`, `read:org` and `project`. A classic PAT is still
-available through **Use a personal access token**.
+Only Rust makes OAuth and API requests; access tokens, refresh tokens and private
+device codes never reach the webview.
 
-Register an [OAuth App](https://github.com/settings/applications/new) for Planche
-once (free; unrelated to Apple Developer membership):
+#### Personal OAuth and optional organization connection
 
-1. Set **Application name** to `Planche`, **Homepage URL** to
-   `https://github.com/HorebZ/Planche`, and **Authorization callback URL** to
-   `http://127.0.0.1`. GitHub requires this field, but Device Flow does not use it.
-2. Click **Register application**, then enable **Device Flow** in the app settings
-   and save. Keep token expiration disabled;
-   this version supports long-lived tokens and rejects expiring ones until token
-   refresh is implemented.
-3. Copy **Client ID** into `PLANCHE_GITHUB_CLIENT_ID` in the root `.env`. Leave
-   `PLANCHE_TOKEN` empty when testing OAuth and restart with `bun run dev`.
-   No client secret is needed.
+The default **Sign in with GitHub** flow uses `PLANCHE_GITHUB_CLIENT_ID` and
+requests only `project`. Register an OAuth App, enable Device Flow and keep token
+expiration disabled for this connection. No client secret is used. The public
+profile and public issues do not need `repo` or `read:org`.
 
-Development and packaged releases use the same OAuth App and Client ID. Keep
-Device Flow enabled and the callback URL at `http://127.0.0.1`; no GitHub
-configuration change is needed for a release. Authorization happens on
-`https://github.com/login/device`, and Planche polls GitHub for the result.
-There is no redirect to a local IP, no local authentication server and no port
-to open.
+`project` grants access to both user and organization Projects on GitHub; there is
+no personal-projects-only OAuth scope. Planche routes organization project requests
+exclusively through its companion GitHub App. This routing does not remove the
+organization-project rights encoded in the OAuth token itself. Private personal
+repository cards may be redacted because project access does not grant private
+repository access. Use the explicit PAT mode when full compatibility is required.
+
+An existing OAuth authorization can retain previously granted broad scopes.
+Planche rejects those grants: revoke the old authorization under GitHub Settings
+→ Applications → Authorized OAuth Apps, then sign in again. No authorization is
+revoked automatically, and existing saved token sessions are preserved as token
+mode until the user reconnects.
+
+After personal sign-in, **Connect organizations…** is available in onboarding and
+the sidebar account menu when this build includes a GitHub App Client ID. It starts
+a separate Device Flow and requires the same GitHub account. Cancelled or rejected
+organization authorization keeps the personal session. Both connections share one
+Keychain item, so restoring them does not add a second credential read. Organization
+access and refresh tokens rotate without changing the primary offline identity.
+A refusal never falls back to a broad OAuth token or PAT.
+
+#### GitHub App for organization projects
+
+Register a [GitHub App](https://github.com/settings/apps/new) rather than an OAuth
+App. Registration is free and unrelated to Apple Developer membership. The App ID,
+the GitHub App's Client ID and a legacy OAuth App's Client ID are different values.
+The Client ID alone does not grant permissions: the registration and installation
+control them.
+
+1. Set a unique app name and the homepage URL to `https://github.com/HorebZ/Planche`.
+2. Enable **Device Flow**, keep **Expire user authorization tokens** enabled, and
+   disable **Active** under Webhooks. No webhook server, callback server, client
+   secret or private key is needed. Leave **Request user authorization (OAuth)
+   during installation** unchecked; Planche starts Device Flow itself.
+3. Set only the following permissions:
+
+   | Category | Permission | Access | Used by Planche |
+   | --- | --- | --- | --- |
+   | Organization | Projects | Read and write | List boards, move/archive cards, edit statuses and create drafts |
+   | Repository | Issues | Read and write | Read issues, descriptions and activity; change assignees |
+   | Repository | Pull requests | Read and write | Read PR cards and linked PRs; change PR assignees |
+   | Repository | Metadata | Read-only (implicit) | Repository identity |
+
+   Leave **Contents**, Actions, Administration and all other optional permissions
+   at **No access**. Members permission is unnecessary: Planche discovers approved
+   organizations through `/user/installations`, not organization membership APIs.
+4. Choose **Any account** for installation if the app must be installed in other
+   organizations. This makes the integration installable; its repository does not
+   have to move into those organizations.
+5. Install the app on the target organization and choose **Only select repositories**.
+   An organization owner must approve organization Projects permission. Repository
+   selection limits repository data; the organization Projects permission is not
+   a per-project allowlist. GitHub still enforces the signed-in user's own access.
+6. Copy the app's public **Client ID** into `PLANCHE_GITHUB_APP_CLIENT_ID` in the
+   ignored root `.env`, alongside the primary `PLANCHE_GITHUB_CLIENT_ID`. Leave
+   `PLANCHE_TOKEN` empty and restart `bun run dev`. Sign in with OAuth first, then
+   choose **Connect organizations…** and complete the second authorization.
+
+The project picker combines personal OAuth projects with active organization
+installations of the GitHub App. The App user token is also used for issue reads
+and assignments, including public resources permitted by GitHub. OAuth alone can
+read public issues; its issue mutation controls remain disabled. Projects whose
+`viewerCanUpdate` is false remain readable, with dragging and draft creation
+disabled and new project mutations rejected before entering the outbox. Existing
+queued actions are preserved. App and PAT modes never implicitly replace each
+other. A PAT login replaces the whole dual connection; logout removes both.
+
+No Contents permission means no general repository-file access. Pull request
+permissions can still expose code in PR diffs through GitHub's API, although
+Planche does not fetch diffs. See [Get a pull request](https://docs.github.com/en/rest/pulls/pulls#get-a-pull-request).
+
+The GitHub App flow requests only `offline_access`, which enables token expiration
+and adds no repository permissions. Access tokens expire after eight hours and
+are refreshed before expiry through the shared Rust GitHub client. Device Flow
+refresh uses the public Client ID and refresh token, with no client secret.
+The full rotating session is stored in the existing Keychain item. A stable
+fingerprint of the initially verified credential keeps offline account restoration
+working across rotations; only the current access token is sent to GitHub.
+`auth/session.lock` contains no credentials and serializes refreshes across the
+app and CLI. Failed refresh or Keychain access leaves pending mutations queued.
+A refresh token that expires or is revoked requires signing in again.
+
+See [GitHub App permissions](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app),
+[Device Flow](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app#using-the-device-flow-to-generate-a-user-access-token)
+and [token refresh](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/refreshing-user-access-tokens).
+No additional GraphQL query was added to the sync loop. `viewerCanUpdate` is
+read in the existing Project metadata fragment; refresh and installation discovery
+use OAuth/REST endpoints. Owner kind is resolved once when opening an OAuth
+project so the correct connection is fixed before the engine starts.
+On 2026-11-04, the live `ProjectBoard` query on `@me/2` cost 5 points both before
+and after adding `viewerCanUpdate`.
+
+#### Classic PAT alternative
+
+**Use a personal access token** selects a separate connection with `repo`,
+`read:org` and `project`, preserving all previous features. The `repo` scope
+also permits reading and writing code; GitHub provides no issues-only OAuth
+scope for private repositories. A PAT does not bypass user rights or organization
+policies. Fine-grained PATs remain unsupported because they cannot cover personal
+Projects and several resource owners in the same connection.
 
 To package the macOS app, load the Client ID from the root `.env` at build time:
 
@@ -215,13 +300,13 @@ To package the macOS app, load the Client ID from the root `.env` at build time:
 bun run --cwd app --env-file=../.env tauri build
 ```
 
-Only the public Client ID is embedded in the Rust executable. The `.env` file
+Only the public Client IDs are embedded in the Rust executable. The `.env` file
 and `PLANCHE_TOKEN` are not bundled. Installed apps need no `.env`; each user
 authorizes their own GitHub account.
 
 For an organization using SAML SSO, establish its SSO session in the browser
 before authorizing Planche. An organization administrator may need to approve
-this OAuth App. If an organization is inaccessible, the project picker keeps
+the integration or its installation. If an organization is inaccessible, the project picker keeps
 other owners selectable and explains how to reconnect after authorization.
 See [GitHub's Device Flow documentation](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#device-flow)
 and [organization access rules](https://docs.github.com/en/apps/oauth-apps/using-oauth-apps/authorizing-oauth-apps#oauth-apps-and-organizations).
@@ -232,9 +317,9 @@ disabled. This uses the file-based Keychain rather than the data protection
 Keychain: no Touch ID, access-group entitlement, provisioning profile, or paid
 Apple Developer membership is required. The CLI uses the same item. macOS may ask
 for permission or the login Keychain password when a different executable accesses
-it, including after unsigned or ad hoc development rebuilds. Rust caches a
-successfully read token for the process so background sync does not repeatedly
-access the Keychain. A refused access leaves the startup lock visible, and only an
+it, including after unsigned or ad hoc development rebuilds. Rust caches the
+session for the process; GitHub App refresh writes a rotated session back to the
+Keychain only when needed. A refused access leaves the startup lock visible, and only an
 explicit **Retry** attempts access again.
 
 On upgrade, Planche reads the legacy
@@ -264,8 +349,14 @@ Before distributing a build, verify on a real Mac with `PLANCHE_TOKEN` unset:
    successful migration must remove it. Never print or capture the credential.
 4. Sign out and restart. The app must show onboarding and not restore a session.
 5. Rebuild or update the app and use the CLI. macOS may request access again, but
-   the saved credential must remain readable after authorization. Automated tests
-   use fake Keychain operations and do not modify the real login Keychain.
+   the saved credential must remain readable after authorization.
+6. With a test GitHub App and only the listed permissions, check an organization
+   board, issue descriptions/activity, linked PRs, issue and PR assignment, card
+   moves, archive/unarchive, draft creation and offline restoration. Reopen a
+   session past access-token expiry and confirm refresh works without a client
+   secret, including simultaneous CLI use. An uninstalled or suspended organization
+   must not appear. Automated tests use fake Keychain/refresh data and do not modify
+   the real login Keychain.
 
 The remembered account is tied to a SHA-256 fingerprint of the verified token.
 An unknown token requires one online identity check; subsequent launches can

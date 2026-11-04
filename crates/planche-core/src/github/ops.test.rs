@@ -327,3 +327,14 @@ fn description_checks_viewer_content_id_and_node_type() {
     assert!(decode("viewer", "wrong", "Issue").unwrap().is_none());
     assert!(decode("viewer", "issue", "PullRequest").unwrap().is_none());
 }
+
+#[test]
+fn app_discovery_only_lists_active_organization_installations() {
+    let reply = serde_json::from_value(serde_json::json!({"installations": [
+        {"account": {"login": "my-user", "type": "User"}, "suspended_at": null},
+        {"account": {"login": "approved-org", "type": "Organization"}, "suspended_at": null},
+        {"account": {"login": "suspended-org", "type": "Organization"}, "suspended_at": "2026-11-01"}
+    ]})).unwrap();
+
+    assert_eq!(super::installation_organizations(reply), ["approved-org"]);
+}

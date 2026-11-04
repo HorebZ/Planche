@@ -37,7 +37,7 @@ async function build() {
   assert(process.platform === "darwin", "Build the macOS alpha on a Mac");
   assert(
     process.env.PLANCHE_GITHUB_CLIENT_ID?.trim(),
-    "Set the public PLANCHE_GITHUB_CLIENT_ID before building",
+    "Set the public PLANCHE_GITHUB_CLIENT_ID before building; PLANCHE_GITHUB_APP_CLIENT_ID adds organization sign-in",
   );
   const root = resolve(import.meta.dir, "..");
   const dmgPython = join(root, ".local/dmg-tools/bin/python");

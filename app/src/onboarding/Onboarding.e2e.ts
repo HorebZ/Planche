@@ -1,5 +1,31 @@
 import { expect, test } from "@playwright/test";
 
+test("a read-only project shows cards without draft creation or dragging", async ({ page }) => {
+  await page.goto("/?mock=readonly-project");
+  await expect(page.getByText("Read-only", { exact: true })).toBeVisible();
+  await expect(page.locator('[data-slot="board-column"]')).toHaveCount(5);
+  await expect(page.locator('[data-slot="issue-card"]').first()).toBeVisible();
+  await expect(page.locator('[data-slot="issue-card"]').first()).toHaveAttribute(
+    "aria-disabled",
+    "true",
+  );
+  await expect(page.getByRole("button", { name: /Add draft/ })).toHaveCount(0);
+});
+
+test("personal OAuth and organization authorization coexist", async ({ page }) => {
+  await page.goto("/?mock=onboarding");
+  await page.getByRole("button", { name: "Sign in with GitHub", exact: true }).click();
+  await expect(page.locator('[data-slot="account-block"]')).toContainText("camille-r");
+  await page.getByRole("button", { name: "Connect organizations…", exact: true }).click();
+  await page.getByRole("button", { name: "Sign in with GitHub", exact: true }).click();
+  await expect(page.locator('[data-slot="account-block"]')).toContainText("camille-r");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await expect(page.getByRole("button", { name: "Reconnect organizations…" })).toBeVisible();
+  await page.getByRole("button", { name: "Planche — v1.2" }).click();
+  await page.getByRole("button", { name: /Open board/ }).click();
+  await expect(page.locator('[data-slot="board-column"]')).toHaveCount(5);
+});
+
 test("GitHub device authorization connects the account and opens a board", async ({ page }) => {
   await page.goto("/?mock=onboarding");
   await page.getByRole("button", { name: "Sign in with GitHub", exact: true }).click();

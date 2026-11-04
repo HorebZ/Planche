@@ -216,3 +216,33 @@ fn credential_errors_do_not_include_the_secret() {
             .contains("Authentication cancelled")
     );
 }
+
+#[test]
+fn session_lock_is_private_and_excludes_other_file_handles() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("auth/session.lock");
+    let lock = lock_at(&path).unwrap();
+    let other = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(&path)
+        .unwrap();
+
+    assert_eq!(
+        fs::metadata(path.parent().unwrap())
+            .unwrap()
+            .permissions()
+            .mode()
+            & 0o777,
+        0o700
+    );
+    assert_eq!(
+        fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+        0o600
+    );
+    assert!(other.try_lock().is_err());
+
+    drop(lock);
+
+    assert!(other.try_lock().is_ok());
+}

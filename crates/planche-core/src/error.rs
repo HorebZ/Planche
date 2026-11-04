@@ -37,6 +37,8 @@ pub enum Error {
     NoStatusField,
     #[error("the board columns use the field {0}, which is not a single select field")]
     UnsupportedColumnField(String),
+    #[error("This project is read-only")]
+    ReadOnlyProject,
     #[error("no card matches `{0}`")]
     CardNotFound(String),
     #[error(

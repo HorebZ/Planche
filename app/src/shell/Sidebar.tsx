@@ -3,6 +3,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { EyeOff, Search, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +23,7 @@ import { SidebarProject } from "@/components/ui/sidebar-project";
 import { commands, type ProjectId, type SyncInterval } from "@/ipc/bindings.types";
 import { useAuth, useProjects, useSetSyncPrefs, useSyncPrefs, useSyncStatus } from "@/ipc/queries";
 import { keysOf, shortcuts } from "@/keyboard/shortcuts";
+import { GitHubStep } from "@/onboarding/Onboarding";
 import { usePreferences } from "@/stores/preferences";
 import { useUi } from "@/stores/ui";
 import { showUpdates, UpdateButton } from "@/update/Updates";
@@ -55,6 +57,7 @@ export function AppSidebar({
   const login = auth.data?.login ?? "";
   const { hiddenProjects, setProjectHidden, projectColors, setProjectColor } = usePreferences();
   const [showHidden, setShowHidden] = useState(false);
+  const [organizationsOpen, setOrganizationsOpen] = useState(false);
   const hidden = hiddenProjects[login] ?? [];
   const all =
     projects.data?.owners.flatMap((owner) => owner.projects).filter((p) => !p.closed) ?? [];
@@ -90,6 +93,13 @@ export function AppSidebar({
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-[216px]">
             <DropdownMenuLabel>Signed in as {login}</DropdownMenuLabel>
+            {auth.data?.mode === "oauth" && auth.data.organizations_available ? (
+              <DropdownMenuItem onSelect={() => setOrganizationsOpen(true)}>
+                {auth.data.organizations_connected
+                  ? "Reconnect organizations…"
+                  : "Connect organizations…"}
+              </DropdownMenuItem>
+            ) : null}
             <DropdownMenuItem
               variant="destructive"
               onSelect={async () => {
@@ -133,6 +143,25 @@ export function AppSidebar({
         syncedAt={syncedAt}
         error={error}
       />
+      <Dialog
+        open={organizationsOpen}
+        onOpenChange={setOrganizationsOpen}
+      >
+        <DialogContent className="max-w-[560px] p-0">
+          <DialogTitle className="sr-only">Organization access</DialogTitle>
+          <DialogDescription className="sr-only">
+            Connect organizations while keeping your personal projects.
+          </DialogDescription>
+          {organizationsOpen ? (
+            <GitHubStep
+              organizations
+              embedded
+              onDone={() => setOrganizationsOpen(false)}
+              onManual={() => setOrganizationsOpen(false)}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </Sidebar>
   );
 }

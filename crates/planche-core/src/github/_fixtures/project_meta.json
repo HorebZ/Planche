@@ -6,6 +6,7 @@
       "title": "Planche",
       "url": "https://github.com/users/HorebZ/projects/2",
       "updatedAt": "2026-10-13T12:50:10Z",
+      "viewerCanUpdate": true,
       "owner": {
         "__typename": "User",
         "login": "HorebZ"

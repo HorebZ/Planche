@@ -56,6 +56,7 @@ export function cardData(card: BoardCard): IssueCardData {
 }
 
 type CardProps = {
+  readOnly?: boolean;
   hiddenProperties?: DisplayProperty[];
   card: BoardCard;
   status?: StatusKey;
@@ -72,11 +73,12 @@ export const Card = memo(function Card({
   ghost = false,
   selected = false,
   hiddenProperties,
+  readOnly = false,
 }: CardProps) {
   const detailing = useUi((state) => state.detailId !== null || state.activeIssueTab !== null);
   const { setNodeRef, attributes, listeners } = useSortable({
     id: card.item_id,
-    disabled: detailing,
+    disabled: detailing || readOnly,
   });
   const ref = useRef<HTMLDivElement | null>(null);
 

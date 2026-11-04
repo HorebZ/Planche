@@ -8,6 +8,7 @@ import {
   type DispatchOutcome,
   type Intent,
   type ProjectId,
+  type ProjectMeta,
   type ViewId,
 } from "@/ipc/bindings.types";
 import {
@@ -17,6 +18,7 @@ import {
   boardQuery,
   currentProjectQuery,
   errorMessage,
+  projectQuery,
   reconcileBoard,
 } from "@/ipc/queries";
 import { keysFor } from "@/keyboard/shortcuts";
@@ -60,6 +62,17 @@ export function dispatchIntent(
     const lease = beginBoardWrite(client, projectId, () => {
       const key = boardQuery(projectId, viewId).queryKey;
       const before = client.getQueryData<Board | null>(key);
+
+      if (
+        intent.type !== "set_assignees" &&
+        client.getQueryData<ProjectMeta>(projectQuery(projectId).queryKey)?.can_update === false
+      ) {
+        publish({
+          type: "rejected",
+          error: { kind: "Invalid", message: "This project is read-only" },
+        });
+        return;
+      }
 
       prepared?.(before);
 

@@ -180,6 +180,7 @@ pub struct ProjectMeta {
     pub url: String,
     pub owner: String,
     pub owner_is_org: bool,
+    pub can_update: bool,
     pub updated_at: String,
     pub fields: Vec<Field>,
     pub views: Vec<View>,

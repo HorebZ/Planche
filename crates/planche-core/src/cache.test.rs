@@ -1,6 +1,37 @@
 use super::*;
 
 #[test]
+fn read_only_projects_remain_readable_and_reject_new_project_writes_without_losing_the_queue() {
+    let mut cache = Cache::open(":memory:").unwrap();
+    let mut meta =
+        crate::github::ops::decode_project_meta(crate::github::fixtures::PROJECT_META).unwrap();
+    let intent = Intent::CreateDraft {
+        project_id: meta.id.clone(),
+        item_id: ItemId("draft-test".into()),
+        field_id: meta
+            .fields
+            .iter()
+            .find(|field| field.name == "Status")
+            .unwrap()
+            .id
+            .clone(),
+        column: None,
+        title: "Draft".into(),
+    };
+    cache.write_snapshot(&meta, &[], true).unwrap();
+    cache.enqueue(&intent).unwrap();
+    meta.can_update = false;
+    cache.write_snapshot(&meta, &[], true).unwrap();
+
+    assert!(cache.board(&meta.id, None).unwrap().is_some());
+    assert!(matches!(
+        cache.enqueue(&intent),
+        Err(Error::ReadOnlyProject)
+    ));
+    assert_eq!(cache.pending_count(&meta.id).unwrap(), 1);
+}
+
+#[test]
 fn card_details_migration_preserves_existing_cache_data() {
     let mut conn = Connection::open_in_memory().unwrap();
 
@@ -105,16 +136,19 @@ fn issue_migration_preserves_legacy_intents_and_the_queue_sequence() {
         Some(&board.columns[1]),
         Placement::Keep,
     );
-    let seq = cache.enqueue(&intent).unwrap();
-    let deleted = cache
-        .enqueue(&Intent::Archive {
-            project_id: board.project.id.clone(),
-            item_id: board.columns[0].cards[0].item_id.clone(),
-        })
-        .unwrap();
+    let insert_legacy = |intent: &Intent| {
+        cache.conn.execute("INSERT INTO pending_mutation (project_id, item_id, intent, created_at) VALUES (?1, ?2, ?3, 'now')", params![intent.project_id().as_str(), intent.item_id().as_str(), encode_intent(intent)]).unwrap();
+        cache.conn.last_insert_rowid()
+    };
+    let seq = insert_legacy(&intent);
+    let deleted = insert_legacy(&Intent::Archive {
+        project_id: board.project.id.clone(),
+        item_id: board.columns[0].cards[0].item_id.clone(),
+    });
     cache.remove(deleted).unwrap();
 
     migrate(&mut cache.conn).unwrap();
+    assert!(!cache.meta(&board.project.id).unwrap().unwrap().can_update);
     let mutation = cache.claim_next(&board.project.id).unwrap().unwrap();
 
     assert_eq!(

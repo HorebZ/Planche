@@ -148,6 +148,24 @@ pub(super) struct Organization {
 }
 
 #[derive(Deserialize)]
+pub(super) struct UserInstallations {
+    pub installations: Vec<Installation>,
+}
+
+#[derive(Deserialize)]
+pub(super) struct Installation {
+    pub account: InstallationAccount,
+    pub suspended_at: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub(super) struct InstallationAccount {
+    pub login: String,
+    #[serde(rename = "type")]
+    pub kind: String,
+}
+
+#[derive(Deserialize)]
 pub(super) struct ListProjectsData {
     pub user: Option<ProjectsOwner>,
     pub organization: Option<ProjectsOwner>,
@@ -203,6 +221,7 @@ pub(super) struct Project {
     pub url: String,
     pub updated_at: String,
     pub owner: Owner,
+    pub viewer_can_update: bool,
     pub fields: Nodes<Field>,
     pub views: Nodes<View>,
 }

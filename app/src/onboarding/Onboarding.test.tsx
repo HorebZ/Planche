@@ -14,6 +14,45 @@ import {
 } from "@/test-support";
 import { Onboarding } from "./Onboarding";
 
+test("organization authorization keeps the personal account and uses its own device flow", async () => {
+  installMockBackend("onboarding");
+  render(<Onboarding signedIn={false} />);
+  click(button("Sign in with GitHub"));
+  await expect
+    .poll(() => document.querySelector('[data-slot="account-block"]')?.textContent)
+    .toContain("camille-r");
+
+  click(button("Connect organizations…"));
+  expect(document.body.textContent).toContain("Your personal connection stays active");
+  click(button("Sign in with GitHub"));
+  await expect.poll(() => calls.auth_organizations_start).toBe(1);
+  await expect
+    .poll(() => document.querySelector('[data-slot="account-block"]')?.textContent)
+    .toContain("camille-r");
+  expect(calls.auth_oauth_start).toBe(1);
+  expect(calls.auth_sign_out).toBeUndefined();
+
+  click(button("Continue↵"));
+  await expect.poll(() => document.body.textContent).toContain("Pick a project");
+  expect(button("Reconnect organizations…")).toBeTruthy();
+});
+
+test("back from organization setup preserves the personal connection", async () => {
+  installMockBackend("onboarding");
+  render(<Onboarding signedIn={false} />);
+  click(button("Sign in with GitHub"));
+  await expect
+    .poll(() => document.querySelector('[data-slot="account-block"]')?.textContent)
+    .toContain("camille-r");
+  click(button("Continue↵"));
+  click(button("Connect organizations…"));
+  click(button("Back"));
+
+  expect(document.body.textContent).toContain("Pick a project");
+  expect(calls.auth_sign_out).toBeUndefined();
+  expect(calls.auth_organizations_start).toBeUndefined();
+});
+
 test("GitHub sign-in displays the code and continues after authorization", async () => {
   installMockBackend("onboarding");
   render(<Onboarding signedIn={false} />);
@@ -107,6 +146,7 @@ test("the token field starts empty, masked and focused, with the required scopes
 
   expect(input.value).toBe("");
   expect(input.type).toBe("password");
+  expect(document.body.textContent).toContain("including code");
   expect(document.activeElement).toBe(input);
   expect(button("Continue↵").disabled).toBe(true);
   expect(

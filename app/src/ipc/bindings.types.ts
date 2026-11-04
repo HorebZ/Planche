@@ -14,12 +14,16 @@ export const commands = {
 	authStatus: () => __TAURI_INVOKE<AuthStatus>("auth_status"),
 	authSetToken: (token: string) => __TAURI_INVOKE<AuthStatus>("auth_set_token", { token }),
 	authOauthStart: () => __TAURI_INVOKE<DeviceCode>("auth_oauth_start"),
+	authOrganizationsStart: () => __TAURI_INVOKE<DeviceCode>("auth_organizations_start"),
 	authOauthPoll: (userCode: string) => __TAURI_INVOKE<{
 	/**  The viewer's node ID, for "assign me". */
 	id: UserId | null,
 	login: string | null,
 	avatar_url: string | null,
 	missing_scopes: string[],
+	mode?: AuthMode,
+	organizations_connected?: boolean,
+	organizations_available?: boolean,
 } | null>("auth_oauth_poll", { userCode }),
 	authOauthCancel: (userCode: string) => __TAURI_INVOKE<null>("auth_oauth_cancel", { userCode }),
 	authOauthCopyCode: (userCode: string) => __TAURI_INVOKE<null>("auth_oauth_copy_code", { userCode }),
@@ -40,6 +44,7 @@ export const commands = {
 	url: string,
 	owner: string,
 	owner_is_org: boolean,
+	can_update: boolean,
 	updated_at: string,
 	fields: Field[],
 	views: View[],
@@ -124,6 +129,8 @@ export type AppError = {
 	message: string,
 };
 
+export type AuthMode = "pat" | "oauth" | "github_app";
+
 /**  Who the stored token signs in as. `login` is `None` without a token. */
 export type AuthStatus = {
 	/**  The viewer's node ID, for "assign me". */
@@ -131,6 +138,9 @@ export type AuthStatus = {
 	login: string | null,
 	avatar_url: string | null,
 	missing_scopes: string[],
+	mode?: AuthMode,
+	organizations_connected?: boolean,
+	organizations_available?: boolean,
 };
 
 export type Board = {
@@ -343,6 +353,7 @@ export type ProjectMeta = {
 	url: string,
 	owner: string,
 	owner_is_org: boolean,
+	can_update: boolean,
 	updated_at: string,
 	fields: Field[],
 	views: View[],

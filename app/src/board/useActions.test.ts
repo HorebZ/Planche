@@ -12,13 +12,14 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, expect, test, vi } from "vitest";
 import { Toaster, toast } from "@/components/ui/toast";
 import { authStatus } from "@/ipc/_fixtures/user.fixtures";
-import type { Board, DispatchOutcome, Intent } from "@/ipc/bindings.types";
+import type { Board, DispatchOutcome, Intent, ProjectMeta } from "@/ipc/bindings.types";
 import {
   authQuery,
   boardQuery,
   createQueryClient,
   currentProjectQuery,
   listenToCore,
+  projectQuery,
 } from "@/ipc/queries";
 import { Shell } from "@/shell/Shell";
 import { useUi } from "@/stores/ui";
@@ -34,6 +35,36 @@ const [first]: { board: Board; intent: Intent }[] = JSON.parse(
   // happy-dom gives import.meta.url an http scheme, so the path starts from app/.
   readFileSync(resolve(process.cwd(), "../fixtures/move_cases.json"), "utf8"),
 );
+
+test("read-only project writes never reach IPC or change the optimistic board", async () => {
+  const client = createQueryClient();
+  const query = boardQuery(first.board.project.id, null);
+  const calls: string[] = [];
+  client.setQueryData(query.queryKey, first.board);
+  client.setQueryData<ProjectMeta>(projectQuery(first.board.project.id).queryKey, {
+    ...first.board.project,
+    owner: "u",
+    owner_is_org: false,
+    can_update: false,
+    updated_at: "",
+    fields: [],
+    views: [],
+  });
+  mockIPC((command) => {
+    calls.push(command);
+    return null;
+  });
+
+  const result = await dispatchIntent(client, first.board.project.id, null, first.intent);
+
+  expect(result).toEqual({
+    type: "rejected",
+    error: { kind: "Invalid", message: "This project is read-only" },
+  });
+  expect(calls).toEqual([]);
+  expect(client.getQueryData(query.queryKey)).toEqual(first.board);
+  client.clear();
+});
 
 test("a move shows at once, and a mutation-failed puts the cached board back", async () => {
   const original = first.board;

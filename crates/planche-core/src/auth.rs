@@ -1,5 +1,3 @@
-use std::sync::{Mutex, PoisonError};
-
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use specta::Type;
@@ -11,10 +9,21 @@ use crate::github::{GithubClient, ops};
 
 mod credentials;
 pub mod oauth;
+pub(crate) mod session;
 
-static TOKEN: Mutex<Option<String>> = Mutex::new(None);
+use session::Session;
 
 pub const REQUIRED_SCOPES: [&str; 3] = ["repo", "read:org", "project"];
+pub const OAUTH_SCOPES: [&str; 1] = ["project"];
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum AuthMode {
+    #[default]
+    Pat,
+    Oauth,
+    GithubApp,
+}
 
 fn identity_key(token: &str) -> String {
     let digest: String = Sha256::digest(token.trim().as_bytes())
@@ -28,7 +37,11 @@ fn identity_key(token: &str) -> String {
 pub fn cached_status(cache: &Cache, token: &str) -> Result<Option<AuthStatus>> {
     cache
         .get(&identity_key(token))?
-        .map(|json| serde_json::from_str(&json).map_err(|error| Error::Cache(error.to_string())))
+        .map(|json| {
+            serde_json::from_str(&json)
+                .map(|status| connection_status(status, token))
+                .map_err(|error| Error::Cache(error.to_string()))
+        })
         .transpose()
 }
 
@@ -47,36 +60,28 @@ pub fn load_token() -> Result<String> {
         return Ok(token.trim().to_owned());
     }
 
-    cached(credentials::read)
-}
-
-/// The cached token, else the token `read` returns. Only a success is cached. The lock
-/// is held during `read` so concurrent first calls share one Keychain access.
-fn cached(read: impl FnOnce() -> Result<String>) -> Result<String> {
-    let mut cache = TOKEN.lock().unwrap_or_else(PoisonError::into_inner);
-
-    if let Some(token) = cache.as_ref() {
-        return Ok(token.clone());
-    }
-
-    let token = read()?;
-
-    *cache = Some(token.clone());
-
-    Ok(token)
-}
-
-fn remember(token: Option<String>) {
-    *TOKEN.lock().unwrap_or_else(PoisonError::into_inner) = token;
+    session::load(credentials::read)
 }
 
 /// Checks the token against GitHub and its scopes before replacing the saved session.
 pub async fn login(token: &str) -> Result<Viewer> {
-    let token = token.trim();
+    if token.trim().starts_with("ghu_") {
+        return Err(Error::ClassicTokenRequired);
+    }
+    login_session(Session::plain(token.trim().to_owned()), None).await
+}
 
-    if std::env::var("PLANCHE_TOKEN")
-        .is_ok_and(|value| !value.trim().is_empty() && value.trim() != token)
-    {
+async fn login_session(session: Session, attach_to: Option<String>) -> Result<Viewer> {
+    let (session, viewer) = verify_session(session).await?;
+    persist_session(session, attach_to).await?;
+
+    Ok(viewer)
+}
+
+async fn verify_session(mut session: Session) -> Result<(Session, Viewer)> {
+    let token = session.token.as_str();
+
+    if std::env::var("PLANCHE_TOKEN").is_ok_and(|value| !value.trim().is_empty()) {
         return Err(Error::Credentials(
             "PLANCHE_TOKEN overrides sign-in; unset it and restart to change accounts".into(),
         ));
@@ -89,20 +94,30 @@ pub async fn login(token: &str) -> Result<Viewer> {
         return Err(Error::ClassicTokenRequired);
     }
 
-    let missing = missing_scopes(scopes.as_deref())?;
+    let missing = if session.restricted_oauth {
+        restricted_scopes(scopes.as_deref())?
+    } else {
+        token_scopes(token, scopes.as_deref())?
+    };
 
     if !missing.is_empty() {
         return Err(Error::MissingScopes(missing));
     }
 
-    let saved = token.to_owned();
+    session.user_id = Some(viewer.id.clone());
 
-    tokio::task::spawn_blocking(move || credentials::write(&saved))
-        .await
-        .map_err(|_| Error::Credentials("could not save the GitHub session; try again".into()))??;
-    remember(Some(token.to_owned()));
+    Ok((session, viewer))
+}
 
-    Ok(viewer)
+async fn persist_session(session: Session, attach_to: Option<String>) -> Result<()> {
+    tokio::task::spawn_blocking(move || match attach_to {
+        Some(anchor) => session::attach(&anchor, session),
+        None => session::save(session),
+    })
+    .await
+    .map_err(|_| Error::Credentials("could not save the GitHub session; try again".into()))??;
+
+    Ok(())
 }
 
 /// Who the stored token signs in as. `login` is `None` without a token.
@@ -113,6 +128,12 @@ pub struct AuthStatus {
     pub login: Option<String>,
     pub avatar_url: Option<String>,
     pub missing_scopes: Vec<String>,
+    #[serde(default)]
+    pub mode: AuthMode,
+    #[serde(default)]
+    pub organizations_connected: bool,
+    #[serde(default)]
+    pub organizations_available: bool,
 }
 
 impl AuthStatus {
@@ -122,6 +143,7 @@ impl AuthStatus {
             login: Some(viewer.login),
             avatar_url: Some(viewer.avatar_url),
             missing_scopes,
+            ..Default::default()
         }
     }
 }
@@ -136,29 +158,73 @@ pub async fn status() -> Result<AuthStatus> {
         Err(Error::NotSignedIn) => return Ok(AuthStatus::default()),
         Err(e) => return Err(e),
     };
-    let (viewer, scopes) = ops::viewer(&GithubClient::new(token)?).await?;
+    let (viewer, scopes) = ops::viewer(&GithubClient::new(&token)?).await?;
 
-    Ok(AuthStatus::signed_in(
-        viewer,
-        missing_scopes(scopes.as_deref())?,
+    let missing = if session::connection(&token).is_some_and(|(restricted, _)| restricted) {
+        restricted_scopes(scopes.as_deref())?
+    } else {
+        token_scopes(&token, scopes.as_deref())?
+    };
+    Ok(connection_status(
+        AuthStatus::signed_in(viewer, missing),
+        &token,
     ))
 }
 
 /// Like `login`, for the onboarding: the status of the token it just stored.
 pub async fn set_token(token: &str) -> Result<AuthStatus> {
-    Ok(AuthStatus::signed_in(login(token).await?, Vec::new()))
+    Ok(connection_status(
+        AuthStatus::signed_in(login(token).await?, Vec::new()),
+        token.trim(),
+    ))
+}
+
+fn connection_status(mut status: AuthStatus, token: &str) -> AuthStatus {
+    let (restricted, app) = session::connection(token).unwrap_or_default();
+    status.mode = if restricted {
+        AuthMode::Oauth
+    } else if token.starts_with("ghu_") {
+        AuthMode::GithubApp
+    } else {
+        AuthMode::Pat
+    };
+    status.organizations_connected = app.is_some() || status.mode == AuthMode::GithubApp;
+    status.organizations_available = oauth::app_client_id().is_some();
+
+    status
+}
+
+fn restricted_scopes(header: Option<&str>) -> Result<Vec<String>> {
+    let scopes = header.ok_or(Error::ClassicTokenRequired)?;
+    if scopes
+        .split(',')
+        .map(str::trim)
+        .any(|scope| !scope.is_empty() && !OAUTH_SCOPES.contains(&scope))
+    {
+        return Err(Error::OAuth("Your existing OAuth authorization has broader permissions. Revoke Planche under GitHub Settings → Applications → Authorized OAuth Apps, then reconnect with project access only. Existing tokens are not narrowed automatically.".into()));
+    }
+
+    Ok(OAUTH_SCOPES
+        .iter()
+        .filter(|required| !scopes.split(',').any(|scope| scope.trim() == **required))
+        .map(|scope| (*scope).into())
+        .collect())
 }
 
 /// Deletes the stored token. Deleting a missing token succeeds.
 pub fn sign_out() -> Result<()> {
-    credentials::delete()?;
-    remember(None);
-
-    Ok(())
+    session::clear()
 }
 
-/// Required scopes absent from an `x-oauth-scopes` header. A missing header means a
-/// fine-grained token, which Planche refuses. OAuth tokens use the same scopes as classic PATs.
+fn token_scopes(token: &str, header: Option<&str>) -> Result<Vec<String>> {
+    if token.starts_with("ghu_") {
+        return Ok(Vec::new());
+    }
+
+    missing_scopes(header)
+}
+
+/// Missing legacy OAuth/classic PAT scopes. GitHub App user tokens are checked separately.
 pub fn missing_scopes(header: Option<&str>) -> Result<Vec<String>> {
     let header = header.ok_or(Error::ClassicTokenRequired)?;
     let granted: Vec<&str> = header

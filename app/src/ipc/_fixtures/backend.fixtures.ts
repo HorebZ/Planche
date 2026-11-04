@@ -64,6 +64,7 @@ export function installMockBackend(scenario: Scenario) {
   let descriptionDenied = scenario === "description-denied";
   let unlock: (() => void) | undefined;
   let oauthActive = false;
+  let organizationsActive = false;
   let update = updateStatus();
   const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
     check_updates: () => update,
@@ -78,6 +79,13 @@ export function installMockBackend(scenario: Scenario) {
     install_update: () => null,
     auth_oauth_start: () => {
       oauthActive = true;
+      organizationsActive = false;
+
+      return { user_code: "ABCD-EFGH", interval: 1 };
+    },
+    auth_organizations_start: () => {
+      oauthActive = true;
+      organizationsActive = true;
 
       return { user_code: "ABCD-EFGH", interval: 1 };
     },
@@ -102,7 +110,11 @@ export function installMockBackend(scenario: Scenario) {
       if (scenario === "oauth-waiting") {
         return null;
       }
-      auth = structuredClone(signedIn);
+      auth = {
+        ...structuredClone(signedIn),
+        mode: "oauth",
+        organizations_connected: organizationsActive,
+      };
 
       return auth;
     },
@@ -165,6 +177,7 @@ export function installMockBackend(scenario: Scenario) {
       url: "",
       owner: "planche",
       owner_is_org: true,
+      can_update: scenario !== "readonly-project",
       updated_at: "",
       fields: [],
       views: [

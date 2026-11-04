@@ -8,4 +8,7 @@ export const authStatus = fixtureFactory<AuthStatus>({
   login: "u",
   avatar_url: null,
   missing_scopes: [],
+  mode: "pat",
+  organizations_connected: false,
+  organizations_available: true,
 });

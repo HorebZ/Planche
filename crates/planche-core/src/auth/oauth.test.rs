@@ -1,8 +1,18 @@
 use super::*;
 
+fn token_data(token: &str, expires_in: Option<u64>) -> TokenData {
+    TokenData {
+        access_token: token.into(),
+        expires_in,
+        refresh_token: None,
+        refresh_token_expires_in: None,
+    }
+}
+
 fn session() -> Session {
     Session::new(
         "client".into(),
+        false,
         CodeReply {
             device_code: "private-device-code".into(),
             user_code: "ABCD-EFGH".into(),
@@ -11,6 +21,31 @@ fn session() -> Session {
         },
     )
     .unwrap()
+}
+
+#[tokio::test]
+async fn network_replies_cannot_commit_after_cancellation_or_a_replacement_flow() {
+    let flow = DeviceFlow::default();
+    *flow.session.lock().await = Some(session());
+    let old_device = "private-device-code";
+
+    flow.cancel("ABCD-EFGH").await;
+    assert!(current_session(&mut *flow.session.lock().await, "ABCD-EFGH", old_device).is_err());
+    let mut replacement = session();
+    replacement.code.device_code = "replacement-private-code".into();
+    *flow.session.lock().await = Some(replacement);
+    assert!(current_session(&mut *flow.session.lock().await, "ABCD-EFGH", old_device).is_err());
+    assert!(
+        current_session(
+            &mut *flow.session.lock().await,
+            "ABCD-EFGH",
+            "replacement-private-code"
+        )
+        .is_ok()
+    );
+
+    flow.cancel_all().await;
+    assert!(flow.session.lock().await.is_none());
 }
 
 #[tokio::test(start_paused = true)]
@@ -41,12 +76,11 @@ async fn polling_waits_and_slows_down_until_authorized() {
     assert_eq!(session.next_poll, Instant::now() + Duration::from_secs(12));
     assert_eq!(
         session
-            .accept(TokenReply::Token {
-                access_token: "token".into(),
-                expires_in: None
-            })
-            .unwrap(),
-        Some("token".into())
+            .accept(TokenReply::Token(token_data("token", None)))
+            .unwrap()
+            .unwrap()
+            .token,
+        "token"
     );
 }
 
@@ -72,7 +106,8 @@ async fn cancellation_expiry_and_stale_polls_never_complete_sign_in() {
     assert!(
         flow.poll("ABCD-EFGH")
             .await
-            .unwrap_err()
+            .err()
+            .unwrap()
             .to_string()
             .contains("expired")
     );
@@ -89,7 +124,8 @@ async fn refused_expiring_and_empty_tokens_are_not_accepted() {
                 error: error.into(),
                 interval: None,
             })
-            .unwrap_err()
+            .err()
+            .unwrap()
             .to_string();
 
         assert!(!message.contains("unexpected-secret-value"));
@@ -97,18 +133,12 @@ async fn refused_expiring_and_empty_tokens_are_not_accepted() {
 
     assert!(
         session
-            .accept(TokenReply::Token {
-                access_token: "token".into(),
-                expires_in: Some(28800)
-            })
+            .accept(TokenReply::Token(token_data("token", Some(28800))))
             .is_err()
     );
     assert!(
         session
-            .accept(TokenReply::Token {
-                access_token: "".into(),
-                expires_in: None
-            })
+            .accept(TokenReply::Token(token_data("", None)))
             .is_err()
     );
 }
@@ -124,7 +154,7 @@ async fn wire_responses_keep_device_secrets_out_of_the_public_code() {
     .unwrap() else {
         panic!("expected device authorization")
     };
-    let session = Session::new("client".into(), reply).unwrap();
+    let session = Session::new("client".into(), false, reply).unwrap();
     let public = serde_json::to_string(&DeviceCode {
         user_code: session.code.user_code,
         interval: session.code.interval,
@@ -142,9 +172,79 @@ async fn wire_responses_keep_device_secrets_out_of_the_public_code() {
             r#"{"access_token":"token","token_type":"bearer","scope":"repo,read:org,project"}"#
         )
         .unwrap(),
-        TokenReply::Token {
+        TokenReply::Token(TokenData {
             expires_in: None,
             ..
-        }
+        })
     ));
+}
+
+#[test]
+fn app_device_flow_requests_rotation_without_legacy_repository_scopes() {
+    assert_eq!(
+        device_parameters("app", true),
+        [
+            ("client_id", "app".into()),
+            ("scope", "offline_access".into())
+        ]
+    );
+    assert_eq!(device_parameters("legacy", false)[1].1, "project");
+}
+
+#[test]
+fn app_tokens_require_a_complete_expiring_session_and_keep_refresh_secrets_private() {
+    let mut session = session();
+    session.github_app = true;
+    let valid = || TokenData {
+        access_token: "ghu_access".into(),
+        expires_in: Some(28800),
+        refresh_token: Some("ghr_refresh-secret".into()),
+        refresh_token_expires_in: Some(15897600),
+    };
+
+    let saved = session.accept(TokenReply::Token(valid())).unwrap().unwrap();
+    let tokens = saved.oauth.unwrap();
+
+    assert_eq!(tokens.client_id, "client");
+    assert!(!tokens.needs_refresh(tokens.expires_at - 61));
+    assert!(tokens.needs_refresh(tokens.expires_at - 60));
+
+    for invalid in [
+        token_data("gho_broad-token", Some(28800)),
+        token_data("ghu_access", None),
+        TokenData {
+            expires_in: Some(0),
+            ..valid()
+        },
+        TokenData {
+            refresh_token: Some(String::new()),
+            ..valid()
+        },
+        TokenData {
+            refresh_token_expires_in: Some(1),
+            ..valid()
+        },
+    ] {
+        let error = session
+            .accept(TokenReply::Token(invalid))
+            .err()
+            .unwrap()
+            .to_string();
+
+        assert!(!error.contains("ghu_access"));
+        assert!(!error.contains("ghr_refresh-secret"));
+    }
+}
+
+#[tokio::test]
+async fn an_expired_refresh_token_requires_sign_in_without_a_network_request() {
+    let tokens = Tokens {
+        client_id: "app".into(),
+        access_token: "ghu_expired".into(),
+        refresh_token: "ghr_expired".into(),
+        expires_at: 1,
+        refresh_expires_at: 2,
+    };
+
+    assert!(matches!(refresh(&tokens).await, Err(Error::Unauthorized)));
 }

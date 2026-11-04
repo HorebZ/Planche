@@ -129,6 +129,9 @@ export function Toolbar({
               className={`size-2.5 rounded-[3px] ${projectTones[tone]}`}
             />
             <span className="truncate font-medium">{board.project.title}</span>
+            {project?.can_update === false ? (
+              <span className="text-fg-3 text-xs">Read-only</span>
+            ) : null}
             <span
               aria-hidden
               className="text-fg-3"

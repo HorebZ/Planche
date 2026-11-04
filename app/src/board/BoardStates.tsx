@@ -33,8 +33,8 @@ export function EmptyBoard({
   onNewDraft,
 }: {
   board: Board;
-  onNewIssue: () => void;
-  onNewDraft: (column: OptionId | null) => void;
+  onNewIssue?: () => void;
+  onNewDraft?: (column: OptionId | null) => void;
 }) {
   return (
     <div
@@ -49,7 +49,7 @@ export function EmptyBoard({
             name={column.name}
             count={0}
             className="h-full"
-            onAddDraft={() => onNewDraft(column.option_id)}
+            onAddDraft={onNewDraft ? () => onNewDraft(column.option_id) : undefined}
             empty
           />
         ))}

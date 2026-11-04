@@ -286,6 +286,10 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
     openProject.mutate(id);
   };
   const newDraft = (column: OptionId | null) => {
+    if (!project.data?.can_update) {
+      notify("This project is read-only");
+      return;
+    }
     if (activeIssueTab) {
       useUi.getState().activateIssueTab(null);
     }
@@ -642,8 +646,8 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
                 ) : cards === 0 && !drafting && layout === "board" ? (
                   <EmptyBoard
                     board={data}
-                    onNewIssue={newIssue}
-                    onNewDraft={newDraft}
+                    onNewIssue={project.data?.can_update ? newIssue : undefined}
+                    onNewDraft={project.data?.can_update ? newDraft : undefined}
                   />
                 ) : layout === "list" ? (
                   <div
@@ -691,6 +695,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
                   </div>
                 ) : (
                   <Board
+                    readOnly={!project.data?.can_update}
                     board={visibleBoard ?? data}
                     canonicalBoard={data}
                     hiddenProperties={viewPreferences?.hiddenProperties}
