@@ -10,12 +10,13 @@ use planche_core::cache::Cache;
 use planche_core::description::Descriptions;
 use planche_core::domain::{
     Board, ContentId, Issue, IssueActivity, IssueDescription, IssueLoad, ProjectId, ProjectList,
-    ProjectMeta, User, UserId, ViewId,
+    ProjectMeta, RepositoryPage, RepositorySource, SelectedRepository, User, UserId, ViewId,
 };
 use planche_core::error::Error;
 use planche_core::github::{GithubClient, ops};
 use planche_core::intent::Intent;
 use planche_core::issue::{self, CommentSubmission, IssueChange, IssueIntent, IssueSender};
+use planche_core::repositories::Repositories;
 use planche_core::sync::{
     self, SyncCommand, SyncConfig, SyncEvent, SyncHandle, SyncPrefs, SyncReport, SyncStatus,
     SystemClock,
@@ -101,6 +102,7 @@ pub struct Core {
     token: Mutex<Option<String>>,
     oauth: DeviceFlow,
     descriptions: Arc<Descriptions>,
+    repositories: Repositories,
     issue_sender: Mutex<Option<IssueSender>>,
     updates: Arc<Updater>,
     installing: Mutex<bool>,
@@ -121,6 +123,7 @@ impl Core {
             token: Mutex::default(),
             oauth: DeviceFlow::default(),
             descriptions: Arc::default(),
+            repositories: Repositories::default(),
             issue_sender: Mutex::default(),
             updates: Arc::new(Updater::new(env!("CARGO_PKG_VERSION"))),
             installing: Mutex::new(false),
@@ -210,9 +213,11 @@ impl Core {
         let client = self.client()?;
 
         self.descriptions.lock();
+        self.repositories.lock();
         *sender = None;
         self.cache().reset_issue_in_flight(&account)?;
         self.descriptions.unlock(account.clone());
+        self.repositories.unlock(account.clone());
 
         let app = app.clone();
         *sender = Some(issue::spawn(
@@ -317,6 +322,7 @@ impl Core {
 
         *self.token.lock().expect("token lock") = None;
         self.descriptions.lock();
+        self.repositories.lock();
         *sender = None;
         *engine = None;
     }
@@ -401,6 +407,7 @@ fn accept_account(app: &AppHandle, core: &Core, status: &AuthStatus) -> Result<(
     let token = auth::load_token()?;
 
     core.descriptions.lock();
+    core.repositories.lock();
     *core.projects.lock().expect("projects lock") = None;
     remember_account(core, status, &token)?;
     *core.token.lock().expect("token lock") = Some(token);
@@ -489,6 +496,107 @@ pub async fn list_projects(core: State<'_, Core>) -> Result<ProjectList> {
 #[specta::specta]
 pub async fn cached_projects(core: State<'_, Core>) -> Result<ProjectList> {
     Ok(core.cache().projects()?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn cached_repositories(
+    core: State<'_, Core>,
+    account: UserId,
+) -> Result<Vec<SelectedRepository>> {
+    Ok(core.repositories.cached(&core.reader, &account)?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn repository_catalog(
+    core: State<'_, Core>,
+    account: UserId,
+    source: RepositorySource,
+    search: String,
+    after: Option<String>,
+) -> Result<RepositoryPage> {
+    let client = core.client()?;
+
+    Ok(core
+        .repositories
+        .catalog(
+            &account,
+            ops::repository_catalog(&client, &account, source, &search, after),
+        )
+        .await?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn select_repository(
+    core: State<'_, Core>,
+    account: UserId,
+    reference: String,
+) -> Result<Vec<SelectedRepository>> {
+    if *core.installing.lock().expect("installation gate") {
+        return Err(AppError {
+            kind: ErrorKind::Invalid,
+            message: "Planche is installing an update".into(),
+        });
+    }
+
+    let client = core.client()?;
+
+    Ok(core
+        .repositories
+        .select(
+            &core.reader,
+            &account,
+            ops::repository_by_reference(&client, &account, &reference),
+        )
+        .await?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn remove_repository(
+    core: State<'_, Core>,
+    account: UserId,
+    id: String,
+) -> Result<Vec<SelectedRepository>> {
+    let installing = core.installing.lock().expect("installation gate");
+    if *installing {
+        return Err(AppError {
+            kind: ErrorKind::Invalid,
+            message: "Planche is installing an update".into(),
+        });
+    }
+
+    Ok(core.repositories.remove(&core.reader, &account, &id)?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn refresh_repository(
+    core: State<'_, Core>,
+    account: UserId,
+    id: String,
+) -> Result<Option<SelectedRepository>> {
+    let selected = core
+        .repositories
+        .cached(&core.reader, &account)?
+        .into_iter()
+        .find(|selected| selected.repository.id == id);
+    let Some(selected) = selected else {
+        return Ok(None);
+    };
+    let client = core.client()?;
+
+    Ok(core
+        .repositories
+        .refresh(
+            &core.reader,
+            &account,
+            &id,
+            ops::repository_by_id(&client, &account, &selected.repository),
+        )
+        .await?)
 }
 
 /// Makes `project_id` the open project: its engine syncs it, and the app reopens it next time.
@@ -797,6 +905,7 @@ pub async fn install_update(app: AppHandle, core: State<'_, Core>) -> Result<()>
     }
 
     core.descriptions.lock();
+    core.repositories.lock();
     drop(core.cache());
     let updater = core.updates.clone();
     let progress = app.clone();

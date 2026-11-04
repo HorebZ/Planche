@@ -1,6 +1,35 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct RepositorySummary {
+    pub id: String,
+    pub full_name: String,
+    pub url: String,
+    pub owner_is_org: bool,
+    pub has_issues: bool,
+    pub archived: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct SelectedRepository {
+    pub repository: RepositorySummary,
+    pub unavailable: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
+pub struct RepositoryPage {
+    pub repositories: Vec<RepositorySummary>,
+    pub next_cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum RepositorySource {
+    Personal,
+    Organizations,
+}
+
 macro_rules! id_type {
     ($($(#[$doc:meta])* $name:ident),+ $(,)?) => {$(
         $(#[$doc])*

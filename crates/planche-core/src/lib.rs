@@ -7,6 +7,7 @@ pub mod error;
 pub mod github;
 pub mod intent;
 pub mod issue;
+pub mod repositories;
 pub mod sync;
 pub mod update;
 

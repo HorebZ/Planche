@@ -18,6 +18,7 @@ const cleanups: (() => void)[] = [];
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
   localStorage.clear();
+  sessionStorage.clear();
   useUi.setState(useUi.getInitialState());
   useDrafts.setState(useDrafts.getInitialState());
   useCommentDrafts.setState(useCommentDrafts.getInitialState());

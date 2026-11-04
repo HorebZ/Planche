@@ -32,6 +32,14 @@ export const commands = {
 	listProjects: () => __TAURI_INVOKE<ProjectList>("list_projects"),
 	/**  The projects in the cache, at once, while `list_projects` asks GitHub. */
 	cachedProjects: () => __TAURI_INVOKE<ProjectList>("cached_projects"),
+	cachedRepositories: (account: UserId) => __TAURI_INVOKE<SelectedRepository[]>("cached_repositories", { account }),
+	repositoryCatalog: (account: UserId, source: RepositorySource, search: string, after: string | null) => __TAURI_INVOKE<RepositoryPage>("repository_catalog", { account, source, search, after }),
+	selectRepository: (account: UserId, reference: string) => __TAURI_INVOKE<SelectedRepository[]>("select_repository", { account, reference }),
+	removeRepository: (account: UserId, id: string) => __TAURI_INVOKE<SelectedRepository[]>("remove_repository", { account, id }),
+	refreshRepository: (account: UserId, id: string) => __TAURI_INVOKE<{
+	repository: RepositorySummary,
+	unavailable: boolean,
+} | null>("refresh_repository", { account, id }),
 	/**  Makes `project_id` the open project: its engine syncs it, and the app reopens it next time. */
 	openProject: (projectId: ProjectId) => __TAURI_INVOKE<null>("open_project", { projectId }),
 	/**  The project the app opened last. */
@@ -402,10 +410,31 @@ export type RateUsage = {
 	reset_at: number | null,
 };
 
+export type RepositoryPage = {
+	repositories: RepositorySummary[],
+	next_cursor: string | null,
+};
+
+export type RepositorySource = "personal" | "organizations";
+
+export type RepositorySummary = {
+	id: string,
+	full_name: string,
+	url: string,
+	owner_is_org: boolean,
+	has_issues: boolean,
+	archived: boolean,
+};
+
 export type SelectOption = {
 	id: OptionId,
 	name: string,
 	color: string,
+};
+
+export type SelectedRepository = {
+	repository: RepositorySummary,
+	unavailable: boolean,
 };
 
 export type SubIssues = {

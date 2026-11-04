@@ -10,6 +10,8 @@ mod comment;
 mod issue_record;
 #[path = "remote.fixtures.rs"]
 mod remote;
+#[path = "repository.fixtures.rs"]
+mod repository;
 #[path = "user.fixtures.rs"]
 mod user;
 
@@ -19,4 +21,5 @@ pub(crate) use clock::FakeClock;
 pub(crate) use comment::{CommentRemote, comment_session};
 pub(crate) use issue_record::issue_record;
 pub(crate) use remote::WaitingRemote;
+pub(crate) use repository::repository;
 pub(crate) use user::user;

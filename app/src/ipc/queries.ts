@@ -175,6 +175,10 @@ export function createQueryClient() {
     const current = state(client);
 
     current.accountEpoch++;
+    for (const family of ["repositories", "repository", "repository-catalog"]) {
+      void client.cancelQueries({ queryKey: [family] }, { revert: false, silent: true });
+      client.removeQueries({ queryKey: [family] });
+    }
     void client.cancelQueries({ queryKey: ["board"] }, { revert: false, silent: true });
     client.removeQueries({ queryKey: ["board"] });
     void client.cancelQueries({ queryKey: ["issue-description"] }, { revert: false, silent: true });

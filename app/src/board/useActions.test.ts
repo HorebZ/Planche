@@ -932,6 +932,10 @@ test("accepted seq survives projection failure with cached board and a recoverab
       return first.board;
     }
 
+    if (cmd === "cached_repositories") {
+      return [];
+    }
+
     if (cmd === "list_projects" || cmd === "cached_projects") {
       return { owners: [] };
     }

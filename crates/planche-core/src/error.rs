@@ -7,6 +7,8 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("{0}")]
+    InvalidRepository(String),
+    #[error("{0}")]
     InvalidComment(String),
     #[error("not signed in, run `planche auth login`")]
     NotSignedIn,

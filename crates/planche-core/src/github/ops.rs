@@ -21,6 +21,10 @@ const MUTATIONS: &str = include_str!("../../graphql/mutations.graphql");
 mod comments;
 pub use comments::{find_comment, post_comment};
 
+#[path = "repositories.rs"]
+mod repositories;
+pub use repositories::{repository_by_id, repository_by_reference, repository_catalog};
+
 pub async fn issue_activity(
     client: &GithubClient,
     account: &UserId,

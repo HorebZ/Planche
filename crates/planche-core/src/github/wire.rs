@@ -3,6 +3,39 @@
 use serde::Deserialize;
 
 #[derive(Deserialize)]
+pub(super) struct RepositoryCatalogData {
+    pub viewer: RepositoryViewer,
+}
+
+#[derive(Deserialize)]
+pub(super) struct RepositoryViewer {
+    pub id: String,
+    pub repositories: Connection<RepositoryNode>,
+}
+
+#[derive(Deserialize)]
+pub(super) struct RepositoryLookupData {
+    pub viewer: DescriptionViewer,
+    pub repository: Option<RepositoryNode>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct RepositoryNode {
+    pub id: String,
+    pub name_with_owner: String,
+    pub url: String,
+    pub has_issues_enabled: bool,
+    pub is_archived: bool,
+    pub owner: RepositoryAccount,
+}
+
+#[derive(Deserialize)]
+pub(super) struct RepositoryAccount {
+    pub __typename: String,
+}
+
+#[derive(Deserialize)]
 pub(super) struct ActivityData {
     pub viewer: DescriptionViewer,
     pub node: Option<serde_json::Value>,

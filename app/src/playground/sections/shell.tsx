@@ -14,6 +14,7 @@ import {
   ProjectAccessState,
   ScopeRow,
 } from "@/components/ui/onboarding";
+import { RepositoryPickerContent } from "@/components/ui/repository-picker";
 import { SettingsDialog } from "@/components/ui/settings";
 import {
   type ProjectTone,
@@ -26,6 +27,7 @@ import {
   SidebarSearch,
 } from "@/components/ui/sidebar";
 import { SidebarProject } from "@/components/ui/sidebar-project";
+import { SidebarRepository } from "@/components/ui/sidebar-repository";
 import { Spinner } from "@/components/ui/spinner";
 import { SyncIndicator } from "@/components/ui/sync-indicator";
 import { Row, Section, State } from "../kit";
@@ -174,6 +176,80 @@ export function ShellSection() {
                 </SidebarFooter>
               </State>
             </div>
+          </Row>
+          <Row label="sidebar repositories">
+            <div className="w-sidebar">
+              {(["ready", "unavailable", "disabled", "archived"] as const).map((state) => (
+                <SidebarRepository
+                  key={state}
+                  selected={{
+                    repository: {
+                      id: state,
+                      full_name: `planche/${state}`,
+                      url: `https://github.com/planche/${state}`,
+                      owner_is_org: false,
+                      has_issues: state !== "disabled",
+                      archived: state === "archived",
+                    },
+                    unavailable: state === "unavailable",
+                  }}
+                  onOpen={() => {}}
+                  onRemove={() => {}}
+                />
+              ))}
+            </div>
+          </Row>
+          <Row label="repository picker">
+            {(["ready", "loading", "empty", "error", "adding"] as const).map((state) => (
+              <State
+                key={state}
+                label={state}
+                className="w-full rounded-xl bg-elevated p-4"
+              >
+                <RepositoryPickerContent
+                  source="personal"
+                  onSourceChange={() => {}}
+                  search=""
+                  onSearchChange={() => {}}
+                  reference=""
+                  onReferenceChange={() => {}}
+                  repositories={
+                    state === "loading" || state === "empty"
+                      ? []
+                      : [
+                          {
+                            id: "R1",
+                            full_name: "HorebZ/Planche",
+                            url: "https://github.com/HorebZ/Planche",
+                            owner_is_org: false,
+                            has_issues: true,
+                            archived: false,
+                          },
+                          {
+                            id: "R2",
+                            full_name: "planche/disabled",
+                            url: "https://github.com/planche/disabled",
+                            owner_is_org: true,
+                            has_issues: false,
+                            archived: false,
+                          },
+                        ]
+                  }
+                  selectedIds={[]}
+                  loading={state === "loading"}
+                  hasMore={state === "ready"}
+                  adding={state === "adding" ? "HorebZ/Planche" : null}
+                  error={
+                    state === "error"
+                      ? "Could not load repositories. Check your connection and retry."
+                      : null
+                  }
+                  onMore={() => {}}
+                  onAdd={() => {}}
+                  onRetry={() => {}}
+                />
+              </State>
+            ))}
           </Row>
           <Row label="sidebar project menus">
             <div className="w-sidebar">

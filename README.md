@@ -32,6 +32,9 @@ The interface is inspired by [Linear](https://linear.app), adapted to GitHub Pro
 
 - Switch between a board and a list, with filters for status, assignee, label and
   repository.
+- Keep repository bookmarks in a separate sidebar section. Browse personal and
+  organization repositories or add a GitHub URL; the selection is saved per account.
+  These links currently open the repository on GitHub.
 - Navigate with J and K, open the status menu with S, or use ⌘K to search the
   loaded project and run card actions. C starts a new project draft.
 - Open an issue to read its Markdown description, comments and activity, inspect
@@ -48,6 +51,7 @@ The interface is inspired by [Linear](https://linear.app), adapted to GitHub Pro
 Planche currently supports GitHub Projects v2 board views and a local list layout.
 Saved GitHub view filters are not applied. Labels are read-only; Roadmap, other
 project fields and creating repository issues still need GitHub.
+Repository issue lists also still need GitHub.
 Issue activity covers comments, closing/reopening, assignees and labels; reviews
 and the full GitHub timeline still need GitHub.
 

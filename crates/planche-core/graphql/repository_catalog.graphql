@@ -1,0 +1,10 @@
+query RepositoryCatalog($after: String) {
+  viewer {
+    id
+    repositories(first: 50, after: $after, affiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER], ownerAffiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER], orderBy: {field: NAME, direction: ASC}) {
+      pageInfo { hasNextPage endCursor }
+      nodes { id nameWithOwner url hasIssuesEnabled isArchived owner { __typename } }
+    }
+  }
+  rateLimit { cost remaining resetAt }
+}

@@ -27,6 +27,7 @@ import { GitHubStep } from "@/onboarding/Onboarding";
 import { usePreferences } from "@/stores/preferences";
 import { useUi } from "@/stores/ui";
 import { showUpdates, UpdateButton } from "@/update/Updates";
+import { RepositorySection } from "./Repositories";
 import { footerText } from "./syncText";
 
 type AppSidebarProps = {
@@ -137,6 +138,7 @@ export function AppSidebar({
             </button>
           ) : null}
         </SidebarGroup>
+        <RepositorySection />
       </div>
       <span className="flex-1" />
       <SyncFooter

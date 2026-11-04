@@ -1,0 +1,16 @@
+query RepositoryByName($owner: String!, $name: String!) {
+  viewer { id }
+  repository(owner: $owner, name: $name) {
+    id nameWithOwner url hasIssuesEnabled isArchived owner { __typename }
+  }
+  rateLimit { cost remaining resetAt }
+}
+
+query RepositoryById($id: ID!) {
+  viewer { id }
+  node(id: $id) {
+    __typename
+    ... on Repository { id nameWithOwner url hasIssuesEnabled isArchived owner { __typename } }
+  }
+  rateLimit { cost remaining resetAt }
+}

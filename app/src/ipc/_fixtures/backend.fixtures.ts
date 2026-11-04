@@ -15,11 +15,13 @@ import type {
   IssueIntent,
   ProjectList,
   ProjectMeta,
+  SelectedRepository,
   SyncPrefs,
 } from "../bindings.types";
 import { issueActivity } from "./activity.fixtures";
 import { issueDescription, MARKDOWN_BODY } from "./description.fixtures";
 import { issueRecord } from "./issue.fixtures";
+import { repository } from "./repository.fixtures";
 import {
   boardFor,
   mockupBoard,
@@ -45,6 +47,46 @@ export function installMockBackend(scenario: Scenario) {
 
   mockWindows("main");
 
+  const repositoryMetadata = [
+    repository(),
+    repository({
+      id: "R_disabled",
+      full_name: "HorebZ/disabled",
+      url: "https://github.com/HorebZ/disabled",
+      has_issues: false,
+    }),
+    repository({
+      id: "R_second",
+      full_name: "HorebZ/second-page",
+      url: "https://github.com/HorebZ/second-page",
+    }),
+    repository({
+      id: "R_archived",
+      full_name: "HorebZ/archived",
+      url: "https://github.com/HorebZ/archived",
+      archived: true,
+    }),
+    repository({
+      id: "R_org",
+      full_name: "planche/core",
+      url: "https://github.com/planche/core",
+      owner_is_org: true,
+    }),
+    repository({
+      id: "R_external",
+      full_name: "external/public",
+      url: "https://github.com/external/public",
+      owner_is_org: true,
+    }),
+  ];
+  const repositoryKey = (account: unknown) => `planche:mock:repositories:${account}`;
+  const selectedRepositories = (account: unknown): SelectedRepository[] =>
+    JSON.parse(sessionStorage.getItem(repositoryKey(account)) ?? "[]");
+  const saveRepositories = (account: unknown, selected: SelectedRepository[]) => {
+    sessionStorage.setItem(repositoryKey(account), JSON.stringify(selected));
+
+    return structuredClone(selected);
+  };
   let prefs: SyncPrefs = { interval: "five_minutes", on_wake: true };
   let auth = structuredClone(onboarding(scenario) ? signedOut : signedIn);
   let board = boardFor(scenario);
@@ -182,6 +224,76 @@ export function installMockBackend(scenario: Scenario) {
       return projectList;
     },
     cached_projects: () => projectList,
+    cached_repositories: (args) => selectedRepositories(args.account),
+    repository_catalog: (args) => {
+      if (scenario === "offline") {
+        throw { kind: "Network", message: "Network unreachable" } satisfies AppError;
+      }
+      const filtered = repositoryMetadata.filter(
+        (repository) =>
+          repository.id !== "R_external" &&
+          repository.owner_is_org === (args.source === "organizations") &&
+          repository.full_name.toLowerCase().includes(String(args.search).toLowerCase()),
+      );
+      const start = args.after ? Number(args.after) : 0;
+
+      return {
+        repositories: structuredClone(filtered.slice(start, start + 2)),
+        next_cursor: start + 2 < filtered.length ? String(start + 2) : null,
+      };
+    },
+    select_repository: (args) => {
+      if (scenario === "offline") {
+        throw { kind: "Network", message: "Network unreachable" } satisfies AppError;
+      }
+      const reference = String(args.reference)
+        .trim()
+        .replace(/^https:\/\/github\.com\//, "")
+        .replace(/\/$/, "");
+      const repository = repositoryMetadata.find(
+        (repository) => repository.full_name.toLowerCase() === reference.toLowerCase(),
+      );
+      if (!repository?.has_issues) {
+        throw {
+          kind: "Invalid",
+          message: repository
+            ? "Issues are disabled for this repository."
+            : "Repository unavailable with your current GitHub access.",
+        } satisfies AppError;
+      }
+      const selected = selectedRepositories(args.account);
+
+      return saveRepositories(args.account, [
+        ...selected.filter((saved) => saved.repository.id !== repository.id),
+        { repository, unavailable: false },
+      ]);
+    },
+    remove_repository: (args) =>
+      saveRepositories(
+        args.account,
+        selectedRepositories(args.account).filter((saved) => saved.repository.id !== args.id),
+      ),
+    refresh_repository: (args) => {
+      if (scenario === "offline") {
+        throw { kind: "Network", message: "Network unreachable" } satisfies AppError;
+      }
+      const selected = selectedRepositories(args.account);
+      const saved = selected.find((saved) => saved.repository.id === args.id);
+      if (!saved) {
+        return null;
+      }
+      const repository = repositoryMetadata.find((repository) => repository.id === args.id);
+      const refreshed = repository
+        ? { repository, unavailable: false }
+        : { ...saved, unavailable: true };
+      saveRepositories(
+        args.account,
+        selected.map((saved) => (saved.repository.id === args.id ? refreshed : saved)),
+      );
+
+      return structuredClone(refreshed);
+    },
+
     open_project: () => null,
     current_project: () =>
       onboarding(scenario) || scenario.startsWith("projects-") ? null : PROJECT,
@@ -435,6 +547,19 @@ export function installMockBackend(scenario: Scenario) {
     { shouldMockEvents: true },
   );
   const backend = {
+    renameRepository: (id: string, fullName: string) => {
+      const repository = repositoryMetadata.find((repository) => repository.id === id);
+      if (repository) {
+        repository.full_name = fullName;
+        repository.url = `https://github.com/${fullName}`;
+      }
+    },
+    removeRepositoryAccess: (id: string) => {
+      const index = repositoryMetadata.findIndex((repository) => repository.id === id);
+      if (index >= 0) {
+        repositoryMetadata.splice(index, 1);
+      }
+    },
     failNextComment: () => {
       failNextComment = true;
     },

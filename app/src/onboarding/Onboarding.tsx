@@ -27,6 +27,7 @@ import {
   useAuth,
   useProjects,
 } from "@/ipc/queries";
+import { RepositorySection } from "@/shell/Repositories";
 import { useUi } from "@/stores/ui";
 import { showUpdates } from "@/update/Updates";
 import pkg from "../../package.json";
@@ -172,6 +173,9 @@ export function GitHubStep({
           setAuth(status);
           setDevice(null);
           if (organizations) {
+            for (const family of ["repositories", "repository", "repository-catalog"]) {
+              await client.invalidateQueries({ queryKey: [family] });
+            }
             await client.invalidateQueries({ queryKey: ["issue"] });
             const selected =
               useUi.getState().projectId ?? client.getQueryData(currentProjectQuery.queryKey);
@@ -689,6 +693,7 @@ function ProjectStep({ onBack }: { onBack: () => void }) {
           );
         })}
         {error ? <FieldMessage role="alert">{error}</FieldMessage> : null}
+        <RepositorySection />
       </div>
       <Footer>
         <Button

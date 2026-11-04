@@ -121,6 +121,19 @@ impl GithubClient {
         }
     }
 
+    /// Public repository metadata is readable with project-only OAuth, even without the App.
+    pub(crate) async fn repository_metadata_client(
+        &self,
+        owner: &str,
+        organization: Option<bool>,
+    ) -> Result<Self> {
+        if self.restricted_oauth && self.app_token.is_none() {
+            return self.project_client(false);
+        }
+
+        self.for_owner(owner, organization).await
+    }
+
     fn operation_token(&self, operation: &str) -> Result<&str> {
         let content = matches!(
             operation,

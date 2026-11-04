@@ -31,6 +31,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../migrations/0006_issue_activity.sql"),
     include_str!("../migrations/0007_project_permissions.sql"),
     include_str!("../migrations/0008_issue_comments.sql"),
+    include_str!("../migrations/0009_selected_repositories.sql"),
 ];
 
 /// An acked row stays replayed until the snapshot reflects it, or for this many syncs.
@@ -1153,6 +1154,7 @@ impl Cache {
 }
 
 mod comments;
+mod repositories;
 
 fn migrate(conn: &mut Connection) -> Result<()> {
     let version = |conn: &Connection| -> Result<usize> {

@@ -56,6 +56,41 @@ fn oauth_alone_reads_public_issues_but_cannot_write_issues_or_open_organization_
     assert_eq!(client.project_client(false).unwrap().token, "gho_personal");
 }
 
+#[tokio::test]
+async fn repository_metadata_uses_the_app_for_known_organizations_and_allows_public_oauth_without_it()
+ {
+    let mut client = GithubClient::new("gho_personal").unwrap();
+    client.restricted_oauth = true;
+
+    let public = client
+        .repository_metadata_client("external", Some(true))
+        .await
+        .unwrap();
+    assert_eq!(
+        public.operation_token("RepositoryByName").unwrap(),
+        "gho_personal"
+    );
+
+    client.app_token = Some("ghu_organizations".into());
+    let organization = client
+        .repository_metadata_client("external", Some(true))
+        .await
+        .unwrap();
+    let personal = client
+        .repository_metadata_client("user", Some(false))
+        .await
+        .unwrap();
+
+    assert_eq!(
+        organization.operation_token("RepositoryById").unwrap(),
+        "ghu_organizations"
+    );
+    assert_eq!(
+        personal.operation_token("RepositoryByName").unwrap(),
+        "gho_personal"
+    );
+}
+
 #[test]
 fn pat_mode_keeps_one_explicit_credential_for_every_operation() {
     let client = GithubClient::new("ghp_classic").unwrap();
