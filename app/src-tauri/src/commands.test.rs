@@ -3,6 +3,100 @@ use serde_json::json;
 
 use super::*;
 
+#[tokio::test]
+async fn standalone_dispatch_commits_without_a_project_and_checks_account_permissions_and_update_gate()
+ {
+    let core = Core::new(Cache::open(":memory:").unwrap());
+    let account = UserId("A".into());
+    let content = ContentId("I_standalone".into());
+    let intent = IssueIntent::SetAssignees {
+        content_id: content.clone(),
+        add: vec![User {
+            id: UserId("U_lea".into()),
+            login: "lea".into(),
+            avatar_url: String::new(),
+        }],
+        remove: vec![],
+    };
+
+    assert!(matches!(
+        core.dispatch_issue_intent(&account, &intent),
+        DispatchOutcome::Rejected {
+            error: AppError {
+                kind: ErrorKind::Auth,
+                ..
+            }
+        }
+    ));
+
+    core.descriptions.unlock(account.clone());
+    let mut issue: Issue = serde_json::from_value(json!({
+        "content": {
+            "kind": "issue", "id": content, "number": 53, "title": "Standalone issue",
+            "url": "https://github.com/HorebZ/Planche/issues/53", "repo": "HorebZ/Planche",
+            "state": "open", "assignees": [], "labels": []
+        },
+        "complete": true,
+        "permissions": { "assign": false, "close": false, "reopen": false, "label": false, "update": false, "delete": false },
+        "fetched_at": ""
+    })).unwrap();
+    core.descriptions
+        .refresh_issue(&core.reader, &account, &content, async {
+            Ok(Some((issue.clone(), String::new())))
+        })
+        .await
+        .unwrap();
+
+    assert!(matches!(
+        core.dispatch_issue_intent(&account, &intent),
+        DispatchOutcome::Rejected { .. }
+    ));
+
+    issue.permissions.as_mut().unwrap().assign = true;
+    core.descriptions
+        .refresh_issue(&core.reader, &account, &content, async {
+            Ok(Some((issue, String::new())))
+        })
+        .await
+        .unwrap();
+    *core.installing.lock().unwrap() = true;
+
+    assert!(matches!(
+        core.dispatch_issue_intent(&account, &intent),
+        DispatchOutcome::Rejected {
+            error: AppError {
+                kind: ErrorKind::Invalid,
+                ..
+            }
+        }
+    ));
+    assert!(core.cache().issue_intents(&account).unwrap().is_empty());
+
+    *core.installing.lock().unwrap() = false;
+    let DispatchOutcome::Accepted { seq } = core.dispatch_issue_intent(&account, &intent) else {
+        panic!("standalone enqueue must commit");
+    };
+    core.stop().await;
+
+    assert!(matches!(
+        core.dispatch_issue_intent(&account, &intent),
+        DispatchOutcome::Rejected { .. }
+    ));
+    assert!(matches!(
+        core.dispatch_issue_intent(&UserId("B".into()), &intent),
+        DispatchOutcome::Rejected { .. }
+    ));
+    assert_eq!(
+        core.cache().issue_intents(&account).unwrap(),
+        [intent.clone()]
+    );
+    assert_eq!(
+        core.cache().claim_issue(&account).unwrap().unwrap().seq,
+        seq
+    );
+    assert!(core.cache().projects().unwrap().owners.is_empty());
+}
+
 #[test]
 fn installation_gate_refuses_new_actions_without_changing_the_outbox() {
     let (core, project) = core_with_fixtures("update-gate");

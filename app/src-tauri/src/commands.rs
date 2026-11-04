@@ -15,6 +15,7 @@ use planche_core::domain::{
 use planche_core::error::Error;
 use planche_core::github::{GithubClient, ops};
 use planche_core::intent::Intent;
+use planche_core::issue::{self, IssueChange, IssueIntent, IssueSender};
 use planche_core::sync::{
     self, SyncCommand, SyncConfig, SyncEvent, SyncHandle, SyncPrefs, SyncReport, SyncStatus,
     SystemClock,
@@ -94,12 +95,13 @@ type Result<T> = std::result::Result<T, AppError>;
 
 pub struct Core {
     pub started: Instant,
-    reader: Mutex<Cache>,
+    reader: Arc<Mutex<Cache>>,
     /// The last list from GitHub, to find the owner of a project not cached yet.
     projects: Mutex<Option<ProjectList>>,
     token: Mutex<Option<String>>,
     oauth: DeviceFlow,
-    descriptions: Descriptions,
+    descriptions: Arc<Descriptions>,
+    issue_sender: Mutex<Option<IssueSender>>,
     updates: Arc<Updater>,
     installing: Mutex<bool>,
     engine: tokio::sync::Mutex<Option<Engine>>,
@@ -114,11 +116,12 @@ impl Core {
     pub fn new(reader: Cache) -> Self {
         Self {
             started: Instant::now(),
-            reader: Mutex::new(reader),
+            reader: Arc::new(Mutex::new(reader)),
             projects: Mutex::default(),
             token: Mutex::default(),
             oauth: DeviceFlow::default(),
-            descriptions: Descriptions::default(),
+            descriptions: Arc::default(),
+            issue_sender: Mutex::default(),
             updates: Arc::new(Updater::new(env!("CARGO_PKG_VERSION"))),
             installing: Mutex::new(false),
             engine: tokio::sync::Mutex::default(),
@@ -168,6 +171,61 @@ impl Core {
                 error: error.into(),
             },
         }
+    }
+
+    pub fn dispatch_issue_intent(&self, account: &UserId, intent: &IssueIntent) -> DispatchOutcome {
+        let installing = self.installing.lock().expect("installation gate");
+
+        if *installing {
+            return DispatchOutcome::Rejected {
+                error: AppError {
+                    kind: ErrorKind::Invalid,
+                    message: "Planche is installing an update. Try again after restart.".into(),
+                },
+            };
+        }
+
+        match self
+            .descriptions
+            .enqueue_issue(&self.reader, account, intent)
+        {
+            Ok(seq) => DispatchOutcome::Accepted { seq },
+            Err(error) => DispatchOutcome::Rejected {
+                error: error.into(),
+            },
+        }
+    }
+
+    fn start_issue_sender(&self, app: &AppHandle, account: UserId) -> Result<()> {
+        let installing = self.installing.lock().expect("installation gate");
+
+        if *installing {
+            return Err(AppError {
+                kind: ErrorKind::Invalid,
+                message: "Planche is installing an update".into(),
+            });
+        }
+
+        let mut sender = self.issue_sender.lock().expect("issue sender");
+        let client = self.client()?;
+
+        self.descriptions.lock();
+        *sender = None;
+        self.cache().reset_issue_in_flight(&account)?;
+        self.descriptions.unlock(account.clone());
+
+        let app = app.clone();
+        *sender = Some(issue::spawn(
+            self.reader.clone(),
+            self.descriptions.clone(),
+            account,
+            client,
+            move |change| {
+                let _ = events::IssueChanged(change).emit(&app);
+            },
+        ));
+
+        Ok(())
     }
 
     pub fn project(&self, project: &ProjectId) -> Result<Option<ProjectMeta>> {
@@ -255,9 +313,11 @@ impl Core {
 
     pub async fn stop(&self) {
         let mut engine = self.engine.lock().await;
+        let mut sender = self.issue_sender.lock().expect("issue sender");
 
         *self.token.lock().expect("token lock") = None;
         self.descriptions.lock();
+        *sender = None;
         *engine = None;
     }
 }
@@ -266,7 +326,7 @@ impl Core {
 /// so the cached board shows at once. A revoked token surfaces as an auth error in the sync.
 #[tauri::command]
 #[specta::specta]
-pub async fn auth_status(core: State<'_, Core>) -> Result<AuthStatus> {
+pub async fn auth_status(app: AppHandle, core: State<'_, Core>) -> Result<AuthStatus> {
     let token = tauri::async_runtime::spawn_blocking(auth::load_token)
         .await
         .map_err(|_| AppError {
@@ -275,7 +335,11 @@ pub async fn auth_status(core: State<'_, Core>) -> Result<AuthStatus> {
         })?;
     let token = match token {
         Ok(token) => token,
-        Err(Error::NotSignedIn) => return Ok(AuthStatus::default()),
+        Err(Error::NotSignedIn) => {
+            core.stop().await;
+
+            return Ok(AuthStatus::default());
+        }
         Err(error) => return Err(error.into()),
     };
     let cached = auth::cached_status(&core.cache(), &token)?;
@@ -283,8 +347,7 @@ pub async fn auth_status(core: State<'_, Core>) -> Result<AuthStatus> {
     if let Some(status) = cached {
         remember_account(&core, &status, &token)?;
         *core.token.lock().expect("token lock") = Some(token);
-        core.descriptions
-            .unlock(status.id.clone().ok_or(Error::NotSignedIn)?);
+        core.start_issue_sender(&app, status.id.clone().ok_or(Error::NotSignedIn)?)?;
 
         return Ok(status);
     }
@@ -293,8 +356,7 @@ pub async fn auth_status(core: State<'_, Core>) -> Result<AuthStatus> {
 
     remember_account(&core, &status, &token)?;
     *core.token.lock().expect("token lock") = Some(token);
-    core.descriptions
-        .unlock(status.id.clone().ok_or(Error::NotSignedIn)?);
+    core.start_issue_sender(&app, status.id.clone().ok_or(Error::NotSignedIn)?)?;
 
     Ok(status)
 }
@@ -321,25 +383,28 @@ fn remember_account(core: &Core, status: &AuthStatus, token: &str) -> Result<()>
 
 #[tauri::command]
 #[specta::specta]
-pub async fn auth_set_token(core: State<'_, Core>, token: String) -> Result<AuthStatus> {
+pub async fn auth_set_token(
+    app: AppHandle,
+    core: State<'_, Core>,
+    token: String,
+) -> Result<AuthStatus> {
     core.oauth.cancel_all().await;
     let status = auth::set_token(&token).await?;
 
     core.stop().await;
-    accept_account(&core, &status)?;
+    accept_account(&app, &core, &status)?;
 
     Ok(status)
 }
 
-fn accept_account(core: &Core, status: &AuthStatus) -> Result<()> {
+fn accept_account(app: &AppHandle, core: &Core, status: &AuthStatus) -> Result<()> {
     let token = auth::load_token()?;
 
     core.descriptions.lock();
     *core.projects.lock().expect("projects lock") = None;
     remember_account(core, status, &token)?;
     *core.token.lock().expect("token lock") = Some(token);
-    core.descriptions
-        .unlock(status.id.clone().ok_or(Error::NotSignedIn)?);
+    core.start_issue_sender(app, status.id.clone().ok_or(Error::NotSignedIn)?)?;
 
     Ok(())
 }
@@ -359,6 +424,7 @@ pub async fn auth_organizations_start(core: State<'_, Core>) -> Result<DeviceCod
 #[tauri::command]
 #[specta::specta]
 pub async fn auth_oauth_poll(
+    app: AppHandle,
     core: State<'_, Core>,
     user_code: String,
 ) -> Result<Option<AuthStatus>> {
@@ -366,7 +432,7 @@ pub async fn auth_oauth_poll(
 
     if let Some(status) = &status {
         core.stop().await;
-        accept_account(&core, status)?;
+        accept_account(&app, &core, status)?;
     }
 
     Ok(status)
@@ -573,6 +639,32 @@ pub async fn dispatch_intent(core: State<'_, Core>, intent: Intent) -> Result<Di
     Ok(outcome)
 }
 
+#[tauri::command]
+#[specta::specta]
+pub fn dispatch_issue_intent(
+    app: AppHandle,
+    core: State<'_, Core>,
+    account: UserId,
+    intent: IssueIntent,
+) -> Result<DispatchOutcome> {
+    let outcome = core.dispatch_issue_intent(&account, &intent);
+
+    if matches!(outcome, DispatchOutcome::Accepted { .. }) {
+        if let Some(sender) = core.issue_sender.lock().expect("issue sender").as_ref() {
+            sender.wake();
+        }
+
+        let _ = events::IssueChanged(IssueChange {
+            account,
+            content: intent.content_id().clone(),
+            error: None,
+        })
+        .emit(&app);
+    }
+
+    Ok(outcome)
+}
+
 /// Who can be assigned in `repo`, an `owner/name`.
 #[tauri::command]
 #[specta::specta]
@@ -686,6 +778,12 @@ pub async fn install_update(app: AppHandle, core: State<'_, Core>) -> Result<()>
         engine.handle.shutdown().await;
     }
 
+    let sender = core.issue_sender.lock().expect("issue sender").take();
+
+    if let Some(sender) = sender {
+        sender.shutdown().await;
+    }
+
     core.descriptions.lock();
     drop(core.cache());
     let updater = core.updates.clone();
@@ -708,7 +806,7 @@ pub async fn install_update(app: AppHandle, core: State<'_, Core>) -> Result<()>
         if core.token.lock().expect("token lock").is_some()
             && let Some(account) = core.cache().get("account_id")?
         {
-            core.descriptions.unlock(UserId(account));
+            core.start_issue_sender(&app, UserId(account))?;
         }
 
         if let Some(engine) = previous {

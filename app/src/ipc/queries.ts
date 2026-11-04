@@ -500,6 +500,31 @@ export async function listenToCore(client: QueryClient) {
     events.syncStatus.listen(({ payload }) => {
       client.setQueryData<SyncStatus>(syncStatusQuery.queryKey, payload);
     }),
+    events.issueChanged.listen(({ payload }) => {
+      if (client.getQueryData(authQuery.queryKey)?.id !== payload.account) {
+        return;
+      }
+
+      void client.invalidateQueries({
+        queryKey: ["issue", "github.com", payload.account, payload.content],
+      });
+
+      for (const query of client.getQueryCache().findAll({ queryKey: ["board"] })) {
+        const projectId = query.queryKey[1];
+
+        if (typeof projectId === "string") {
+          if (useUi.getState().dragging) {
+            deferred.add(projectId);
+          } else {
+            void refresh(projectId);
+          }
+        }
+      }
+
+      if (payload.error) {
+        notify(`Could not update issue: ${payload.error}. Reverted.`, "error");
+      }
+    }),
     events.mutationFailed.listen(({ payload }) => {
       // Rust has dropped the row; the board-changed that follows brings the card back, and
       // the board slides it from where it is now.

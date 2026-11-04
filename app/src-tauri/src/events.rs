@@ -29,6 +29,9 @@ pub struct SyncStatusChanged(pub SyncStatus);
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 pub struct UpdateChanged(pub planche_core::update::UpdateStatus);
 
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+pub struct IssueChanged(pub planche_core::issue::IssueChange);
+
 /// Forwards one engine's events until the engine stops. It also logs each cycle on stdout,
 /// like `planche sync --watch`, for the live scenarios.
 pub fn relay(app: AppHandle, project: ProjectId, mut events: Receiver<SyncEvent>) {

@@ -26,6 +26,39 @@ import {
 
 afterEach(() => clearMocks());
 
+test("issue events refresh shared content and both Projects, while ignoring another account", async () => {
+  mockIPC(() => null, { shouldMockEvents: true });
+
+  const client = createQueryClient();
+  const key = cachedIssueQuery("A", "I_standalone").queryKey;
+  const first = boardQuery("PVT_1", null).queryKey;
+  const second = boardQuery("PVT_2", null).queryKey;
+
+  client.setQueryData(authQuery.queryKey, authStatus({ id: "A" }));
+  client.setQueryData(key, issueRecord());
+  client.setQueryData(first, board());
+  client.setQueryData(second, board({ project: { ...board().project, id: "PVT_2" } }));
+
+  const stop = await listenToCore(client);
+
+  try {
+    await emit("issue-changed", { account: "B", content: "I_standalone", error: null });
+
+    expect(client.getQueryState(key)?.isInvalidated).toBe(false);
+    expect(client.getQueryState(first)?.isInvalidated).toBe(false);
+    expect(client.getQueryState(second)?.isInvalidated).toBe(false);
+
+    await emit("issue-changed", { account: "A", content: "I_standalone", error: null });
+
+    expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(first)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(second)?.isInvalidated).toBe(true);
+  } finally {
+    stop();
+    client.clear();
+  }
+});
+
 test("a failed move names the issue number and target status from its Project field", async () => {
   mockIPC(() => null, { shouldMockEvents: true });
 

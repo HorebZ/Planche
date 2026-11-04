@@ -632,8 +632,16 @@ impl Cache {
             "UPDATE pending_mutation
              SET status = CASE json_extract(intent, '$.type')
                  WHEN 'create_draft' THEN 'unknown' ELSE 'pending' END
-             WHERE status = 'in_flight'",
+             WHERE status = 'in_flight' AND project_id IS NOT NULL",
             [],
+        )?)
+    }
+
+    pub fn reset_issue_in_flight(&self, account: &UserId) -> Result<usize> {
+        Ok(self.conn.execute(
+            "UPDATE pending_mutation SET status = 'pending'
+             WHERE status = 'in_flight' AND project_id IS NULL AND account_id = ?1",
+            [account.as_str()],
         )?)
     }
 

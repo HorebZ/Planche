@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 use crate::cache::Cache;
 use crate::domain::{ContentId, Issue, IssueActivity, IssueDescription, IssueLoad, UserId};
 use crate::issue::IssueIntent;
+use crate::sync::Remote;
 use crate::{Error, Result};
 
 pub const HOST: &str = "github.com";
@@ -237,6 +238,80 @@ impl Descriptions {
         }
 
         cache.enqueue_issue(account, intent)
+    }
+
+    /// The caller binds `remote` to this account. Never hold the cache across a network call.
+    pub async fn flush_issues(
+        &self,
+        cache: &Mutex<Cache>,
+        account: &UserId,
+        remote: &impl Remote,
+        mut changed: impl FnMut(crate::issue::IssueChange),
+    ) -> Result<()> {
+        let session = self
+            .account
+            .lock()
+            .expect("description session")
+            .as_ref()
+            .filter(|id| id.as_ref() == account)
+            .cloned()
+            .ok_or(Error::NotSignedIn)?;
+
+        loop {
+            let mutation = {
+                let current = self.account.lock().expect("description session");
+
+                if !current.as_ref().is_some_and(|id| Arc::ptr_eq(id, &session)) {
+                    return Err(Error::NotSignedIn);
+                }
+
+                cache.lock().expect("cache lock").claim_issue(account)?
+            };
+            let Some(mutation) = mutation else {
+                return Ok(());
+            };
+            let mut failure = None;
+
+            for operation in mutation.intent.to_operations() {
+                {
+                    let current = self.account.lock().expect("description session");
+
+                    if !current.as_ref().is_some_and(|id| Arc::ptr_eq(id, &session)) {
+                        return Err(Error::NotSignedIn);
+                    }
+                }
+
+                if let Err(error) = remote.execute(&operation).await {
+                    failure = Some(error);
+                    break;
+                }
+            }
+
+            let current = self.account.lock().expect("description session");
+
+            if !current.as_ref().is_some_and(|id| Arc::ptr_eq(id, &session)) {
+                return Err(Error::NotSignedIn);
+            }
+
+            let cache = cache.lock().expect("cache lock");
+
+            match &failure {
+                None => cache.ack(mutation.seq)?,
+                Some(error) if error.is_transient() || matches!(error, Error::NotSignedIn) => {
+                    cache.release(mutation.seq, &error.to_string())?;
+
+                    return Err(failure.expect("transient failure"));
+                }
+                Some(_) => cache.remove(mutation.seq)?,
+            }
+
+            drop(cache);
+            changed(crate::issue::IssueChange {
+                account: account.clone(),
+                content: mutation.intent.content_id().clone(),
+                error: failure.map(|error| error.to_string()),
+            });
+        }
     }
 }
 

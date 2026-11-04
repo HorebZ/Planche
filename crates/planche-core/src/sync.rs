@@ -13,7 +13,7 @@ use tokio::sync::{broadcast, mpsc};
 
 use crate::board::project_board;
 use crate::cache::{Cache, Mutation};
-use crate::domain::{Board, ItemId, ProjectId, ProjectMeta, RateUsage, UserId};
+use crate::domain::{Board, ItemId, ProjectId, ProjectMeta, RateUsage};
 use crate::error::{Error, GraphqlError, Result};
 use crate::github::GithubClient;
 use crate::github::ops::{self, ItemsPage};
@@ -245,41 +245,6 @@ pub async fn flush<R: Remote>(
             Err(error) => {
                 cache.remove(mutation.seq)?;
                 sent(Sent::Failed(mutation, error));
-            }
-        }
-    }
-
-    Ok(())
-}
-
-/// The caller authenticates `remote` as `account` before draining this account's queue.
-/// Unlike Project mutations, issue actions need neither a board nor a cached Project.
-pub(crate) async fn flush_issues<R: Remote>(
-    cache: &mut Cache,
-    remote: &R,
-    account: &UserId,
-) -> Result<()> {
-    while let Some(mutation) = cache.claim_issue(account)? {
-        let mut failure = None;
-
-        for operation in mutation.intent.to_operations() {
-            if let Err(error) = remote.execute(&operation).await {
-                failure = Some(error);
-                break;
-            }
-        }
-
-        match failure {
-            None => cache.ack(mutation.seq)?,
-            Some(error) if error.is_transient() => {
-                cache.release(mutation.seq, &error.to_string())?;
-
-                return Err(error);
-            }
-            Some(error) => {
-                cache.remove(mutation.seq)?;
-
-                return Err(error);
             }
         }
     }

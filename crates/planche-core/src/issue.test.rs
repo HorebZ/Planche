@@ -2,7 +2,7 @@ use super::*;
 use crate::cache::Cache;
 use crate::description::{Descriptions, HOST};
 use crate::domain::{IssueLoad, UserId};
-use crate::fixtures::{issue_record, user};
+use crate::fixtures::{WaitingRemote, issue_record, user};
 use crate::{Error, sync};
 use std::sync::Mutex;
 
@@ -185,19 +185,25 @@ async fn issue_queue_survives_restart_and_never_claims_another_accounts_actions(
     let seq = cache.enqueue_issue(&account, &intent).unwrap();
     drop(cache);
 
-    let mut cache = Cache::open(&path).unwrap();
+    let cache = Cache::open(&path).unwrap();
 
     assert!(cache.claim_issue(&other).unwrap().is_none());
     assert_eq!(cache.claim_issue(&account).unwrap().unwrap().seq, seq);
-    cache.reset_in_flight().unwrap();
+    cache.reset_issue_in_flight(&account).unwrap();
 
+    let cache = Mutex::new(cache);
+    let session = Descriptions::default();
+    session.unlock(account.clone());
     let offline = crate::github::fixtures::FakeOffline;
 
     assert!(
-        sync::flush_issues(&mut cache, &offline, &account)
+        session
+            .flush_issues(&cache, &account, &offline, |_| {})
             .await
             .is_err()
     );
+    let cache = cache.lock().unwrap();
+
     assert_eq!(cache.issue_intents(&account).unwrap(), [intent]);
     assert!(cache.issue_intents(&other).unwrap().is_empty());
     assert_eq!(cache.claim_issue(&account).unwrap().unwrap().seq, seq);
@@ -228,29 +234,44 @@ async fn issue_sender_acknowledges_success_and_rolls_back_a_definitive_failure()
         remove: vec![],
     };
     cache.enqueue_issue(&account, &intent).unwrap();
+    let cache = Mutex::new(cache);
+    let session = Descriptions::default();
+    session.unlock(account.clone());
+    let mut changes = Vec::new();
 
-    sync::flush_issues(&mut cache, &github, &account)
+    session
+        .flush_issues(&cache, &account, &github, |change| changes.push(change))
         .await
         .unwrap();
 
-    assert!(cache.claim_issue(&account).unwrap().is_none());
-    assert_eq!(cache.issue_intents(&account).unwrap(), [intent.clone()]);
+    let mut stored = cache.lock().unwrap();
+
+    assert!(stored.claim_issue(&account).unwrap().is_none());
+    assert_eq!(stored.issue_intents(&account).unwrap(), [intent.clone()]);
     assert_eq!(
         github.edit(|state| state.executed.clone()),
         intent.to_operations()
     );
-    assert!(cache.projects().unwrap().owners.is_empty());
+    assert!(stored.projects().unwrap().owners.is_empty());
+    assert_eq!(changes.len(), 1);
+    assert!(changes[0].error.is_none());
 
-    cache.enqueue_issue(&account, &intent).unwrap();
+    stored.enqueue_issue(&account, &intent).unwrap();
+    stored.enqueue_issue(&account, &intent).unwrap();
+    drop(stored);
     github.edit(|state| state.fail_mutations = true);
 
-    assert!(
-        sync::flush_issues(&mut cache, &github, &account)
-            .await
-            .is_err()
-    );
+    session
+        .flush_issues(&cache, &account, &github, |change| changes.push(change))
+        .await
+        .unwrap();
+
+    let cache = cache.lock().unwrap();
+
     assert!(cache.claim_issue(&account).unwrap().is_none());
     assert_eq!(cache.issue_intents(&account).unwrap(), [intent]);
+    assert_eq!(changes.len(), 3);
+    assert!(changes[1..].iter().all(|change| change.error.is_some()));
 }
 
 #[tokio::test]
@@ -321,4 +342,168 @@ async fn issue_actions_require_the_current_accounts_confirmed_permissions() {
             .unwrap()
             .is_empty()
     );
+}
+
+#[tokio::test]
+async fn logout_and_reauthentication_discard_late_mutation_results_and_remaining_operations() {
+    for same_account in [false, true] {
+        let cache = Mutex::new(Cache::open(":memory:").unwrap());
+        let session = Descriptions::default();
+        let account = UserId("A".into());
+        let intent = IssueIntent::SetAssignees {
+            content_id: ContentId("I_standalone".into()),
+            add: vec![user("lea")],
+            remove: vec![user("other")],
+        };
+        let seq = cache
+            .lock()
+            .unwrap()
+            .enqueue_issue(&account, &intent)
+            .unwrap();
+        let remote = WaitingRemote::new();
+        let mut changes = Vec::new();
+        session.unlock(account.clone());
+        let result = {
+            let sending =
+                session.flush_issues(&cache, &account, &remote, |change| changes.push(change));
+            tokio::pin!(sending);
+
+            tokio::select! {
+                result = &mut sending => panic!("sender finished early: {result:?}"),
+                _ = remote.started.notified() => {},
+            }
+
+            // Starting a Project's engine must not steal an issue action in flight.
+            cache.lock().unwrap().reset_in_flight().unwrap();
+            assert!(
+                cache
+                    .lock()
+                    .unwrap()
+                    .claim_issue(&account)
+                    .unwrap()
+                    .is_none()
+            );
+            assert_eq!(
+                cache
+                    .lock()
+                    .unwrap()
+                    .reset_issue_in_flight(&UserId("B".into()))
+                    .unwrap(),
+                0
+            );
+
+            session.lock();
+
+            if same_account {
+                session.unlock(account.clone());
+            }
+
+            remote.release.notify_one();
+
+            sending.await
+        };
+
+        assert!(matches!(result, Err(Error::NotSignedIn)));
+        assert!(changes.is_empty());
+        let cache = cache.lock().unwrap();
+
+        assert_eq!(cache.reset_issue_in_flight(&account).unwrap(), 1);
+        assert_eq!(cache.claim_issue(&account).unwrap().unwrap().seq, seq);
+    }
+}
+
+#[tokio::test]
+async fn a_remote_session_expiring_during_send_preserves_the_action_for_reauthentication() {
+    let cache = Mutex::new(Cache::open(":memory:").unwrap());
+    let session = Descriptions::default();
+    let account = UserId("A".into());
+    let intent = IssueIntent::SetAssignees {
+        content_id: ContentId("I_standalone".into()),
+        add: vec![user("lea")],
+        remove: vec![],
+    };
+    let seq = cache
+        .lock()
+        .unwrap()
+        .enqueue_issue(&account, &intent)
+        .unwrap();
+    let remote = WaitingRemote::new();
+    *remote.failure.lock().unwrap() = Some(Error::NotSignedIn);
+    remote.release.notify_one();
+    session.unlock(account.clone());
+    let mut changes = Vec::new();
+
+    let result = session
+        .flush_issues(&cache, &account, &remote, |change| changes.push(change))
+        .await;
+
+    assert!(matches!(result, Err(Error::NotSignedIn)));
+    assert!(changes.is_empty());
+    let cache = cache.lock().unwrap();
+
+    assert_eq!(cache.claim_issue(&account).unwrap().unwrap().seq, seq);
+    assert_eq!(cache.issue_intents(&account).unwrap(), [intent]);
+}
+
+#[tokio::test(start_paused = true)]
+async fn sender_retries_without_an_open_project_and_shutdown_waits_for_the_current_send() {
+    let cache = Arc::new(Mutex::new(Cache::open(":memory:").unwrap()));
+    let session = Arc::new(Descriptions::default());
+    let account = UserId("A".into());
+    let remote = WaitingRemote::new();
+    *remote.failure.lock().unwrap() = Some(Error::Network("offline".into()));
+    let intent = IssueIntent::SetAssignees {
+        content_id: ContentId("I_standalone".into()),
+        add: vec![user("lea")],
+        remove: vec![],
+    };
+    session.unlock(account.clone());
+    cache
+        .lock()
+        .unwrap()
+        .enqueue_issue(&account, &intent)
+        .unwrap();
+    let (changed, mut changes) = tokio::sync::mpsc::unbounded_channel();
+    let sender = spawn(
+        cache.clone(),
+        session,
+        account.clone(),
+        remote.clone(),
+        move |change| {
+            changed.send(change).unwrap();
+        },
+    );
+    remote.started.notified().await;
+    let first_attempt = tokio::time::Instant::now();
+    remote.release.notify_one();
+    remote.started.notified().await;
+
+    assert!(first_attempt.elapsed() >= Duration::from_secs(2));
+
+    let stopping = sender.shutdown();
+    tokio::pin!(stopping);
+
+    tokio::select! {
+        _ = &mut stopping => panic!("shutdown must wait for the current send"),
+        _ = tokio::task::yield_now() => {},
+    }
+
+    assert!(changes.try_recv().is_err());
+    remote.release.notify_one();
+    stopping.await;
+
+    let change = changes.recv().await.unwrap();
+
+    assert_eq!(change.account, account);
+    assert_eq!(&change.content, intent.content_id());
+    assert!(change.error.is_none());
+    assert!(
+        cache
+            .lock()
+            .unwrap()
+            .claim_issue(&account)
+            .unwrap()
+            .is_none()
+    );
+    assert!(cache.lock().unwrap().projects().unwrap().owners.is_empty());
 }

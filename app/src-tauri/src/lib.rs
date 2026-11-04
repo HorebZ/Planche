@@ -37,6 +37,7 @@ fn builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::refresh_issue_activity,
             commands::refresh_project,
             commands::dispatch_intent,
+            commands::dispatch_issue_intent,
             commands::list_assignable_users,
             commands::sync_status,
             commands::get_sync_prefs,
@@ -50,7 +51,8 @@ fn builder() -> tauri_specta::Builder<tauri::Wry> {
             events::BoardChanged,
             events::MutationFailed,
             events::SyncStatusChanged,
-            events::UpdateChanged
+            events::UpdateChanged,
+            events::IssueChanged
         ])
 }
 

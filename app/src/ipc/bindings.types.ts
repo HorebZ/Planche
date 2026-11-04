@@ -92,6 +92,7 @@ export const commands = {
 	refreshProject: (projectId: ProjectId) => __TAURI_INVOKE<SyncReport>("refresh_project", { projectId }),
 	/**  Accepted confirms the local enqueue commit, not synchronization with GitHub. */
 	dispatchIntent: (intent: Intent) => __TAURI_INVOKE<DispatchOutcome>("dispatch_intent", { intent }),
+	dispatchIssueIntent: (account: UserId, intent: IssueIntent) => __TAURI_INVOKE<DispatchOutcome>("dispatch_issue_intent", { account, intent }),
 	/**  Who can be assigned in `repo`, an `owner/name`. */
 	listAssignableUsers: (repo: string) => __TAURI_INVOKE<User[]>("list_assignable_users", { repo }),
 	syncStatus: () => __TAURI_INVOKE<SyncStatus>("sync_status"),
@@ -107,6 +108,7 @@ export const commands = {
 /** Events */
 export const events = {
 	boardChanged: makeEvent<BoardChanged>("board-changed"),
+	issueChanged: makeEvent<IssueChanged>("issue-changed"),
 	mutationFailed: makeEvent<MutationFailed>("mutation-failed"),
 	syncStatus: makeEvent<SyncStatusChanged>("sync-status"),
 	updateChanged: makeEvent<UpdateChanged>("update-changed"),
@@ -277,10 +279,20 @@ export type IssueActivity = {
 	fetched_at: string,
 };
 
+export type IssueChange = {
+	account: UserId,
+	content: ContentId,
+	error: string | null,
+};
+
+export type IssueChanged = IssueChange;
+
 export type IssueDescription = {
 	body: string,
 	fetched_at: string,
 };
+
+export type IssueIntent = { type: "set_assignees"; content_id: ContentId; add: User[]; remove: User[] };
 
 export type IssueLoad = { status: "ready"; issue: Issue } | { status: "offline"; issue: Issue | null } | 
 /**  GitHub does not distinguish a deleted issue from one the token cannot see. */

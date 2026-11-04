@@ -2,21 +2,105 @@
 
 use serde::{Deserialize, Serialize};
 use specta::Type;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+use tokio::sync::{Notify, oneshot};
+use tokio::task::JoinHandle;
 
+use crate::Error;
 use crate::cache::Cache;
+use crate::description::Descriptions;
 use crate::domain::{ContentId, ItemContent, User, UserId};
-use crate::github::{GithubClient, ops};
 use crate::intent::Operation;
-use crate::{Error, Result, sync};
+use crate::sync::Remote;
 
-pub async fn flush(cache: &mut Cache, client: &GithubClient, account: &UserId) -> Result<()> {
-    let (viewer, _) = ops::viewer(client).await?;
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct IssueChange {
+    pub account: UserId,
+    pub content: ContentId,
+    pub error: Option<String>,
+}
 
-    if viewer.id != *account {
-        return Err(Error::Unauthorized);
+pub struct IssueSender {
+    wake: Arc<Notify>,
+    stop: Option<oneshot::Sender<()>>,
+    task: Option<JoinHandle<()>>,
+}
+
+impl IssueSender {
+    pub fn wake(&self) {
+        self.wake.notify_one();
     }
 
-    sync::flush_issues(cache, client, account).await
+    /// An update waits for the current send before replacing the application.
+    pub async fn shutdown(mut self) {
+        if let Some(stop) = self.stop.take() {
+            let _ = stop.send(());
+        }
+
+        if let Some(task) = self.task.take() {
+            let _ = task.await;
+        }
+    }
+}
+
+impl Drop for IssueSender {
+    fn drop(&mut self) {
+        if let Some(task) = &self.task {
+            task.abort();
+        }
+    }
+}
+
+/// The shell supplies the authenticated account's remote; no Project needs to be open.
+pub fn spawn(
+    cache: Arc<Mutex<Cache>>,
+    session: Arc<Descriptions>,
+    account: UserId,
+    remote: impl Remote,
+    mut changed: impl FnMut(IssueChange) + Send + 'static,
+) -> IssueSender {
+    let wake = Arc::new(Notify::new());
+    let notified = wake.clone();
+    let (stop, mut stopping) = oneshot::channel();
+    let task = tokio::spawn(async move {
+        let mut failures = 0u32;
+        let mut delay = Duration::ZERO;
+
+        loop {
+            tokio::select! {
+                biased;
+                _ = &mut stopping => return,
+                _ = tokio::time::sleep(delay) => {},
+                _ = notified.notified(), if failures == 0 => {},
+            }
+
+            match session
+                .flush_issues(&cache, &account, &remote, &mut changed)
+                .await
+            {
+                Ok(()) => {
+                    failures = 0;
+                    delay = Duration::from_secs(1);
+                }
+                Err(Error::NotSignedIn) => return,
+                Err(error) => {
+                    failures += 1;
+                    delay = Duration::from_secs(1 << failures.min(6));
+
+                    if let Error::RateLimited { retry_after_secs } = error {
+                        delay = delay.max(Duration::from_secs(retry_after_secs));
+                    }
+                }
+            }
+        }
+    });
+
+    IssueSender {
+        wake,
+        stop: Some(stop),
+        task: Some(task),
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
