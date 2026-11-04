@@ -70,11 +70,13 @@ fn cached_identity_belongs_to_the_exact_verified_credential() {
     let first = super::AuthStatus {
         id: Some(crate::domain::UserId("A".into())),
         login: Some("a".into()),
+        organizations_available: oauth::app_client_id().is_some(),
         ..Default::default()
     };
     let second = super::AuthStatus {
         id: Some(crate::domain::UserId("B".into())),
         login: Some("b".into()),
+        organizations_available: oauth::app_client_id().is_some(),
         ..Default::default()
     };
     cache.set("account_id", "unverified-old-account").unwrap();
