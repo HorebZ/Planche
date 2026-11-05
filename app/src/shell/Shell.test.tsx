@@ -47,10 +47,10 @@ test.each([
 
     await expect.poll(() => get('[data-slot="sidebar-footer"]').textContent).toContain(footer);
     expect(document.querySelector('[data-slot="sync-indicator"]')).toBeNull();
+    expect(document.querySelector('[role="progressbar"]')).toBeNull();
 
     if (scenario === "loading") {
       expect(document.querySelectorAll('[data-slot="skeleton-column"]')).toHaveLength(5);
-      expect(document.querySelector('[role="progressbar"]')).not.toBeNull();
       expect(document.querySelector('[data-slot="issue-card"]')).toBeNull();
     } else if (scenario === "empty") {
       expect(document.body.textContent).toContain("This board is empty");
@@ -68,7 +68,7 @@ test.each([
       expect(document.querySelectorAll('[data-slot="issue-list-row"]')).toHaveLength(17);
 
       if (scenario === "offline") {
-        expect(get('[data-item-id="PVTI_231"]').textContent).toContain("Pending");
+        expect(get('[data-item-id="PVTI_231"]').textContent).not.toContain("Pending");
         expect(get('[role="alert"]').textContent).toContain("Retrying in");
       }
     }
@@ -237,7 +237,7 @@ test.each([false, true])(
         expect(alert.textContent).toContain(
           outcome === "success" ? "Disk is full" : "Could not read the local cache",
         );
-        expect(document.querySelector('[role="progressbar"]')).not.toBeNull();
+        expect(document.querySelector('[role="progressbar"]')).toBeNull();
         await expect.poll(() => read.mock.calls.length).toBe(reads + 1);
 
         if (outcome === "success") {

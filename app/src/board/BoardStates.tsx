@@ -1,6 +1,5 @@
 import { BoardColumn } from "@/components/ui/board-column";
 import { EmptyBoardCard, SkeletonColumn } from "@/components/ui/board-states";
-import { Progress } from "@/components/ui/progress";
 import type { Board, OptionId } from "@/ipc/bindings.types";
 import { statusTone } from "./statusTone";
 
@@ -62,15 +61,5 @@ export function EmptyBoard({
         />
       </div>
     </div>
-  );
-}
-
-/** The 2 px bar under the toolbar while a sync runs. */
-export function SyncBar() {
-  return (
-    <Progress
-      indeterminate
-      className="absolute inset-x-0 top-[90px] z-10 w-auto"
-    />
   );
 }

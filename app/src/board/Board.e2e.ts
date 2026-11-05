@@ -58,9 +58,8 @@ test("a card dragged under the first card of Done lands second, and the scene ma
   await expect.poll(() => numbers(column(page, "Done"))).toEqual([220, 226, 215, 211]);
   await expect.poll(() => numbers(column(page, "Todo"))).toEqual([223, 219]);
   await expect(page.locator('[data-slot="drag-help-bar"]')).toHaveCount(0);
-  // "Pending" shows where the card was dropped, until the move is acknowledged.
-  await expect(card(page, 226).getByText("Pending")).toBeVisible();
   await expect(card(page, 226).getByText("Pending")).toHaveCount(0);
+  await expect(page.getByRole("progressbar")).toHaveCount(0);
 });
 
 test("the keyboard lifts, moves across and down, and drops", async ({ page }) => {
@@ -118,7 +117,8 @@ test("a drop animates into the optimistic column before the local receipt", asyn
   await page.mouse.up();
 
   await expect(column(page, "Done").locator('[data-item-id="PVTI_226"]')).toBeVisible();
-  await expect(card(page, 226).getByText("Pending")).toBeVisible();
+  await expect(card(page, 226).getByText("Pending")).toHaveCount(0);
+  await expect(page.getByRole("progressbar")).toHaveCount(0);
 
   const animationColumns = await page.evaluate(
     () => (window as unknown as { __dropColumns: string[] }).__dropColumns,

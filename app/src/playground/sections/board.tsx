@@ -482,13 +482,6 @@ export function BoardSection() {
                 updated
               />
             </State>
-            <State label="pending">
-              <IssueCard
-                {...openIssue}
-                className={cardClass}
-                pending
-              />
-            </State>
             <State label="long title">
               <IssueCard
                 {...openIssue}

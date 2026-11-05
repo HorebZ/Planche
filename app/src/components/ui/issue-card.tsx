@@ -67,7 +67,6 @@ export type IssueCardProps = IssueCardData & {
   hiddenProperties?: DisplayProperty[];
   selected?: boolean;
   updated?: boolean;
-  pending?: boolean;
   dragState?: Exclude<DragState, "none">;
 } & Omit<ComponentProps<"div">, "title" | "children">;
 
@@ -90,7 +89,6 @@ export function IssueCard({
   pullRequest,
   selected = false,
   updated = false,
-  pending = false,
   dragState,
   hiddenProperties = [],
   className,
@@ -136,7 +134,6 @@ export function IssueCard({
             </span>
           ) : null}
         </div>
-        {pending ? <span className="shrink-0 font-medium text-warning">Pending</span> : null}
         {!hiddenProperties.includes("assignees") ? (
           <span className="flex shrink-0 items-center">
             {assignees.length ? (

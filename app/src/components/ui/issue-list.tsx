@@ -23,7 +23,7 @@ export function IssueListGroup({
 }: {
   name: string;
   status: StatusKey;
-  items: (IssueCardData & { id: string; pending?: boolean })[];
+  items: (IssueCardData & { id: string })[];
   onOpen: (id: string) => void;
   onSelect?: (id: string) => void;
   draft?: ReactNode;
@@ -136,7 +136,6 @@ export function IssueListGroup({
                 </span>
                 <StatusSquare status={item.status ?? status} />
                 <span className="min-w-0 flex-1 truncate font-medium">{item.title}</span>
-                {item.pending ? <span className="text-warning text-xs">Pending</span> : null}
               </button>
               {!hiddenProperties.includes("labels") ? (
                 <div className="min-w-0 max-w-1/3">

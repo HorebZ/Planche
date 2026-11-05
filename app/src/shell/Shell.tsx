@@ -3,7 +3,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { AssigneePicker } from "@/board/AssigneePicker";
 import { Board } from "@/board/Board";
-import { EmptyBoard, LoadingBoard, SyncBar } from "@/board/BoardStates";
+import { EmptyBoard, LoadingBoard } from "@/board/BoardStates";
 import { cardData, focusCard } from "@/board/Card";
 import { filterBoard, selectionAfterRemoval } from "@/board/filter";
 import { NewDraft } from "@/board/NewDraft";
@@ -619,7 +619,6 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
                   usePreferences.getState().setPropertyVisible(context, property, visible)
                 }
               />
-              {syncing || retrying ? <SyncBar /> : null}
               {data ? (
                 <SyncErrorToast
                   key={projectId}
@@ -669,7 +668,6 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
                           status:
                             card.kind === "draft" ? "draft" : statusTone(column.color, column.name),
                           id: card.item_id,
-                          pending: card.pending,
                         }))}
                         onOpen={useUi.getState().openDetail}
                         onSelect={(id) => !detailId && select(id)}

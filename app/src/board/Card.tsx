@@ -135,7 +135,6 @@ export const Card = memo(function Card({
       data-item-id={card.item_id}
       aria-roledescription="card"
       dragState={ghost ? "ghost" : undefined}
-      pending={card.pending}
       updated={card.updated_by_sync}
     />
   );

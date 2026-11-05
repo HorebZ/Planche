@@ -5,6 +5,15 @@ import { draft } from "@/ipc/_fixtures/card.fixtures";
 import { useUi } from "@/stores/ui";
 import { Card, focusCard } from "./Card";
 
+test("a card waiting for sync renders without a Pending badge", () => {
+  const container = document.createElement("div");
+
+  container.innerHTML = renderToStaticMarkup(<Card card={draft({ pending: true })} />);
+
+  expect(container.textContent).toContain("Draft issue");
+  expect(container.textContent).not.toContain("Pending");
+});
+
 test.each(["backlog", "todo", "doing", "review", "done"] as const)(
   "a draft keeps its dotted glyph in a %s column",
   (status) => {
