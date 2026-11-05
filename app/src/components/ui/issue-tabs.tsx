@@ -1,7 +1,8 @@
-import { Columns3, FileText, Plus, X } from "lucide-react";
+import { Columns3, Plus, X } from "lucide-react";
 import { Tabs } from "radix-ui";
 import { type ComponentProps, type ReactNode, useLayoutEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { type StatusKey, StatusSquare } from "@/components/ui/status";
 import { commandFor } from "@/keyboard/shortcuts";
 import { cn } from "@/lib/cn";
 
@@ -14,7 +15,14 @@ export function IssueTabs({
   addDisabled,
   children,
 }: {
-  tabs: { id: string; title: string; project: string; kind?: "board"; closable?: boolean }[];
+  tabs: {
+    id: string;
+    title: string;
+    project: string;
+    kind?: "board";
+    closable?: boolean;
+    status?: StatusKey;
+  }[];
   active: string;
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
@@ -73,7 +81,7 @@ export function IssueTabs({
               <Tabs.Trigger
                 value={tab.id}
                 title={`${tab.title} · ${tab.project}`}
-                className="flex h-8 min-w-0 items-center gap-2 rounded-lg px-3 text-left font-medium text-md focus-visible:shadow-ring"
+                className="flex h-7 min-w-0 items-center gap-2 rounded-lg px-3 text-left font-medium text-md focus-visible:shadow-ring"
               >
                 {tab.kind === "board" ? (
                   <Columns3
@@ -81,8 +89,8 @@ export function IssueTabs({
                     aria-hidden
                   />
                 ) : (
-                  <FileText
-                    className="size-3.5 shrink-0"
+                  <StatusSquare
+                    status={tab.status ?? "draft"}
                     aria-hidden
                   />
                 )}
@@ -105,7 +113,7 @@ export function IssueTabs({
         <Button
           variant="ghost"
           size="icon"
-          className="size-8 shrink-0 text-fg-3"
+          className="size-7 shrink-0 text-fg-3"
           aria-label="New tab"
           title="New tab"
           onClick={onAdd}

@@ -582,9 +582,10 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
             })),
             ...issueTabs.map((tab, index) => {
               const source = tabBoards[index].data;
-              const item = source?.columns
-                .flatMap((column) => column.cards)
-                .find((card) => card.item_id === tab.itemId);
+              const column = source?.columns.find((column) =>
+                column.cards.some((card) => card.item_id === tab.itemId),
+              );
+              const item = column?.cards.find((card) => card.item_id === tab.itemId);
 
               return {
                 id: tab.id,
@@ -595,6 +596,10 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
                       ? item.title
                       : "Unavailable item",
                 project: source?.project.title ?? "Project unavailable",
+                status:
+                  item?.kind === "draft" || !column
+                    ? ("draft" as const)
+                    : statusTone(column.color, column.name),
               };
             }),
           ]}

@@ -713,16 +713,34 @@ function IssuePanelPreview() {
 
 function IssueTabsPreview() {
   const [tabs, setTabs] = useState<
-    { id: string; title: string; project: string; kind?: "board"; closable?: boolean }[]
+    {
+      id: string;
+      title: string;
+      project: string;
+      kind?: "board";
+      closable?: boolean;
+      status?: StatusKey;
+    }[]
   >([
     { id: "source", title: "Planche", project: "Planche", kind: "board", closable: false },
     {
       id: "issue-223",
       title: "Issue 223: column counter ignores filtered cards",
       project: "Planche",
+      status: "todo",
     },
-    { id: "issue-226", title: "Issue 226: show linked PRs in issue detail", project: "Planche" },
-    { id: "issue-219", title: "Issue 219: compare Solo and Team", project: "Website" },
+    {
+      id: "issue-226",
+      title: "Issue 226: show linked PRs in issue detail",
+      project: "Planche",
+      status: "progress",
+    },
+    {
+      id: "issue-219",
+      title: "Issue 219: compare Solo and Team",
+      project: "Website",
+      status: "done",
+    },
   ]);
   const [active, setActive] = useState<string>("issue-223");
 
@@ -765,7 +783,7 @@ function IssueTabsPreview() {
                 itemId={tab.id}
                 item={{ ...openIssue, title: tab.title }}
                 project={tab.project}
-                status={{ name: "Todo", tone: "todo" }}
+                status={{ name: statusLabels[tab.status ?? "draft"], tone: tab.status ?? "draft" }}
                 editable
                 expanded
                 active={active === tab.id}

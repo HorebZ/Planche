@@ -7,6 +7,7 @@ import { useUi } from "@/stores/ui";
 import { button, click, get, installMockBackend, key, render } from "@/test-support";
 
 const detail = () => get('[data-slot="issue-detail"][data-active="true"]');
+const tabStatus = () => get('[data-tab-id="I_226"] [data-slot="status-square"] svg');
 
 async function open() {
   const backend = installMockBackend("board");
@@ -62,6 +63,7 @@ test("reopening shared content from another Project keeps the original actions a
     "Actions apply to Planche — v1.2. Current source: API Gateway.",
   );
   expect(button("Change project status", detail()).textContent).toBe("Todo");
+  expect(tabStatus().getAttribute("aria-label")).toBe("Todo");
   key("s", detail());
 
   await expect.poll(() => document.querySelector('[placeholder="Change status…"]')).not.toBeNull();
@@ -71,11 +73,13 @@ test("reopening shared content from another Project keeps the original actions a
     .poll(() => backend.getBoard()?.columns[2].cards.some((card) => card.item_id === "PVTI_226"))
     .toBe(true);
   await expect.poll(() => useUi.getState().undo?.intent.project_id).toBe("PVT_planche");
+  await expect.poll(() => tabStatus().getAttribute("aria-label")).toBe("In progress");
   key("z", detail(), { metaKey: true });
 
   await expect
     .poll(() => backend.getBoard()?.columns[1].cards.some((card) => card.item_id === "PVTI_226"))
     .toBe(true);
+  await expect.poll(() => tabStatus().getAttribute("aria-label")).toBe("Todo");
   expect(
     backend.getBoard("PVT_api")?.columns[2].cards.some((card) => card.item_id === "api-PVTI_226"),
   ).toBe(true);
