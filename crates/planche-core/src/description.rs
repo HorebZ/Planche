@@ -16,6 +16,32 @@ pub struct Descriptions {
 }
 
 impl Descriptions {
+    pub async fn resolve_issue(
+        &self,
+        account: &UserId,
+        fetch: impl Future<Output = Result<Option<ContentId>>>,
+    ) -> Result<Option<ContentId>> {
+        let session = self
+            .account
+            .lock()
+            .expect("description session")
+            .as_ref()
+            .filter(|id| id.as_ref() == account)
+            .cloned()
+            .ok_or(Error::NotSignedIn)?;
+
+        let result = fetch.await;
+        let current = self.account.lock().expect("description session");
+        if !current.as_ref().is_some_and(|id| Arc::ptr_eq(id, &session)) {
+            return Err(Error::NotSignedIn);
+        }
+
+        match result {
+            Err(error) if access_denied(&error) => Ok(None),
+            result => result,
+        }
+    }
+
     pub fn cached_activity(
         &self,
         cache: &Mutex<Cache>,

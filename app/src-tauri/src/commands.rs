@@ -726,6 +726,21 @@ pub async fn refresh_issue_description(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn resolve_issue(
+    core: State<'_, Core>,
+    account: UserId,
+    url: String,
+) -> Result<Option<ContentId>> {
+    let client = core.client()?;
+
+    Ok(core
+        .descriptions
+        .resolve_issue(&account, ops::issue_reference(&client, &account, &url))
+        .await?)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn cached_issue(
     core: State<'_, Core>,
     account: UserId,

@@ -1,6 +1,52 @@
 use super::*;
 use crate::error::GraphqlError;
 
+#[tokio::test]
+async fn issue_reference_resolution_requires_an_active_session_and_rejects_late_results() {
+    let service = Descriptions::default();
+    let account = UserId("viewer".into());
+    assert!(matches!(
+        service
+            .resolve_issue(&account, async { panic!("must not fetch while locked") })
+            .await,
+        Err(Error::NotSignedIn)
+    ));
+
+    service.unlock(account.clone());
+
+    let content = ContentId("I_linked".into());
+    assert_eq!(
+        service
+            .resolve_issue(&account, async { Ok(Some(content.clone())) })
+            .await
+            .unwrap(),
+        Some(content.clone())
+    );
+    assert_eq!(
+        service
+            .resolve_issue(&account, async { Err(Error::Http(404)) })
+            .await
+            .unwrap(),
+        None
+    );
+    assert!(matches!(
+        service
+            .resolve_issue(&account, async { Err(Error::Network("offline".into())) })
+            .await,
+        Err(Error::Network(_))
+    ));
+
+    let late = service
+        .resolve_issue(&account, async {
+            service.lock();
+            service.unlock(account.clone());
+            Ok(Some(content))
+        })
+        .await;
+
+    assert!(matches!(late, Err(Error::NotSignedIn)));
+}
+
 fn cache(name: &str) -> Mutex<Cache> {
     let path = std::env::temp_dir().join(format!(
         "planche-description-{}-{name}.sqlite",

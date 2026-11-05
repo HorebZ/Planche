@@ -45,6 +45,7 @@ import { cn } from "@/lib/cn";
 import { useSettledError } from "@/lib/useSettledError";
 import { type ProjectLayout, usePreferences } from "@/stores/preferences";
 import { useUi } from "@/stores/ui";
+import { LinkedIssuePanel } from "./IssuePanel";
 import { ProjectIssueDetail } from "./ProjectIssueDetail";
 import { AppSidebar, signOut } from "./Sidebar";
 import { SyncErrorToast } from "./SyncErrorToast";
@@ -63,6 +64,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   const viewId = useUi((s) => s.viewId);
   const selectedId = useUi((s) => s.selectedId);
   const detailId = useUi((s) => s.detailId);
+  const linkedIssue = useUi((s) => s.linkedIssue);
   const detailExpanded = useUi((s) => s.detailExpanded);
   const issueTabs = useUi((s) => s.issueTabs);
   const activeIssueTab = useUi((s) => s.activeIssueTab);
@@ -428,10 +430,12 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
     "detail.close": () =>
       activeIssueTab ? useUi.getState().activateIssueTab(null) : useUi.getState().closeDetail(),
     "card.github": () =>
-      card &&
-      card.kind !== "redacted" &&
-      actionData &&
-      void openUrl(urlOf(card, actionData.project.url)),
+      linkedIssue
+        ? void openUrl(linkedIssue.url)
+        : card &&
+          card.kind !== "redacted" &&
+          actionData &&
+          void openUrl(urlOf(card, actionData.project.url)),
     "selection.clear": () => {
       select(null);
 
@@ -570,7 +574,8 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
             <div
               className={cn(
                 "flex min-h-0 min-w-0 flex-1 flex-col",
-                detailId && (detailExpanded ? "invisible" : "@min-[960px]:visible invisible"),
+                (detailId || linkedIssue) &&
+                  (detailExpanded && !linkedIssue ? "invisible" : "@min-[960px]:visible invisible"),
               )}
             >
               <Toolbar
@@ -711,6 +716,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
                 board={data}
                 account={auth.data?.id ?? null}
                 offline={offline}
+                active={!linkedIssue}
                 itemId={detailId}
                 expanded={detailExpanded}
                 onExpandedChange={useUi.getState().setDetailExpanded}
@@ -722,6 +728,12 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
                 onNext={nextDetail ? () => useUi.getState().openDetail(nextDetail) : undefined}
                 onStatus={() => show({ type: "status" })}
                 onAssign={() => show({ type: "assign" })}
+              />
+            ) : null}
+            {linkedIssue && !activeIssueTab && auth.data?.id ? (
+              <LinkedIssuePanel
+                account={auth.data.id}
+                offline={offline}
               />
             ) : null}
           </IssueTabPanel>
@@ -736,7 +748,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
                 offline={offline}
                 itemId={tab.itemId}
                 expanded
-                active={activeIssueTab === tab.id}
+                active={activeIssueTab === tab.id && !linkedIssue}
                 contextNotice={
                   tab.projectId !== projectId
                     ? `Actions apply to ${tabBoards[index].data?.project.title ?? "the original Project"}. Current source: ${data?.project.title ?? "another Project"}.`
@@ -746,6 +758,12 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
                 onStatus={() => show({ type: "status" })}
                 onAssign={() => show({ type: "assign" })}
               />
+              {linkedIssue && activeIssueTab === tab.id && auth.data?.id ? (
+                <LinkedIssuePanel
+                  account={auth.data.id}
+                  offline={offline}
+                />
+              ) : null}
             </IssueTabPanel>
           ))}
         </IssueTabs>

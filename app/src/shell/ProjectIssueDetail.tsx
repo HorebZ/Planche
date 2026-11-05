@@ -5,10 +5,9 @@ import { IssueActivity } from "@/board/IssueActivity";
 import { IssueComments } from "@/board/IssueComments";
 import { IssueDescription } from "@/board/IssueDescription";
 import { statusTone } from "@/board/statusTone";
+import { useIssueLink } from "@/board/useIssueLink";
 import { IssueDetail } from "@/components/ui/issue-detail";
-import { notify } from "@/components/ui/toast";
 import type { Board } from "@/ipc/bindings.types";
-import { errorMessage } from "@/ipc/queries";
 
 type Props = Pick<
   ComponentProps<typeof IssueDetail>,
@@ -30,6 +29,7 @@ type Props = Pick<
 };
 
 export function ProjectIssueDetail({ board, account, offline, contextNotice, ...props }: Props) {
+  const onOpenLink = useIssueLink(account ?? "");
   const column = board?.columns.find((column) =>
     column.cards.some((card) => card.item_id === props.itemId),
   );
@@ -79,11 +79,7 @@ export function ProjectIssueDetail({ board, account, offline, contextNotice, ...
             content={card.id}
             sourceUrl={card.url}
             offline={offline}
-            onOpenLink={(url) =>
-              void openUrl(url).catch((error) =>
-                notify(`Could not open link: ${errorMessage(error)}`, "error"),
-              )
-            }
+            onOpenLink={onOpenLink}
           />
         </div>
       ) : null}

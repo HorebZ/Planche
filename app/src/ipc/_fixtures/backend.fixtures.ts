@@ -492,6 +492,19 @@ export function installMockBackend(scenario: Scenario) {
         ? { ...source, view: { number: 2, name: "Planning", manual_order: true } }
         : source;
     },
+    resolve_issue: (args) => {
+      if (descriptionDenied) {
+        return null;
+      }
+
+      const card = board?.columns
+        .flatMap((column) => column.cards)
+        .find((card) => card.kind === "issue" && card.url === args.url);
+
+      return card?.kind === "issue"
+        ? card.id
+        : (repositorySource.find(({ issue }) => issue.url === args.url)?.issue.id ?? null);
+    },
     cached_issue: (args) => (descriptionDenied ? null : issueFor(String(args.content))),
     refresh_issue: (args) =>
       descriptionDenied

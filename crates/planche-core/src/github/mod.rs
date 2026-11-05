@@ -138,6 +138,7 @@ impl GithubClient {
         let content = matches!(
             operation,
             "Issue"
+                | "IssueReference"
                 | "IssueDescription"
                 | "IssueActivity"
                 | "IssueComments"

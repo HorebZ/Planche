@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { RepositoryIssueFilter } from "@/ipc/bindings.types";
+import { useUi } from "./ui";
 
 export const emptyRepositoryView = {
   filter: { state: "open", milestone: null, labels: [] } as RepositoryIssueFilter,
@@ -22,7 +23,9 @@ export const useRepositoryViews = create<{
 }>((set) => ({
   active: null,
   entries: {},
-  open: (account, repository, filter) =>
+  open: (account, repository, filter) => {
+    useUi.getState().setLinkedIssue(null);
+
     set((state) => {
       const key = repositoryViewKey(account, repository);
 
@@ -32,7 +35,8 @@ export const useRepositoryViews = create<{
           ? { ...state.entries, [key]: { ...emptyRepositoryView, filter } }
           : state.entries,
       };
-    }),
+    });
+  },
   close: () => set({ active: null }),
   update: (key, changes) =>
     set((state) => ({

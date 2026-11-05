@@ -1,0 +1,8 @@
+query IssueReference($url: URI!) {
+  viewer { id }
+  node: resource(url: $url) {
+    __typename
+    ... on Issue { id }
+  }
+  rateLimit { cost remaining resetAt }
+}

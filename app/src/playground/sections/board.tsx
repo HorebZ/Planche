@@ -127,7 +127,7 @@ const dragCard = {
   assignees: [camille],
 } satisfies IssueCardData;
 
-const cardClass = "w-[218px]";
+const cardClass = "w-[calc(var(--spacing-column)-10px)]";
 
 export function BoardSection() {
   return (
@@ -208,10 +208,11 @@ export function BoardSection() {
               >
                 <IssueDescriptionContent
                   onOpenLink={() => {}}
+                  sourceUrl="https://github.com/HorebZ/Planche/issues/35"
                   status={status}
                   body={
                     ["ready", "refreshing", "offline"].includes(status)
-                      ? "# Release notes\n\nA **formatted** description with a [link](https://github.com/HorebZ/Planche).\n\n- Keep drafts\n- Restore focus\n\n```rust\nlet ready = true;\n```\n\n![Screenshot](https://example.com/blocked.png)"
+                      ? "# Release notes\n\nA **formatted** description with a [link](https://github.com/HorebZ/Planche). References: #61635 and other/repo#42.\n\n- Keep drafts\n- Restore focus\n\n```rust\nlet ready = true;\n```\n\n![Screenshot](https://example.com/blocked.png)"
                       : undefined
                   }
                   onRetry={() => {}}
@@ -493,6 +494,13 @@ export function BoardSection() {
                 {...openIssue}
                 className={cardClass}
                 title="Show linked pull requests in the issue detail when the title wraps onto a second line and then stops"
+              />
+            </State>
+            <State label="long URL title">
+              <IssueCard
+                {...openIssue}
+                className={cardClass}
+                title="https://github.com/Planche/Planche/issues/very-long-ticket-title-without-spaces-that-must-stay-inside-the-card-and-truncate-instead-of-overflowing-the-board-column-or-making-the-card-grow-indefinitely"
               />
             </State>
             <State label="no labels">

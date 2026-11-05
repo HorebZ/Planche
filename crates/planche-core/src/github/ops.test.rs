@@ -2,6 +2,72 @@ use crate::github::fixtures::{ITEM_PAGES, PROJECT_META};
 use crate::github::ops::{decode_project_items, decode_project_meta};
 use serde_json::{Value, json};
 
+#[test]
+fn issue_references_only_resolve_accessible_issues_for_the_current_viewer() {
+    use super::reference_from_wire;
+    use crate::Error;
+    use crate::domain::{ContentId, UserId};
+
+    let account = UserId("viewer".into());
+    let data = |viewer: &str, node: Value| {
+        serde_json::from_value(json!({ "viewer": { "id": viewer }, "node": node })).unwrap()
+    };
+    let issue = json!({ "__typename": "Issue", "id": "I_linked" });
+
+    assert_eq!(
+        reference_from_wire(data("viewer", issue.clone()), &account).unwrap(),
+        Some(ContentId("I_linked".into()))
+    );
+    assert!(matches!(
+        reference_from_wire(data("other", issue), &account),
+        Err(Error::Unauthorized)
+    ));
+    assert_eq!(
+        reference_from_wire(data("viewer", Value::Null), &account).unwrap(),
+        None
+    );
+    assert_eq!(
+        reference_from_wire(
+            data("viewer", json!({ "__typename": "PullRequest" })),
+            &account
+        )
+        .unwrap(),
+        None
+    );
+    assert!(
+        reference_from_wire(
+            data("viewer", json!({ "__typename": "Issue", "id": "" })),
+            &account
+        )
+        .is_err()
+    );
+}
+
+#[tokio::test]
+async fn invalid_issue_references_never_reach_github() {
+    let client = super::GithubClient::new("unused").unwrap();
+    let account = crate::domain::UserId("viewer".into());
+
+    for url in [
+        "http://github.com/owner/repo/issues/1",
+        "https://example.com/owner/repo/issues/1",
+        "https://github.com@evil.example/owner/repo/issues/1",
+        "https://user@github.com/owner/repo/issues/1",
+        "https://github.com:444/owner/repo/issues/1",
+        "https://github.com/owner/repo/pull/1",
+        "https://github.com/owner/repo/issues/0",
+        "https://github.com/owner/repo/issues/abc",
+        "https://github.com/owner/repo/issues/1/extra",
+    ] {
+        assert!(
+            super::issue_reference(&client, &account, url)
+                .await
+                .is_err(),
+            "{url}"
+        );
+    }
+}
+
 #[tokio::test]
 async fn activity_paginates_independently_without_duplicates_and_keeps_every_pr_state() {
     use crate::domain::{ActivityKind, ContentId, PullRequestState, UserId};

@@ -16,8 +16,9 @@ export function useShortcuts(handlers: Handlers, detail?: boolean) {
   latest.current = handlers;
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      const { overlay, dragging, detailId, activeIssueTab } = useUi.getState();
-      const inDetail = context.current ?? (detailId !== null || activeIssueTab !== null);
+      const { overlay, dragging, detailId, activeIssueTab, linkedIssue } = useUi.getState();
+      const inDetail =
+        Boolean(linkedIssue) || (context.current ?? (detailId !== null || activeIssueTab !== null));
 
       if (event.defaultPrevented || overlay || dragging || isTextField(event.target)) {
         return;
@@ -42,6 +43,20 @@ export function useShortcuts(handlers: Handlers, detail?: boolean) {
       const command = inDetail
         ? commandFor(event, "detail")
         : (global ?? commandFor(event, "board"));
+
+      if (linkedIssue) {
+        if (command === "detail.close" || command === "tab.close") {
+          event.preventDefault();
+          useUi.getState().setLinkedIssue(null);
+          return;
+        }
+
+        // The collection's action handlers still address the source issue.
+        if (command !== "card.github") {
+          return;
+        }
+      }
+
       const run = command && latest.current[command];
 
       if (!run) {
