@@ -1,7 +1,6 @@
-import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/input";
 import { Markdown } from "@/components/ui/markdown";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 
 export type DescriptionStatus =
   | "loading"
@@ -127,9 +126,6 @@ export function IssueDescriptionEditor({
   sourceUrl?: string;
   onOpenLink: (url: string) => void;
 }) {
-  const id = useId();
-  const [preview, setPreview] = useState(false);
-
   return (
     <section
       aria-label="Edit description"
@@ -144,54 +140,15 @@ export function IssueDescriptionEditor({
           }
         }}
       >
-        <div className="flex items-center justify-between gap-2">
-          <label
-            htmlFor={id}
-            className="font-medium"
-          >
-            Description Markdown
-          </label>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            aria-pressed={preview}
-            onClick={() => setPreview(!preview)}
-          >
-            {preview ? "Write" : "Preview"}
-          </Button>
-        </div>
-        <div className="h-120 w-full">
-          {preview ? (
-            <section
-              aria-label="Description preview"
-              // biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users need to scroll the fixed-height preview.
-              tabIndex={0}
-              className="h-full overflow-auto rounded-md bg-surface p-3 shadow-[inset_0_0_0_1px_var(--pl-border-strong)] focus-visible:shadow-ring"
-            >
-              <Markdown
-                body={value || "No description provided."}
-                sourceUrl={sourceUrl}
-                onOpenLink={onOpenLink}
-              />
-            </section>
-          ) : (
-            <Textarea
-              id={id}
-              value={value}
-              disabled={saving}
-              aria-describedby={`${id}-help`}
-              className="h-full [&_textarea]:h-full [&_textarea]:resize-none"
-              onChange={(event) => onChange(event.target.value)}
-            />
-          )}
-        </div>
-        <p
-          id={`${id}-help`}
-          className="text-fg-3 text-sm"
-        >
-          Markdown supported.
-        </p>
+        <MarkdownEditor
+          label="Description Markdown"
+          value={value}
+          onChange={onChange}
+          disabled={saving}
+          sourceUrl={sourceUrl}
+          onOpenLink={onOpenLink}
+          editorClassName="h-120 [&_textarea]:h-full [&_textarea]:resize-none"
+        />
         <div className="flex justify-end gap-2">
           <Button
             type="button"

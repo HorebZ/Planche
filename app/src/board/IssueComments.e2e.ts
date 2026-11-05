@@ -9,10 +9,11 @@ test("comment drafts survive opening a tab and Cmd+Enter posts once into activit
 
   await expect(editor).toBeEnabled();
   await editor.fill("A comment from Planche **without duplicates**.");
-  await page.getByRole("button", { name: "Preview", exact: true }).click();
+  await page.getByRole("radio", { name: "Preview", exact: true }).click();
   await expect(page.getByRole("region", { name: "Write a comment" }).locator("strong")).toHaveText(
     "without duplicates",
   );
+  await page.getByRole("radio", { name: "Write", exact: true }).click();
   await page.getByRole("button", { name: "Open in tab", exact: true }).click();
 
   await expect(editor).toHaveValue("A comment from Planche **without duplicates**.");

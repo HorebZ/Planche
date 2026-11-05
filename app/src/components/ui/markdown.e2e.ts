@@ -9,10 +9,10 @@ test("opening a reference from a description preview keeps the unsaved draft", a
   await editor.fill(draft);
   await page
     .getByRole("region", { name: "Edit description", exact: true })
-    .getByRole("button", { name: "Preview", exact: true })
+    .getByRole("radio", { name: "Preview", exact: true })
     .click();
   await page
-    .getByRole("region", { name: "Description preview", exact: true })
+    .getByRole("region", { name: "Description Markdown preview", exact: true })
     .getByRole("link", { name: "#223", exact: true })
     .click();
 
@@ -21,9 +21,12 @@ test("opening a reference from a description preview keeps the unsaved draft", a
   await active.getByRole("button", { name: "Close detail", exact: true }).click();
 
   await expect(
-    page.getByRole("region", { name: "Description preview", exact: true }),
+    page.getByRole("region", { name: "Description Markdown preview", exact: true }),
   ).toContainText("Unsaved description with #223.");
-  await page.getByRole("button", { name: "Write", exact: true }).click();
+  await page
+    .getByRole("region", { name: "Edit description", exact: true })
+    .getByRole("radio", { name: "Write", exact: true })
+    .click();
 
   await expect(editor).toHaveValue(draft);
 });

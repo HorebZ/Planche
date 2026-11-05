@@ -20,7 +20,7 @@ for (const colorScheme of ["light", "dark"] as const) {
     }));
 
     expect(dimensions.height).toBe(480);
-    expect(dimensions.width).toBe(dimensions.formWidth);
+    expect(dimensions.width).toBe((dimensions.formWidth ?? 0) - 2);
     await expect(textbox).toHaveCSS("resize", "none");
     await expect(textbox).toBeFocused();
     await expect(textbox).toHaveCSS(
@@ -33,10 +33,13 @@ for (const colorScheme of ["light", "dark"] as const) {
       path: test.info().outputPath(`editor-${colorScheme}.png`),
       animations: "disabled",
     });
-    await editor.getByRole("button", { name: "Preview", exact: true }).click();
+    await editor.getByRole("radio", { name: "Preview", exact: true }).click();
     await expect(editor.locator("strong")).toHaveText("formatted");
     await expect(textbox).toHaveCount(0);
-    const preview = editor.getByRole("region", { name: "Description preview", exact: true });
+    const preview = editor.getByRole("region", {
+      name: "Description Markdown preview",
+      exact: true,
+    });
     const previewDimensions = await preview.boundingBox();
 
     expect(previewDimensions?.height).toBe(dimensions.height);

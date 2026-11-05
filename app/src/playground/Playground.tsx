@@ -2,6 +2,7 @@ import { BannerSection } from "./sections/banner";
 import { BoardSection } from "./sections/board";
 import { ButtonsSection } from "./sections/buttons";
 import { ControlsSection } from "./sections/controls";
+import { MarkdownEditorSection } from "./sections/markdown-editor";
 import { OverlaysSection } from "./sections/overlays";
 import { ShellSection } from "./sections/shell";
 import { TokensSection } from "./sections/tokens";
@@ -13,6 +14,7 @@ const sections = [
   { id: "controls", Component: ControlsSection },
   { id: "banner", Component: BannerSection },
   { id: "overlays", Component: OverlaysSection },
+  { id: "markdown-editor", Component: MarkdownEditorSection },
   { id: "board", Component: BoardSection },
   { id: "shell", Component: ShellSection },
   { id: "updates", Component: UpdatesSection },

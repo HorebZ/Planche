@@ -16,7 +16,7 @@ test("edit, preview, cancel and save an issue description, then read it after re
   const body = "# Updated description\n\nKeep **Markdown** formatting.  \n\n- Updated in Planche\n";
   await editor.fill(body);
   const editing = page.getByRole("region", { name: "Edit description", exact: true });
-  await editing.getByRole("button", { name: "Preview", exact: true }).click();
+  await editing.getByRole("radio", { name: "Preview", exact: true }).click();
 
   await expect(editing.locator("strong")).toHaveText("Markdown");
   await page.getByRole("button", { name: "Save description", exact: true }).click();

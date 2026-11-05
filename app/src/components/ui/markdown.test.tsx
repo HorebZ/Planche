@@ -194,3 +194,39 @@ test("a renderer failure falls back to escaped plain text and a new body recover
 
   expect(get("h3").textContent).toBe("Recovered");
 });
+
+test("renders strikethrough with nested formatting while preserving escaped text and code", () => {
+  render(
+    <Markdown
+      body={"~~Old **wording**~~ and \\~~literal~~.\n\n`~~code~~`"}
+      onOpenLink={() => {}}
+    />,
+  );
+
+  expect(get("del").textContent).toBe("Old wording");
+  expect(get("del strong").textContent).toBe("wording");
+  expect(document.querySelectorAll("del")).toHaveLength(1);
+  expect(document.body.textContent).toContain("~~literal~~");
+  expect(get("code").textContent).toBe("~~code~~");
+});
+
+test("task lists render checked and unchecked house checkboxes without interpreting code", () => {
+  render(
+    <Markdown
+      body={
+        "- [ ] Pending **review**\n- [x] Done\n- [X] Also done\n- Ordinary bullet\n\n`- [ ] literal`\n\n```md\n- [x] code\n```"
+      }
+      onOpenLink={() => {}}
+    />,
+  );
+
+  const tasks = [...document.querySelectorAll('[role="checkbox"]')];
+
+  expect(tasks.map((task) => task.getAttribute("aria-checked"))).toEqual(["false", "true", "true"]);
+  expect(tasks.every((task) => task.hasAttribute("disabled"))).toBe(true);
+  expect(document.querySelectorAll("li.task-list-item")).toHaveLength(3);
+  expect(document.querySelectorAll("li:not(.task-list-item)")).toHaveLength(1);
+  expect(get("strong").textContent).toBe("review");
+  expect(get("code").textContent).toBe("- [ ] literal");
+  expect(get("pre code").textContent).toContain("- [x] code");
+});

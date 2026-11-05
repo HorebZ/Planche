@@ -12,7 +12,7 @@ for (const theme of ["light", "dark"]) {
     await editor.fill(
       "A **Markdown** comment with a [link](https://github.com).\n\nA second paragraph.",
     );
-    await composer.getByRole("button", { name: "Preview", exact: true }).click();
+    await composer.getByRole("radio", { name: "Preview", exact: true }).click();
     await composer.scrollIntoViewIfNeeded();
 
     expect(await composer.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(

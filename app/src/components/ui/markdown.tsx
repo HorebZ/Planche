@@ -1,5 +1,11 @@
+import { gfmStrikethroughFromMarkdown } from "mdast-util-gfm-strikethrough";
+import { gfmTaskListItemFromMarkdown } from "mdast-util-gfm-task-list-item";
+import { gfmStrikethrough } from "micromark-extension-gfm-strikethrough";
+import { gfmTaskListItem } from "micromark-extension-gfm-task-list-item";
 import { Component, type ReactNode } from "react";
 import ReactMarkdown, { defaultUrlTransform, type ExtraProps } from "react-markdown";
+
+import { Checkbox } from "@/components/ui/checkbox";
 
 type MarkdownElement = NonNullable<ExtraProps["node"]>;
 
@@ -98,7 +104,7 @@ export function Markdown({
   return (
     <div
       data-slot="markdown"
-      className="space-y-3 break-words text-fg-2 leading-relaxed [&_a:focus-visible]:shadow-ring [&_a]:rounded-xs [&_a]:text-fg [&_a]:underline [&_a]:underline-offset-2 [&_blockquote]:border-border-strong [&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_code]:rounded-sm [&_code]:bg-hover [&_code]:px-1 [&_code]:font-mono [&_hr]:border-line [&_li]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-3 [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-bg-sunken [&_pre]:p-3 [&_pre]:text-sm [&_ul]:list-disc [&_ul]:pl-5"
+      className="space-y-3 break-words text-fg-2 leading-relaxed [&_.task-list-item]:list-none [&_a:focus-visible]:shadow-ring [&_a]:rounded-xs [&_a]:text-fg [&_a]:underline [&_a]:underline-offset-2 [&_blockquote]:border-border-strong [&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_code]:rounded-sm [&_code]:bg-hover [&_code]:px-1 [&_code]:font-mono [&_hr]:border-line [&_li]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-3 [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-bg-sunken [&_pre]:p-3 [&_pre]:text-sm [&_ul]:list-disc [&_ul]:pl-5"
     >
       <PlainTextFallback
         key={body}
@@ -106,9 +112,28 @@ export function Markdown({
       >
         <ReactMarkdown
           skipHtml
+          remarkPlugins={[
+            function () {
+              Object.assign(this.data(), {
+                micromarkExtensions: [gfmStrikethrough({ singleTilde: false }), gfmTaskListItem()],
+                fromMarkdownExtensions: [
+                  gfmStrikethroughFromMarkdown(),
+                  gfmTaskListItemFromMarkdown(),
+                ],
+              });
+            },
+          ]}
           rehypePlugins={[[githubReferences, sourceUrl]]}
           urlTransform={(value, key) => (key === "href" ? safeUrl(value, sourceUrl) : undefined)}
           components={{
+            input: ({ checked }) => (
+              <Checkbox
+                checked={Boolean(checked)}
+                disabled
+                aria-label="Task status"
+                className="mr-2 align-middle disabled:opacity-100"
+              />
+            ),
             h1: ({ children }) => <h3 className="font-semibold text-fg text-lg">{children}</h3>,
             h2: ({ children }) => <h4 className="font-semibold text-fg">{children}</h4>,
             h3: ({ children }) => <h5 className="font-semibold text-fg">{children}</h5>,

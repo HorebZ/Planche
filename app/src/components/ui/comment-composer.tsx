@@ -1,8 +1,8 @@
-import { useId, useState } from "react";
+import { useId } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
 import { Markdown } from "@/components/ui/markdown";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import type { CommentSubmission } from "@/ipc/bindings.types";
 import { commandFor, keysFor } from "@/keyboard/shortcuts";
 
@@ -30,7 +30,6 @@ export function CommentComposer({
   onOpenLink: (url: string) => void;
 }) {
   const id = useId();
-  const [preview, setPreview] = useState(false);
   const disabled = !permitted || submitting;
 
   return (
@@ -89,38 +88,15 @@ export function CommentComposer({
         }}
         className="space-y-3"
       >
-        <div className="flex items-center justify-between gap-2">
-          <label
-            htmlFor={id}
-            className="font-medium"
-          >
-            Add a comment
-          </label>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            disabled={!value.trim()}
-            onClick={() => setPreview(!preview)}
-            aria-pressed={preview}
-          >
-            {preview ? "Write" : "Preview"}
-          </Button>
-        </div>
-        {preview ? (
-          <Markdown
-            body={value}
-            sourceUrl={sourceUrl}
-            onOpenLink={onOpenLink}
-          />
-        ) : null}
-        <Textarea
-          id={id}
+        <MarkdownEditor
+          label="Add a comment"
           value={value}
           disabled={disabled}
           aria-describedby={`${id}-help`}
           placeholder="Leave a comment…"
-          onChange={(event) => onChange(event.target.value)}
+          onChange={onChange}
+          sourceUrl={sourceUrl}
+          onOpenLink={onOpenLink}
           onKeyDown={(event) => {
             if (
               !event.nativeEvent.isComposing &&
@@ -138,7 +114,7 @@ export function CommentComposer({
             className="text-fg-3 text-sm"
           >
             {permitted
-              ? "Markdown supported. Unsent text stays here when you navigate."
+              ? "Unsent text stays here when you navigate."
               : "Commenting is unavailable with your current access or this conversation is locked."}
           </p>
           <Button
