@@ -77,6 +77,38 @@ test("network failure retains saved content, access denial removes it and Retry 
   await expect.poll(() => document.body.textContent).toContain("Access restored");
 });
 
+test("background refresh keeps the saved description in place without a refresh indicator", async () => {
+  let finish: (description: Description) => void = () => {};
+  const waiting = new Promise<Description>((resolve) => {
+    finish = resolve;
+  });
+  const saved = issueDescription({ body: "Saved **description**" });
+  mockIPC((command) =>
+    command === "cached_issue_description" ? saved : command === "cached_issue" ? null : waiting,
+  );
+
+  render(
+    <IssueDescription
+      account="A"
+      content="issue"
+      offline={false}
+    />,
+  );
+
+  await expect.poll(() => document.querySelector("strong")?.textContent).toBe("description");
+  const section = get('section[aria-label="Description"]');
+  const markdown = get('[data-slot="markdown"]', section);
+
+  expect(section.getAttribute("aria-busy")).toBe("true");
+  expect(section.querySelector('[role="status"]')).toBeNull();
+  expect(section.textContent).not.toContain("Refreshing");
+  finish(saved);
+
+  await expect.poll(() => section.getAttribute("aria-busy")).toBe("false");
+  expect(get('[data-slot="markdown"]', section)).toBe(markdown);
+  expect(section.querySelector('[role="status"]')).toBeNull();
+});
+
 test("each opening revalidates even when the description is already in TanStack Query", async () => {
   let requests = 0;
   mockIPC((command) =>

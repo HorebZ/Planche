@@ -70,22 +70,20 @@ export function IssueDescriptionContent({
           to retry.
         </p>
       ) : null}
-      {status !== "ready" ? (
+      {status !== "ready" && status !== "refreshing" ? (
         <div className="flex flex-wrap items-center gap-2 text-fg-3 text-sm">
           <p role={status === "error" ? "alert" : "status"}>
             {status === "unavailable"
               ? "Description unavailable. Your access may have changed."
               : status === "loading"
                 ? "Loading description…"
-                : status === "refreshing"
-                  ? "Saved description · Refreshing…"
-                  : status === "offline"
-                    ? body === undefined
-                      ? "Description unavailable offline."
-                      : "Saved description · Offline"
-                    : body === undefined
-                      ? "Could not load the description."
-                      : "Saved description · Could not refresh"}
+                : status === "offline"
+                  ? body === undefined
+                    ? "Description unavailable offline."
+                    : "Saved description · Offline"
+                  : body === undefined
+                    ? "Could not load the description."
+                    : "Saved description · Could not refresh"}
             {message ? ` ${message}` : ""}
           </p>
           {!loading ? (
