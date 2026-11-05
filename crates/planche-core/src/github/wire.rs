@@ -44,6 +44,8 @@ pub(super) struct ActivityData {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct ActivityNode {
+    pub created_at: String,
+    pub author: Option<Login>,
     pub timeline_items: Option<Connection<ActivityEntry>>,
     pub closed_by_pull_requests_references: Option<Connection<ClosingPullRequest>>,
 }

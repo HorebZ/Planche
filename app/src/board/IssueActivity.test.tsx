@@ -26,6 +26,23 @@ const props = {
   sourceUrl: "https://github.com/o/r/issues/1",
 };
 
+test("activity starts with the issue creation, its author and its date", () => {
+  render(
+    <IssueActivityContent
+      status="ready"
+      activity={issueActivity()}
+      onRetry={() => {}}
+      onOpenLink={() => {}}
+    />,
+  );
+
+  const creation = get("ol > li");
+
+  expect(creation.textContent).toContain("lea");
+  expect(creation.textContent).toContain("created this issue");
+  expect(creation.querySelector("time")?.dateTime).toBe("2026-11-03T09:00:00Z");
+});
+
 test("offline activity shows its timestamp without making a network request", async () => {
   const commands: string[] = [];
   mockIPC((command) => {
@@ -229,12 +246,12 @@ test("activity revalidates on every opening", async () => {
 
 test("comments use safe Markdown and missing text/authors and all PR states have readable fallbacks", () => {
   const activity = issueActivity();
-  activity.entries[0] = {
-    ...activity.entries[0],
+  activity.entries[1] = {
+    ...activity.entries[1],
     author: null,
     body: "<script>alert(1)</script>\n![tracking](https://example.com/pixel.png)",
   };
-  activity.entries.push({ ...activity.entries[0], id: "missing", body: null });
+  activity.entries.push({ ...activity.entries[1], id: "missing", body: null });
   activity.pull_requests = ["open", "closed", "merged"].map((state, index) => ({
     ...activity.pull_requests[0],
     id: `pr-${index}`,
@@ -251,7 +268,7 @@ test("comments use safe Markdown and missing text/authors and all PR states have
   );
 
   expect(document.body.textContent).toContain("Deleted user");
-  expect(document.querySelector('[data-slot="avatar"]')?.textContent).toBe("DU");
+  expect(document.querySelectorAll('[data-slot="avatar"]')[1]?.textContent).toBe("DU");
   expect(document.body.textContent).toContain("Comment text unavailable.");
   expect(document.body.textContent).toContain("Image not loaded: tracking");
   expect(document.querySelector("script, img")).toBeNull();

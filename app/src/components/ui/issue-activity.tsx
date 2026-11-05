@@ -7,6 +7,8 @@ import type { ActivityEntry, IssueActivity } from "@/ipc/bindings.types";
 
 function eventText(entry: ActivityEntry) {
   switch (entry.kind) {
+    case "created":
+      return "created this issue";
     case "comment":
       return "commented";
     case "comment_deleted":

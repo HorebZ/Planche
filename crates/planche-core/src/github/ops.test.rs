@@ -76,7 +76,7 @@ async fn activity_paginates_independently_without_duplicates_and_keeps_every_pr_
     let activity = super::load_activity(&UserId("A".into()), &ContentId("issue".into()), |timeline_after, prs_after, timeline, prs| {
         let page = requests.len();
         requests.push((timeline_after, prs_after, timeline, prs));
-        let mut node = json!({ "__typename": "Issue", "id": "issue" });
+        let mut node = json!({ "__typename": "Issue", "id": "issue", "createdAt": "2026-11-03T09:00:00Z", "author": { "login": "lea" } });
 
         if timeline {
             let mut entries = vec![json!({ "__typename": "IssueComment", "id": "comment", "createdAt": "2026-11-03T10:00:00Z", "author": null, "body": "Text", "isMinimized": false }), Value::Null];
@@ -106,15 +106,21 @@ async fn activity_paginates_independently_without_duplicates_and_keeps_every_pr_
             (None, Some("prs-1".into()), false, true),
         ]
     );
-    assert_eq!(activity.entries.len(), 9);
-    assert_eq!(activity.entries[0].kind, ActivityKind::Comment);
-    assert!(activity.entries[0].author.is_none());
-    assert_eq!(activity.entries[0].body.as_deref(), Some("Text"));
-    assert_eq!(activity.entries[1].kind, ActivityKind::Closed);
-    assert_eq!(activity.entries[2].kind, ActivityKind::Reopened);
-    assert_eq!(activity.entries[3].subject.as_deref(), Some("camille"));
-    assert_eq!(activity.entries[7].kind, ActivityKind::CommentDeleted);
-    assert!(activity.entries[8].body.is_none());
+    let (created, entries) = activity.entries.split_first().unwrap();
+
+    assert_eq!(created.kind, ActivityKind::Created);
+    assert_eq!(created.id, "issue");
+    assert_eq!(created.author.as_deref(), Some("lea"));
+    assert_eq!(created.created_at, "2026-11-03T09:00:00Z");
+    assert_eq!(entries.len(), 9);
+    assert_eq!(entries[0].kind, ActivityKind::Comment);
+    assert!(entries[0].author.is_none());
+    assert_eq!(entries[0].body.as_deref(), Some("Text"));
+    assert_eq!(entries[1].kind, ActivityKind::Closed);
+    assert_eq!(entries[2].kind, ActivityKind::Reopened);
+    assert_eq!(entries[3].subject.as_deref(), Some("camille"));
+    assert_eq!(entries[7].kind, ActivityKind::CommentDeleted);
+    assert!(entries[8].body.is_none());
     assert_eq!(
         activity
             .pull_requests
@@ -132,10 +138,38 @@ async fn activity_paginates_independently_without_duplicates_and_keeps_every_pr_
 }
 
 #[tokio::test]
+async fn activity_keeps_creation_when_there_are_no_events_and_the_author_is_deleted() {
+    use crate::domain::{ActivityKind, ContentId, UserId};
+
+    let response = json!({
+        "viewer": { "id": "A" },
+        "node": {
+            "__typename": "Issue", "id": "issue",
+            "createdAt": "2026-11-03T09:00:00Z", "author": null,
+            "timelineItems": { "nodes": [], "pageInfo": { "hasNextPage": false, "endCursor": null } },
+            "closedByPullRequestsReferences": { "nodes": [], "pageInfo": { "hasNextPage": false, "endCursor": null } }
+        }
+    });
+
+    let activity = super::load_activity(
+        &UserId("A".into()),
+        &ContentId("issue".into()),
+        |_, _, _, _| std::future::ready(Ok(serde_json::from_value(response.clone()).unwrap())),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+
+    assert_eq!(activity.entries.len(), 1);
+    assert_eq!(activity.entries[0].kind, ActivityKind::Created);
+    assert!(activity.entries[0].author.is_none());
+}
+
+#[tokio::test]
 async fn activity_rejects_wrong_identity_missing_pages_and_broken_pagination() {
     use crate::domain::{ContentId, UserId};
 
-    let base = json!({ "viewer": { "id": "A" }, "node": { "__typename": "Issue", "id": "issue", "timelineItems": { "nodes": [], "pageInfo": { "hasNextPage": false, "endCursor": null } }, "closedByPullRequestsReferences": { "nodes": [], "pageInfo": { "hasNextPage": false, "endCursor": null } } } });
+    let base = json!({ "viewer": { "id": "A" }, "node": { "__typename": "Issue", "id": "issue", "createdAt": "2026-11-03T09:00:00Z", "author": { "login": "lea" }, "timelineItems": { "nodes": [], "pageInfo": { "hasNextPage": false, "endCursor": null } }, "closedByPullRequestsReferences": { "nodes": [], "pageInfo": { "hasNextPage": false, "endCursor": null } } } });
     for change in [
         "viewer",
         "identity",
@@ -193,7 +227,7 @@ async fn a_failed_later_activity_page_never_returns_a_partial_snapshot() {
     let result = super::load_activity(&UserId("A".into()), &ContentId("issue".into()), |_, _, _, _| {
         requests += 1;
         std::future::ready(if requests == 1 {
-            Ok(serde_json::from_value(json!({ "viewer": { "id": "A" }, "node": { "__typename": "Issue", "id": "issue", "timelineItems": { "nodes": [], "pageInfo": { "hasNextPage": true, "endCursor": "next" } }, "closedByPullRequestsReferences": { "nodes": [], "pageInfo": { "hasNextPage": false, "endCursor": null } } } })).unwrap())
+            Ok(serde_json::from_value(json!({ "viewer": { "id": "A" }, "node": { "__typename": "Issue", "id": "issue", "createdAt": "2026-11-03T09:00:00Z", "author": { "login": "lea" }, "timelineItems": { "nodes": [], "pageInfo": { "hasNextPage": true, "endCursor": "next" } }, "closedByPullRequestsReferences": { "nodes": [], "pageInfo": { "hasNextPage": false, "endCursor": null } } } })).unwrap())
         } else { Err(crate::Error::Network("offline".into())) })
     }).await;
 

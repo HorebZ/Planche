@@ -160,7 +160,7 @@ export type ActivityEntry = {
 	subject: string | null,
 };
 
-export type ActivityKind = "comment" | "comment_deleted" | "closed" | "reopened" | "assigned" | "unassigned" | "labeled" | "unlabeled";
+export type ActivityKind = "created" | "comment" | "comment_deleted" | "closed" | "reopened" | "assigned" | "unassigned" | "labeled" | "unlabeled";
 
 export type AppError = {
 	kind: ErrorKind,

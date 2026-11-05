@@ -80,6 +80,17 @@ async fn load_activity<F: std::future::Future<Output = Result<wire::ActivityData
         timeline_after = None;
         prs_after = None;
 
+        if activity.entries.is_empty() {
+            activity.entries.push(ActivityEntry {
+                id: content.as_str().into(),
+                kind: ActivityKind::Created,
+                author: node.author.and_then(|author| author.login),
+                created_at: node.created_at,
+                body: None,
+                subject: None,
+            });
+        }
+
         if timeline {
             let page = node
                 .timeline_items

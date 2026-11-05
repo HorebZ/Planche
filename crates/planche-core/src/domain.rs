@@ -201,6 +201,7 @@ pub struct ActivityEntry {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "snake_case")]
 pub enum ActivityKind {
+    Created,
     Comment,
     CommentDeleted,
     Closed,

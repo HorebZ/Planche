@@ -4,6 +4,14 @@ import { fixtureFactory } from "./factory";
 export const issueActivity = fixtureFactory<IssueActivity>({
   entries: [
     {
+      id: "created",
+      kind: "created",
+      author: "lea",
+      created_at: "2026-11-03T09:00:00Z",
+      body: null,
+      subject: null,
+    },
+    {
       id: "comment",
       kind: "comment",
       author: "lea",

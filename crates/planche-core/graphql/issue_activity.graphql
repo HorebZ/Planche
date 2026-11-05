@@ -4,6 +4,8 @@ query IssueActivity($id: ID!, $timelineAfter: String, $pullRequestsAfter: String
     __typename
     ... on Issue {
       id
+      createdAt
+      author { login }
       timelineItems(first: 100, after: $timelineAfter, itemTypes: [ISSUE_COMMENT, COMMENT_DELETED_EVENT, CLOSED_EVENT, REOPENED_EVENT, ASSIGNED_EVENT, UNASSIGNED_EVENT, LABELED_EVENT, UNLABELED_EVENT]) @include(if: $timeline) {
         pageInfo { hasNextPage endCursor }
         nodes {

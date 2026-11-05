@@ -32,6 +32,14 @@ import { Row, Section, State } from "../kit";
 const activityPreview: IssueActivity = {
   entries: [
     {
+      id: "created",
+      kind: "created",
+      author: "lea",
+      created_at: "2026-11-03T09:00:00Z",
+      body: null,
+      subject: null,
+    },
+    {
       id: "comment",
       kind: "comment",
       author: "lea",

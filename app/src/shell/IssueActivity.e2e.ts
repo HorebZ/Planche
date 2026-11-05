@@ -14,6 +14,12 @@ test("activity is loaded only in the issue detail and survives opening it in a t
 
   await expect(activity.getByText("Ready for", { exact: false })).toBeVisible();
   await expect(activity.locator("strong")).toHaveText("review");
+  await expect(activity.locator("ol > li").first().getByText("lea", { exact: true })).toBeVisible();
+  await expect(activity.locator("ol > li").first()).toContainText("created this issue");
+  await expect(activity.locator("ol > li").first().locator("time")).toHaveAttribute(
+    "datetime",
+    "2026-11-03T09:00:00Z",
+  );
   await expect(resources).toContainText("Blocked by 2 issues");
   await expect(resources).toContainText("Blocking 1 issue");
   await expect(detail.locator("h2")).toHaveText(["Description", "Resources", "Activity"]);
