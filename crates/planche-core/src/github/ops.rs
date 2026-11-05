@@ -571,6 +571,9 @@ pub async fn items_page(
 /// Sends one mutation. `AddDraftIssue` answers with the new item's ID.
 pub async fn execute(client: &GithubClient, operation: &Operation) -> Result<Option<ItemId>> {
     let (name, variables) = match operation {
+        Operation::UpdateIssueBody { content_id, body } => {
+            ("UpdateIssueBody", json!({ "id": content_id, "body": body }))
+        }
         Operation::AddComment {
             content_id,
             request_id,

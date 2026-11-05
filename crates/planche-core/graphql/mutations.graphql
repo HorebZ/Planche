@@ -1,3 +1,9 @@
+mutation UpdateIssueBody($id: ID!, $body: String!) {
+  updateIssue(input: { id: $id, body: $body }) {
+    issue { id }
+  }
+}
+
 mutation SetSingleSelect($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
   updateProjectV2ItemFieldValue(input: {
     projectId: $projectId, itemId: $itemId, fieldId: $fieldId,

@@ -144,15 +144,19 @@ impl GithubClient {
                 | "RepositoryIssues"
                 | "RepositoryIssueOptions"
                 | "AddComment"
+                | "UpdateIssueBody"
                 | "AssignableUsers"
                 | "AddAssignees"
                 | "RemoveAssignees"
         );
         if content
             && !self.can_write_issues()
-            && matches!(operation, "AddAssignees" | "RemoveAssignees" | "AddComment")
+            && matches!(
+                operation,
+                "AddAssignees" | "RemoveAssignees" | "AddComment" | "UpdateIssueBody"
+            )
         {
-            return Err(Error::OAuth("This connection can only read public issues. Connect the GitHub App or use a PAT to change assignees.".into()));
+            return Err(Error::OAuth("This connection can only read public issues. Connect the GitHub App or use a PAT to update issues.".into()));
         }
 
         Ok(if content {

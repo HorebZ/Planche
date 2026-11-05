@@ -468,6 +468,38 @@ export function installMockBackend(scenario: Scenario) {
       structuredClone(comments.get(`${args.account}:${args.content}`) ?? []),
     dispatch_issue_intent: (args) => {
       const intent = args.intent as IssueIntent;
+      if (intent.type === "update_body") {
+        if (descriptionDenied || !issueFor(intent.content_id).permissions?.update) {
+          return { type: "rejected", error: { kind: "Invalid", message: "Editing unavailable" } };
+        }
+
+        const key = `${args.account}:${intent.content_id}`;
+        const description = issueDescription({ body: intent.body, pending: true });
+        descriptions.set(key, description);
+        void emit("issue-changed", {
+          account: args.account,
+          content: intent.content_id,
+          error: null,
+        });
+
+        if (scenario !== "offline") {
+          setTimeout(() => {
+            if (auth.id !== args.account) {
+              return;
+            }
+
+            descriptions.set(key, { ...description, pending: false });
+            void emit("issue-changed", {
+              account: args.account,
+              content: intent.content_id,
+              error: null,
+            });
+          }, 300);
+        }
+
+        return { type: "accepted", seq: ++dispatchSeq };
+      }
+
       if (intent.type !== "add_comment" || !intent.body.trim() || descriptionDenied) {
         return { type: "rejected", error: { kind: "Invalid", message: "Commenting unavailable" } };
       }
@@ -526,9 +558,8 @@ export function installMockBackend(scenario: Scenario) {
       return { type: "accepted", seq };
     },
     cached_issue_description: (args) =>
-      scenario === "offline"
-        ? issueDescription()
-        : (descriptions.get(`${args.account}:${args.content}`) ?? null),
+      descriptions.get(`${args.account}:${args.content}`) ??
+      (scenario === "offline" ? issueDescription() : null),
     cached_issue_activity: (args) =>
       activities.get(`${args.account}:${args.content}`) ??
       (scenario === "offline" ? issueActivity() : null),
@@ -559,12 +590,14 @@ export function installMockBackend(scenario: Scenario) {
         return null;
       }
 
-      const description = issueDescription({
-        body:
-          scenario === "markdown"
-            ? MARKDOWN_BODY
-            : `Description for ${args.content}\n\nDetails loaded on demand.`,
-      });
+      const description =
+        descriptions.get(key) ??
+        issueDescription({
+          body:
+            scenario === "markdown"
+              ? MARKDOWN_BODY
+              : `Description for ${args.content}\n\nDetails loaded on demand.`,
+        });
       descriptions.set(key, description);
 
       return description;

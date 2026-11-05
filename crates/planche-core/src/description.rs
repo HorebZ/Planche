@@ -234,6 +234,7 @@ impl Descriptions {
         if !issue.permissions.is_some_and(|permissions| match intent {
             IssueIntent::SetAssignees { .. } => permissions.assign,
             IssueIntent::AddComment { .. } => permissions.comment,
+            IssueIntent::UpdateBody { .. } => permissions.update,
         }) {
             return Err(Error::Http(403));
         }
@@ -384,6 +385,9 @@ impl Descriptions {
                 }
                 Some(error) if matches!(mutation.intent, IssueIntent::AddComment { .. }) => {
                     cache.finish_comment(mutation.seq, None, Some(&error.to_string()))?
+                }
+                Some(error) if matches!(mutation.intent, IssueIntent::UpdateBody { .. }) => {
+                    cache.fail_issue_body(mutation.seq, &error.to_string())?
                 }
                 Some(_) => cache.remove(mutation.seq)?,
             }

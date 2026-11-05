@@ -92,10 +92,14 @@ export const commands = {
 	cachedIssueDescription: (account: UserId, content: ContentId) => __TAURI_INVOKE<{
 	body: string,
 	fetched_at: string,
+	pending: boolean,
+	error: string | null,
 } | null>("cached_issue_description", { account, content }),
 	refreshIssueDescription: (account: UserId, content: ContentId) => __TAURI_INVOKE<{
 	body: string,
 	fetched_at: string,
+	pending: boolean,
+	error: string | null,
 } | null>("refresh_issue_description", { account, content }),
 	cachedIssue: (account: UserId, content: ContentId) => __TAURI_INVOKE<{
 	content: ItemContent,
@@ -329,9 +333,11 @@ export type IssueChanged = IssueChange;
 export type IssueDescription = {
 	body: string,
 	fetched_at: string,
+	pending: boolean,
+	error: string | null,
 };
 
-export type IssueIntent = { type: "add_comment"; content_id: ContentId; request_id: string; body: string } | { type: "set_assignees"; content_id: ContentId; add: User[]; remove: User[] };
+export type IssueIntent = { type: "update_body"; content_id: ContentId; body: string } | { type: "add_comment"; content_id: ContentId; request_id: string; body: string } | { type: "set_assignees"; content_id: ContentId; add: User[]; remove: User[] };
 
 export type IssueLoad = { status: "ready"; issue: Issue } | { status: "offline"; issue: Issue | null } | 
 /**  GitHub does not distinguish a deleted issue from one the token cannot see. */

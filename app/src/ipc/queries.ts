@@ -550,6 +550,10 @@ export async function listenToCore(client: QueryClient) {
       }
 
       void client.invalidateQueries({
+        queryKey: ["issue-description", "github.com", payload.account, payload.content],
+      });
+
+      void client.invalidateQueries({
         queryKey: ["issue-comments", "github.com", payload.account, payload.content],
       });
       void client.invalidateQueries({
@@ -573,7 +577,7 @@ export async function listenToCore(client: QueryClient) {
       }
 
       if (payload.error) {
-        notify(`Could not update issue: ${payload.error}. Reverted.`, "error");
+        notify(`Could not update issue: ${payload.error}.`, "error");
       }
     }),
     events.mutationFailed.listen(({ payload }) => {

@@ -128,6 +128,10 @@ pub fn spawn(
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum IssueIntent {
+    UpdateBody {
+        content_id: ContentId,
+        body: String,
+    },
     AddComment {
         content_id: ContentId,
         request_id: String,
@@ -143,9 +147,9 @@ pub enum IssueIntent {
 impl IssueIntent {
     pub fn content_id(&self) -> &ContentId {
         match self {
-            Self::SetAssignees { content_id, .. } | Self::AddComment { content_id, .. } => {
-                content_id
-            }
+            Self::SetAssignees { content_id, .. }
+            | Self::AddComment { content_id, .. }
+            | Self::UpdateBody { content_id, .. } => content_id,
         }
     }
 
@@ -159,7 +163,7 @@ impl IssueIntent {
         }
 
         match self {
-            Self::AddComment { .. } => {}
+            Self::AddComment { .. } | Self::UpdateBody { .. } => {}
             Self::SetAssignees { add, remove, .. } => {
                 for user in add {
                     if !assignees.iter().any(|assigned| assigned.id == user.id) {
@@ -173,6 +177,13 @@ impl IssueIntent {
     }
 
     pub fn to_operations(&self) -> Vec<Operation> {
+        if let Self::UpdateBody { content_id, body } = self {
+            return vec![Operation::UpdateIssueBody {
+                content_id: content_id.clone(),
+                body: body.clone(),
+            }];
+        }
+
         if let Self::AddComment {
             content_id,
             request_id,
@@ -221,3 +232,7 @@ mod tests;
 #[cfg(test)]
 #[path = "issue.comments.test.rs"]
 mod comment_tests;
+
+#[cfg(test)]
+#[path = "issue.body.test.rs"]
+mod body_tests;

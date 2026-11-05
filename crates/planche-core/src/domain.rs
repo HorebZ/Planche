@@ -159,6 +159,8 @@ pub struct Label {
 pub struct IssueDescription {
     pub body: String,
     pub fetched_at: String,
+    pub pending: bool,
+    pub error: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]

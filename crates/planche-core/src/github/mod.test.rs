@@ -29,6 +29,7 @@ fn projects_and_issue_operations_use_their_own_connection_without_a_pat_fallback
         "RepositoryIssues",
         "RepositoryIssueOptions",
         "AddComment",
+        "UpdateIssueBody",
         "AssignableUsers",
         "AddAssignees",
         "RemoveAssignees",
@@ -54,6 +55,7 @@ fn oauth_alone_reads_public_issues_but_cannot_write_issues_or_open_organization_
     assert!(client.operation_token("AddAssignees").is_err());
     assert!(client.operation_token("RemoveAssignees").is_err());
     assert!(client.operation_token("AddComment").is_err());
+    assert!(client.operation_token("UpdateIssueBody").is_err());
     assert!(client.project_client(true).is_err());
     assert_eq!(client.project_client(false).unwrap().token, "gho_personal");
 }

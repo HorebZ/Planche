@@ -1,5 +1,59 @@
 import { expect, test } from "@playwright/test";
 
+test("edit, preview, cancel and save an issue description, then read it after reopening", async ({
+  page,
+}) => {
+  await page.goto("/?mock=board");
+  const card = page.locator('[data-slot="issue-card"][data-item-id="PVTI_226"]');
+  await card.click();
+  await page.getByRole("button", { name: "Edit description", exact: true }).click();
+  const editor = page.getByRole("textbox", { name: "Description Markdown", exact: true });
+  await editor.fill("Cancelled change");
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  const description = page.getByRole("region", { name: "Description", exact: true });
+  await expect(description).toContainText("Description for I_226");
+  await page.getByRole("button", { name: "Edit description", exact: true }).click();
+  const body = "# Updated description\n\nKeep **Markdown** formatting.  \n\n- Updated in Planche\n";
+  await editor.fill(body);
+  const editing = page.getByRole("region", { name: "Edit description", exact: true });
+  await editing.getByRole("button", { name: "Preview", exact: true }).click();
+
+  await expect(editing.locator("strong")).toHaveText("Markdown");
+  await page.getByRole("button", { name: "Save description", exact: true }).click();
+
+  await expect(description).toContainText("Updated in Planche");
+  await expect(
+    description.getByRole("button", { name: "Edit description", exact: true }),
+  ).toBeEnabled();
+  await page.getByRole("button", { name: "Close detail", exact: true }).click();
+  await card.click();
+
+  await expect(description.locator("strong")).toHaveText("Markdown");
+  await page.getByRole("button", { name: "Edit description", exact: true }).click();
+  await expect(editor).toHaveValue(body);
+});
+
+test("an offline body edit is queued and retained after reopening", async ({ page }) => {
+  await page.goto("/?mock=offline");
+  const card = page.locator('[data-slot="issue-card"][data-item-id="PVTI_226"]');
+  await card.click();
+  await page.getByRole("button", { name: "Edit description", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "Description Markdown", exact: true })
+    .fill("Saved **offline**.");
+  await page.getByRole("button", { name: "Save description", exact: true }).click();
+  const description = page.getByRole("region", { name: "Description", exact: true });
+
+  await expect(description).toContainText("Waiting for GitHub sync");
+  await page.getByRole("button", { name: "Close detail", exact: true }).click();
+  await card.click();
+
+  await expect(description.locator("strong")).toHaveText("offline");
+  await expect(
+    description.getByRole("button", { name: "Edit description", exact: true }),
+  ).toBeDisabled();
+});
+
 test("description revalidates on reopening and removes saved content after access is refused", async ({
   page,
 }) => {

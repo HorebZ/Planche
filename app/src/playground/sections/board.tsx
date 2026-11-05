@@ -13,7 +13,11 @@ import {
   IssueCard,
   type IssueCardData,
 } from "@/components/ui/issue-card";
-import { type DescriptionStatus, IssueDescriptionContent } from "@/components/ui/issue-description";
+import {
+  type DescriptionStatus,
+  IssueDescriptionContent,
+  IssueDescriptionEditor,
+} from "@/components/ui/issue-description";
 import { IssueDetail } from "@/components/ui/issue-detail";
 import { IssueListGroup } from "@/components/ui/issue-list";
 import { IssueTabPanel, IssueTabs } from "@/components/ui/issue-tabs";
@@ -212,6 +216,29 @@ export function BoardSection() {
                   }
                   onRetry={() => {}}
                 />
+              </State>
+            ))}
+          </Row>
+          <Row label="edit issue description">
+            {(["editing", "saving", "error", "queued", "refused"] as const).map((state) => (
+              <State
+                key={state}
+                label={state}
+                className="w-full rounded-xl bg-bg p-4"
+              >
+                {state === "queued" || state === "refused" ? (
+                  <IssueDescriptionContent
+                    status="ready"
+                    body="Updated **description**."
+                    pending={state === "queued"}
+                    syncError={state === "refused" ? "GitHub refused the update" : undefined}
+                    onEdit={() => {}}
+                    onRetry={() => {}}
+                    onOpenLink={() => {}}
+                  />
+                ) : (
+                  <DescriptionEditorPreview state={state} />
+                )}
               </State>
             ))}
           </Row>
@@ -901,5 +928,21 @@ function FilterPreview() {
       />
       <NoFilterResults onReset={() => setSelected(emptyFilters)} />
     </div>
+  );
+}
+
+function DescriptionEditorPreview({ state }: { state: "editing" | "saving" | "error" }) {
+  const [body, setBody] = useState("Updated **description**.\n\n- Ready for review");
+
+  return (
+    <IssueDescriptionEditor
+      value={body}
+      onChange={setBody}
+      onSave={() => {}}
+      onCancel={() => {}}
+      saving={state === "saving"}
+      error={state === "error" ? "Could not save the description. Your text is still here." : null}
+      onOpenLink={() => {}}
+    />
   );
 }

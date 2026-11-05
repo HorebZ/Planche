@@ -87,7 +87,7 @@ export function Textarea({ className, ...props }: ComponentProps<"textarea">) {
     >
       <textarea
         {...props}
-        className="min-h-24 w-full resize-y bg-transparent text-base text-fg outline-none placeholder:text-fg-3 disabled:text-fg-3"
+        className="min-h-24 w-full resize-y bg-transparent text-base text-fg outline-none placeholder:text-fg-3 focus-visible:shadow-none disabled:text-fg-3"
       />
     </div>
   );

@@ -126,11 +126,28 @@ impl Cache {
         account: &UserId,
         content: &ContentId,
     ) -> Result<Option<IssueDescription>> {
-        Ok(self.conn.query_row(
+        let mut description = self.conn.query_row(
             "SELECT body, fetched_at FROM issue_description WHERE host = ?1 AND account_id = ?2 AND content_id = ?3 AND body IS NOT NULL",
             params![host, account.as_str(), content.as_str()],
-            |row| Ok(IssueDescription { body: row.get(0)?, fetched_at: row.get(1)? }),
-        ).optional()?)
+            |row| Ok(IssueDescription { body: row.get(0)?, fetched_at: row.get(1)?, pending: false, error: None }),
+        ).optional()?;
+
+        if host == crate::description::HOST
+            && let Some(description) = &mut description
+        {
+            let edit: Option<(String, String, Option<String>)> = self.conn.query_row(
+                "SELECT json_extract(intent, '$.body'), status, last_error FROM pending_mutation WHERE account_id = ?1 AND content_id = ?2 AND project_id IS NULL AND json_extract(intent, '$.type') = 'update_body' ORDER BY seq DESC LIMIT 1",
+                params![account.as_str(), content.as_str()], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            ).optional()?;
+
+            if let Some((body, status, error)) = edit {
+                description.body = body;
+                description.pending = status != "unknown";
+                description.error = if status == "unknown" { error } else { None };
+            }
+        }
+
+        Ok(description)
     }
 
     pub fn issue_activity(
@@ -237,11 +254,33 @@ impl Cache {
 
         if updated == 1 && body.is_none() {
             self.invalidate_issue(host, account, content)?;
+        } else if updated == 1 && host == crate::description::HOST {
+            Self::confirm_issue_body(&tx, account, content, body)?;
         }
 
         tx.commit()?;
 
         self.issue_description(host, account, content)
+    }
+
+    fn confirm_issue_body(
+        conn: &Connection,
+        account: &UserId,
+        content: &ContentId,
+        body: Option<&str>,
+    ) -> Result<()> {
+        // Retire older edits together so they cannot overwrite a later confirmed edit.
+        conn.execute(
+            "DELETE FROM pending_mutation WHERE account_id = ?1 AND content_id = ?2
+             AND project_id IS NULL AND status = 'acked' AND json_extract(intent, '$.type') = 'update_body'
+             AND seq <= (SELECT MAX(seq) FROM pending_mutation WHERE account_id = ?1 AND content_id = ?2
+                 AND project_id IS NULL AND status = 'acked' AND json_extract(intent, '$.type') = 'update_body'
+                 AND (json_extract(intent, '$.body') = ?3 OR acked_at_sync + 1 >= ?4))",
+            params![account.as_str(), content.as_str(), body, ACKED_SYNCS],
+        )?;
+        conn.execute("UPDATE pending_mutation SET acked_at_sync = acked_at_sync + 1 WHERE account_id = ?1 AND content_id = ?2 AND project_id IS NULL AND status = 'acked' AND json_extract(intent, '$.type') = 'update_body'", params![account.as_str(), content.as_str()])?;
+
+        Ok(())
     }
 
     pub fn issue(
@@ -348,6 +387,10 @@ impl Cache {
             )?;
 
             if let Some((issue, _)) = issue {
+                if host == crate::description::HOST {
+                    Self::confirm_issue_body(&tx, account, content, body)?;
+                }
+
                 let acked: Vec<(i64, String, i64)> = tx.prepare_cached(
                     "SELECT seq, intent, acked_at_sync FROM pending_mutation WHERE account_id = ?1 AND content_id = ?2 AND project_id IS NULL AND status = 'acked' ORDER BY seq",
                 )?.query_map(params![account.as_str(), content.as_str()], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?.collect::<rusqlite::Result<_>>()?;
@@ -355,6 +398,11 @@ impl Cache {
                 for (seq, json, syncs) in acked {
                     let intent: IssueIntent = serde_json::from_str(&json)
                         .map_err(|error| Error::Cache(error.to_string()))?;
+
+                    if matches!(intent, IssueIntent::UpdateBody { .. }) {
+                        continue;
+                    }
+
                     let mut projected = issue.content.clone();
 
                     intent.apply(&mut projected);
@@ -474,7 +522,7 @@ impl Cache {
             .unwrap_or_default();
         let pending_issues: HashMap<ContentId, u32> = if let Some(account) = &account {
             self.conn.prepare_cached(
-                "SELECT content_id, count(*) FROM pending_mutation WHERE account_id = ?1 AND project_id IS NULL AND status IN ('pending', 'in_flight', 'unknown') GROUP BY content_id",
+                "SELECT content_id, count(*) FROM pending_mutation WHERE account_id = ?1 AND project_id IS NULL AND status IN ('pending', 'in_flight') GROUP BY content_id",
             )?.query_map([account.as_str()], |row| Ok((ContentId(row.get(0)?), row.get(1)?)))?.collect::<rusqlite::Result<_>>()?
         } else {
             HashMap::new()
@@ -785,6 +833,10 @@ impl Cache {
     pub fn enqueue_issue(&mut self, account: &UserId, intent: &IssueIntent) -> Result<i64> {
         let tx = self.write()?;
 
+        if matches!(intent, IssueIntent::UpdateBody { .. }) {
+            tx.execute("DELETE FROM pending_mutation WHERE account_id = ?1 AND content_id = ?2 AND project_id IS NULL AND status IN ('pending', 'unknown') AND json_extract(intent, '$.type') = 'update_body'", params![account.as_str(), intent.content_id().as_str()])?;
+        }
+
         if let IssueIntent::AddComment {
             content_id,
             request_id,
@@ -851,6 +903,13 @@ impl Cache {
                 serde_json::from_str(&json?).map_err(|error| Error::Cache(error.to_string()))
             })
             .collect()
+    }
+
+    pub(crate) fn fail_issue_body(&self, seq: i64, error: &str) -> Result<()> {
+        // Unknown rows wait for an explicit retry, preserving refused Markdown edits on disk.
+        self.conn.execute("UPDATE pending_mutation SET status = 'unknown', last_error = ?2 WHERE seq = ?1 AND project_id IS NULL AND json_extract(intent, '$.type') = 'update_body'", params![seq, error])?;
+
+        Ok(())
     }
 
     /// Puts rows a dead process left in flight back in the queue. Sending a move or an
