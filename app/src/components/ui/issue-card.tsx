@@ -170,7 +170,12 @@ export function IssueCard({
             <StatusSquare status={resolvedStatus} />
           )}
         </span>
-        <span className="min-w-0 text-pretty">{title}</span>
+        <span
+          className="wrap-anywhere line-clamp-5 min-w-0 flex-1"
+          title={title}
+        >
+          {title}
+        </span>
       </div>
       {priority || subIssues || blockedBy > 0 || blocking > 0 || pullRequestCount > 0 ? (
         <div className="flex flex-wrap items-center gap-1">

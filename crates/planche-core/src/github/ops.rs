@@ -157,6 +157,57 @@ fn activity_cursor(info: wire::PageInfo, seen: &mut HashSet<String>) -> Result<O
     Ok(Some(cursor))
 }
 
+pub async fn issue_reference(
+    client: &GithubClient,
+    account: &UserId,
+    url: &str,
+) -> Result<Option<ContentId>> {
+    let url = reqwest::Url::parse(url).map_err(|error| Error::Decode(error.to_string()))?;
+    let segments: Vec<_> = url.path().trim_matches('/').split('/').collect();
+    if url.scheme() != "https"
+        || url.host_str() != Some("github.com")
+        || !url.username().is_empty()
+        || url.password().is_some()
+        || url.port().is_some()
+        || segments.len() != 4
+        || segments[2] != "issues"
+        || segments[3]
+            .parse::<u64>()
+            .ok()
+            .is_none_or(|number| number == 0)
+    {
+        return Err(Error::Decode("invalid GitHub issue URL".into()));
+    }
+    crate::repositories::repository_reference(&format!("{}/{}", segments[0], segments[1]))?;
+
+    let data = client
+        .query::<wire::IssueData>(
+            include_str!("../../graphql/issue_reference.graphql"),
+            "IssueReference",
+            json!({ "url": url.as_str() }),
+        )
+        .await?
+        .data;
+
+    reference_from_wire(data, account)
+}
+
+fn reference_from_wire(data: wire::IssueData, account: &UserId) -> Result<Option<ContentId>> {
+    if data.viewer.id != account.as_str() {
+        return Err(Error::Unauthorized);
+    }
+
+    let Some(node) = data.node.filter(|node| node["__typename"] == "Issue") else {
+        return Ok(None);
+    };
+    let id = node["id"]
+        .as_str()
+        .filter(|id| !id.is_empty())
+        .ok_or_else(|| Error::Decode("missing issue identity".into()))?;
+
+    Ok(Some(ContentId(id.into())))
+}
+
 /// Loaded on demand, never as an additional query in the Project sync loop.
 pub async fn issue(
     client: &GithubClient,

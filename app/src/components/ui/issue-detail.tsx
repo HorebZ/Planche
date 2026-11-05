@@ -72,6 +72,7 @@ export function IssueDetail({
         "absolute inset-0 z-10 flex min-h-0 min-w-0 flex-col bg-bg",
         !expanded &&
           "@min-[960px]:static @min-[960px]:w-[480px] @min-[960px]:shrink-0 @min-[960px]:border-line @min-[960px]:border-l",
+        !active && "hidden",
       )}
     >
       <header

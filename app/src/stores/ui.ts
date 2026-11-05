@@ -31,6 +31,8 @@ type UiState = {
   /** The card the keyboard acts on. It holds the focus ring. */
   selectedId: ItemId | null;
   detailId: ItemId | null;
+  linkedIssue: { content: string; url: string } | null;
+  setLinkedIssue: (issue: UiState["linkedIssue"]) => void;
   detailExpanded: boolean;
   setDetailExpanded: (expanded: boolean) => void;
   openDetail: (id: ItemId) => void;
@@ -83,6 +85,15 @@ export const useUi = create<UiState>()((set, get) => ({
   },
   selectedId: null,
   detailId: null,
+  linkedIssue: null,
+  setLinkedIssue: (linkedIssue) =>
+    set((state) => ({
+      linkedIssue,
+      overlay: null,
+      undo: null,
+      actionVersion: state.actionVersion + 1,
+      contextVersion: state.contextVersion + 1,
+    })),
   detailExpanded: false,
   setDetailExpanded: (detailExpanded) => set({ detailExpanded }),
   openDetail: (detailId) =>
@@ -91,12 +102,14 @@ export const useUi = create<UiState>()((set, get) => ({
         ? state
         : {
             detailId,
+            linkedIssue: null,
             detailExpanded: state.detailId ? state.detailExpanded : false,
             selectedId: state.detailId ? state.selectedId : detailId,
             overlay: null,
           },
     ),
-  closeDetail: () => set({ detailId: null, detailExpanded: false, overlay: null }),
+  closeDetail: () =>
+    set({ detailId: null, linkedIssue: null, detailExpanded: false, overlay: null }),
   issueTabs: [],
   activeIssueTab: null,
   openIssueTab: (tab) => {
@@ -119,6 +132,7 @@ export const useUi = create<UiState>()((set, get) => ({
         ? state
         : {
             activeIssueTab,
+            linkedIssue: null,
             detailId: null,
             detailExpanded: false,
             overlay: null,
@@ -153,6 +167,7 @@ export const useUi = create<UiState>()((set, get) => ({
   selectProject: (projectId) =>
     set((s) => ({
       projectId,
+      linkedIssue: null,
       overlay: null,
       viewId: null,
       filters: emptyFilters,
@@ -168,6 +183,7 @@ export const useUi = create<UiState>()((set, get) => ({
   selectView: (viewId) =>
     set((s) => ({
       viewId,
+      linkedIssue: null,
       detailId: null,
       detailExpanded: false,
       activeIssueTab: null,
@@ -197,6 +213,7 @@ export const useUi = create<UiState>()((set, get) => ({
   invalidateUndo: () =>
     set((s) => ({
       detailId: null,
+      linkedIssue: null,
       detailExpanded: false,
       issueTabs: [],
       activeIssueTab: null,

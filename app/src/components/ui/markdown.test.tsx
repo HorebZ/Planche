@@ -95,6 +95,71 @@ test("neither Markdown images nor raw HTML can create remote image elements", ()
   expect(document.querySelector("img, picture, source, svg")).toBeNull();
 });
 
+test.each(["issues", "pull"])("GitHub references use the source %s repository", (kind) => {
+  const open = vi.fn();
+
+  render(
+    <Markdown
+      body="Fixes #61635, **#42** and other-owner/other.repo#123."
+      sourceUrl={`https://github.com/source-owner/source-repo/${kind}/35#discussion`}
+      onOpenLink={open}
+    />,
+  );
+
+  const links = [...document.querySelectorAll<HTMLAnchorElement>("a")];
+
+  expect(links.map((link) => link.textContent)).toEqual([
+    "#61635",
+    "#42",
+    "other-owner/other.repo#123",
+  ]);
+  for (const link of links) {
+    click(link);
+  }
+
+  expect(open.mock.calls.map(([url]) => url)).toEqual([
+    "https://github.com/source-owner/source-repo/issues/61635",
+    "https://github.com/source-owner/source-repo/issues/42",
+    "https://github.com/other-owner/other.repo/issues/123",
+  ]);
+});
+
+test("references leave code, existing links and non-reference hashes intact", () => {
+  render(
+    <Markdown
+      body={
+        "`#61635`\n\n```text\nother/repo#42\n```\n\n[#123](https://example.com)\n\n# Heading\n\nC#123 #61635abc #0 ##42 #123_suffix https://example.com/#99"
+      }
+      sourceUrl="https://github.com/source/repo/issues/35"
+      onOpenLink={() => {}}
+    />,
+  );
+
+  expect([...document.querySelectorAll<HTMLAnchorElement>("a")].map((link) => link.href)).toEqual([
+    "https://example.com/",
+  ]);
+  expect(get("code").textContent).toBe("#61635");
+  expect(get("pre code").textContent).toContain("other/repo#42");
+});
+
+test.each([undefined, "https://example.com/owner/repo/issues/35"])(
+  "bare references stay as text without a GitHub repository: %s",
+  (sourceUrl) => {
+    render(
+      <Markdown
+        body="#61635 and owner/repo#42"
+        sourceUrl={sourceUrl}
+        onOpenLink={() => {}}
+      />,
+    );
+
+    const links = [...document.querySelectorAll<HTMLAnchorElement>("a")];
+
+    expect(links.map((link) => link.href)).toEqual(["https://github.com/owner/repo/issues/42"]);
+    expect(document.body.textContent).toContain("#61635");
+  },
+);
+
 test("a renderer failure falls back to escaped plain text and a new body recovers", () => {
   vi.spyOn(console, "error").mockImplementation(() => {});
   const renderer = vi.mocked(parser.default).mockImplementation(() => {

@@ -1,12 +1,46 @@
 // @vitest-environment happy-dom
 import { expect, test } from "vitest";
 import App from "@/App";
+import { issueDescription } from "@/ipc/_fixtures/description.fixtures";
 import { signedIn } from "@/ipc/_fixtures/scenarios.fixtures";
 import { authStatus } from "@/ipc/_fixtures/user.fixtures";
 import { commands } from "@/ipc/bindings.types";
-import { authQuery, queryClient } from "@/ipc/queries";
+import { authQuery, descriptionQuery, queryClient } from "@/ipc/queries";
 import { useRepositoryViews } from "@/stores/repository-views";
 import { button, click, fill, get, installMockBackend, key, render } from "@/test-support";
+
+test("repository descriptions open references in the side panel without changing the collection", async () => {
+  await setup();
+  click(get('[data-item-id="I_repo_122"]'));
+
+  await expect
+    .poll(() => document.querySelector('[aria-label="Description"]')?.textContent)
+    .toContain("Description for I_repo_122");
+  queryClient.setQueryData(
+    descriptionQuery(signedIn.id ?? "", "I_repo_122").queryKey,
+    issueDescription({ body: "See #2 and planche/app#223." }),
+  );
+  await expect
+    .poll(() => document.querySelector('a[href="https://github.com/HorebZ/Planche/issues/2"]'))
+    .not.toBeNull();
+  click(get('a[href="https://github.com/HorebZ/Planche/issues/2"]'));
+
+  await expect
+    .poll(
+      () =>
+        document.querySelector('[data-slot="issue-detail"][data-active="true"] h1')?.textContent,
+    )
+    .toBe("Repository issue 2");
+  expect(rows().length).toBe(50);
+  key("Escape");
+
+  await expect
+    .poll(
+      () =>
+        document.querySelector('[data-slot="issue-detail"][data-active="true"] h1')?.textContent,
+    )
+    .toBe("Repository issue 122");
+});
 
 const rows = () =>
   document.querySelectorAll(

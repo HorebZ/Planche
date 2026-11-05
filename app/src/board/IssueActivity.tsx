@@ -1,9 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { IssueActivityContent } from "@/components/ui/issue-activity";
 import type { DescriptionStatus } from "@/components/ui/issue-description";
-import { notify } from "@/components/ui/toast";
 import { activityQuery, cachedActivityQuery, errorMessage } from "@/ipc/queries";
+import { useIssueLink } from "./useIssueLink";
 
 export function IssueActivity({
   account,
@@ -16,6 +15,7 @@ export function IssueActivity({
   offline: boolean;
   sourceUrl: string;
 }) {
+  const onOpenLink = useIssueLink(account);
   const cached = useQuery(cachedActivityQuery(account, content));
   const fresh = useQuery({ ...activityQuery(account, content), enabled: !offline });
   const activity = fresh.data !== undefined ? fresh.data : cached.data;
@@ -44,11 +44,7 @@ export function IssueActivity({
       message={failure && !networkError ? errorMessage(failure) : undefined}
       sourceUrl={sourceUrl}
       onRetry={() => void fresh.refetch()}
-      onOpenLink={(url) =>
-        void openUrl(url).catch((error) =>
-          notify(`Could not open link: ${errorMessage(error)}`, "error"),
-        )
-      }
+      onOpenLink={onOpenLink}
     />
   );
 }

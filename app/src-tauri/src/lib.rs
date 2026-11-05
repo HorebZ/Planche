@@ -47,6 +47,7 @@ fn builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::cached_issue_description,
             commands::refresh_issue_description,
             commands::cached_issue,
+            commands::resolve_issue,
             commands::cached_issue_comments,
             commands::refresh_issue,
             commands::cached_issue_activity,

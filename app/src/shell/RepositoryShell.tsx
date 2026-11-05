@@ -2,9 +2,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { cardData } from "@/board/Card";
-import { IssueActivity } from "@/board/IssueActivity";
-import { IssueComments } from "@/board/IssueComments";
-import { IssueDescription } from "@/board/IssueDescription";
 import { ShortcutSheet } from "@/command/ShortcutSheet";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,7 +12,6 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { IssueDetail } from "@/components/ui/issue-detail";
 import {
   RepositoryIssueBoard,
   RepositoryIssueFilters,
@@ -23,13 +19,7 @@ import {
 } from "@/components/ui/repository-issues";
 import { notify } from "@/components/ui/toast";
 import { commands, type ItemContent, type RepositoryIssueFilter } from "@/ipc/bindings.types";
-import {
-  authQuery,
-  cachedIssueQuery,
-  errorMessage,
-  issueQuery,
-  useOpenProject,
-} from "@/ipc/queries";
+import { authQuery, errorMessage, useOpenProject } from "@/ipc/queries";
 import {
   cachedRepositoryIssuesQuery,
   cachedRepositoryOptionsQuery,
@@ -47,6 +37,7 @@ import {
   useRepositoryViews,
 } from "@/stores/repository-views";
 import { useUi } from "@/stores/ui";
+import { IssuePanel, LinkedIssuePanel } from "./IssuePanel";
 import { AppSidebar } from "./Sidebar";
 
 type RepositoryIssue = Extract<ItemContent, { kind: "issue" }>;
@@ -184,6 +175,7 @@ export function RepositoryShell({ account, id }: { account: string; id: string }
         ?.focus();
     }
   };
+  const linkedIssue = useUi((state) => state.linkedIssue);
   const overlay = useUi((state) => state.overlay);
   useShortcuts(
     {
@@ -194,7 +186,8 @@ export function RepositoryShell({ account, id }: { account: string; id: string }
       "selection.clear": () => update({ selected: null }),
       "card.github": () =>
         external(
-          issues.find((issue) => issue.id === (view.detail ?? view.selected))?.url ??
+          linkedIssue?.url ??
+            issues.find((issue) => issue.id === (view.detail ?? view.selected))?.url ??
             saved?.repository.url ??
             "https://github.com",
         ),
@@ -369,14 +362,15 @@ export function RepositoryShell({ account, id }: { account: string; id: string }
             )}
           </div>
         </section>
-        {view.detail && !unavailable && (
-          <RepositoryDetail
+        {view.detail && !unavailable ? (
+          <IssuePanel
             key={view.detail}
             account={account}
             content={view.detail}
             summary={detail ?? null}
             repository={saved?.repository.full_name ?? "Repository"}
             offline={offline}
+            active={!linkedIssue}
             expanded={view.expanded}
             onExpandedChange={(expanded) => update({ expanded })}
             onBack={close}
@@ -391,7 +385,13 @@ export function RepositoryShell({ account, id }: { account: string; id: string }
                 : undefined
             }
           />
-        )}
+        ) : null}
+        {linkedIssue ? (
+          <LinkedIssuePanel
+            account={account}
+            offline={offline}
+          />
+        ) : null}
       </main>
       <CommandDialog
         open={overlay?.type === "palette"}
@@ -418,83 +418,5 @@ export function RepositoryShell({ account, id }: { account: string; id: string }
       </CommandDialog>
       <ShortcutSheet />
     </div>
-  );
-}
-
-function RepositoryDetail({
-  account,
-  content,
-  summary,
-  repository,
-  offline,
-  ...props
-}: {
-  account: string;
-  content: string;
-  summary: RepositoryIssue | null;
-  repository: string;
-  offline: boolean;
-  expanded: boolean;
-  onExpandedChange: (expanded: boolean) => void;
-  onBack: () => void;
-  onPrevious?: () => void;
-  onNext?: () => void;
-}) {
-  const cached = useQuery(cachedIssueQuery(account, content));
-  const fresh = useQuery({ ...issueQuery(account, content), enabled: !offline });
-  const record = fresh.data
-    ? fresh.data.status === "unavailable"
-      ? null
-      : fresh.data.issue
-    : cached.data;
-  const unavailable = fresh.data?.status === "unavailable";
-  const issue = unavailable ? null : record?.content.kind === "issue" ? record.content : summary;
-  const openLink = (url: string) =>
-    void openUrl(url).catch((error) => notify(errorMessage(error), "error"));
-
-  return (
-    <IssueDetail
-      {...props}
-      itemId={content}
-      item={issue ? cardData(issue) : null}
-      project={repository}
-      status={null}
-      githubState={issue?.state}
-      editable={Boolean(issue)}
-      notice={
-        unavailable
-          ? "This issue is unavailable with your current GitHub access."
-          : !issue
-            ? "This issue is not in the local cache. Refresh when connected."
-            : fresh.error
-              ? `Showing saved issue. ${errorMessage(fresh.error)}`
-              : undefined
-      }
-      onGitHub={issue ? () => openLink(issue.url) : undefined}
-    >
-      {issue && (
-        <>
-          <IssueDescription
-            account={account}
-            content={content}
-            sourceUrl={issue.url}
-            offline={offline}
-          />
-          <IssueActivity
-            account={account}
-            content={content}
-            sourceUrl={issue.url}
-            offline={offline}
-          />
-          <IssueComments
-            account={account}
-            content={content}
-            sourceUrl={issue.url}
-            offline={offline}
-            onOpenLink={openLink}
-          />
-        </>
-      )}
-    </IssueDetail>
   );
 }

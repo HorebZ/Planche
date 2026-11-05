@@ -111,6 +111,7 @@ export const commands = {
 	permissions: IssuePermissions | null,
 	fetched_at: string,
 } | null>("cached_issue", { account, content }),
+	resolveIssue: (account: UserId, url: string) => __TAURI_INVOKE<string | null>("resolve_issue", { account, url }),
 	cachedIssueComments: (account: UserId, content: ContentId) => __TAURI_INVOKE<CommentSubmission[]>("cached_issue_comments", { account, content }),
 	refreshIssue: (account: UserId, content: ContentId) => __TAURI_INVOKE<IssueLoad>("refresh_issue", { account, content }),
 	cachedIssueActivity: (account: UserId, content: ContentId) => __TAURI_INVOKE<{

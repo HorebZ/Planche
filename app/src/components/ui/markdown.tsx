@@ -1,5 +1,57 @@
 import { Component, type ReactNode } from "react";
-import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform, type ExtraProps } from "react-markdown";
+
+type MarkdownElement = NonNullable<ExtraProps["node"]>;
+
+function githubReferences(sourceUrl?: string) {
+  const repository = sourceUrl?.match(
+    /^https:\/\/github\.com\/([^/]+\/[^/]+)\/(?:issues|pull)\/\d+(?:[/?#]|$)/,
+  )?.[1];
+
+  return function transform(node: Pick<MarkdownElement, "children">) {
+    node.children = node.children.flatMap((child): MarkdownElement["children"] => {
+      if (child.type === "element") {
+        if (!["a", "code", "pre"].includes(child.tagName)) {
+          transform(child);
+        }
+
+        return [child];
+      }
+
+      if (child.type !== "text") {
+        return [child];
+      }
+
+      const parts: MarkdownElement["children"] = [];
+      const references = child.value.matchAll(
+        /(?<![\p{L}\p{N}_/#])(?:([a-z\d][a-z\d-]*\/[a-z\d_.-]+))?#([1-9]\d*)(?![\p{L}\p{N}_])/giu,
+      );
+      let offset = 0;
+
+      for (const match of references) {
+        const target = match[1] ?? repository;
+
+        if (!target) {
+          continue;
+        }
+
+        parts.push(
+          { type: "text", value: child.value.slice(offset, match.index) },
+          {
+            type: "element",
+            tagName: "a",
+            // GitHub resolves this route for both issues and pull requests.
+            properties: { href: `https://github.com/${target}/issues/${match[2]}` },
+            children: [{ type: "text", value: match[0] }],
+          },
+        );
+        offset = match.index + match[0].length;
+      }
+
+      return [...parts, { type: "text", value: child.value.slice(offset) }];
+    });
+  };
+}
 
 function safeUrl(value: string, sourceUrl?: string) {
   if (!defaultUrlTransform(value)) {
@@ -54,6 +106,7 @@ export function Markdown({
       >
         <ReactMarkdown
           skipHtml
+          rehypePlugins={[[githubReferences, sourceUrl]]}
           urlTransform={(value, key) => (key === "href" ? safeUrl(value, sourceUrl) : undefined)}
           components={{
             h1: ({ children }) => <h3 className="font-semibold text-fg text-lg">{children}</h3>,

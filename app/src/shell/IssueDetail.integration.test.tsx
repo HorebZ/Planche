@@ -9,8 +9,8 @@ import { boardQuery, queryClient } from "@/ipc/queries";
 import { useUi } from "@/stores/ui";
 import { button, calls, click, fill, get, installMockBackend, key, render } from "@/test-support";
 
-async function open() {
-  const backend = installMockBackend("board");
+async function open(scenario: "board" | "markdown" = "board") {
+  const backend = installMockBackend(scenario);
 
   render(<App />, queryClient);
 
@@ -21,7 +21,7 @@ async function open() {
 }
 
 const row = (id: number) => get(`[data-slot="issue-list-row"][data-item-id="PVTI_${id}"]`);
-const detail = () => get('[data-slot="issue-detail"]');
+const detail = () => get('[data-slot="issue-detail"][data-active="true"]');
 
 test("click and Enter open a detail, J/K follow the filtered collection and Escape restores the origin", async () => {
   await open();
@@ -177,4 +177,30 @@ test("pull requests keep an explicit external fallback without requesting an iss
   );
   expect(document.querySelector('[aria-label="Description"]')).toBeNull();
   expect(calls.refresh_issue_description).toBeUndefined();
+});
+
+test("description references open the side panel and return to the original issue without mutating it", async () => {
+  await open("markdown");
+  click(row(226));
+  await expect
+    .poll(() => document.querySelector('a[href="https://github.com/planche/app/issues/223"]'))
+    .not.toBeNull();
+  click(get('a[href="https://github.com/planche/app/issues/223"]'));
+
+  await expect
+    .poll(() => get("h1", detail()).textContent)
+    .toBe("Column counter ignores filtered cards");
+  expect(detail().dataset.expanded).toBe("false");
+  expect(calls["plugin:opener|open_url"]).toBeUndefined();
+  key("i", detail());
+  key("s", detail());
+
+  expect(calls.dispatch_intent).toBeUndefined();
+  expect(calls.dispatch_issue_intent).toBeUndefined();
+  key("Escape", detail());
+
+  await expect.poll(() => get("h1", detail()).textContent).toBe("Show linked PRs in issue detail");
+  key("Escape", detail());
+
+  expect(document.querySelector('[data-slot="issue-detail"]')).toBeNull();
 });

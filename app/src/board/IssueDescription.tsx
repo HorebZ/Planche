@@ -1,12 +1,10 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { useState } from "react";
 import {
   type DescriptionStatus,
   IssueDescriptionContent,
   IssueDescriptionEditor,
 } from "@/components/ui/issue-description";
-import { notify } from "@/components/ui/toast";
 import { commands } from "@/ipc/bindings.types";
 import {
   boardAccountEpoch,
@@ -15,6 +13,7 @@ import {
   descriptionQuery,
   errorMessage,
 } from "@/ipc/queries";
+import { useIssueLink } from "./useIssueLink";
 
 type Props = {
   account: string;
@@ -59,10 +58,7 @@ function Description({ account, content, offline, sourceUrl }: Props) {
               ? "ready"
               : "loading";
 
-  const onOpenLink = (url: string) =>
-    void openUrl(url).catch((error) =>
-      notify(`Could not open link: ${errorMessage(error)}`, "error"),
-    );
+  const onOpenLink = useIssueLink(account);
   const permitted = Boolean(issue.data?.permissions?.update) && status !== "unavailable";
   const save = async () => {
     if (draft === null || saving || !permitted) {
