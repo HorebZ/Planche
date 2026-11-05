@@ -1,5 +1,6 @@
 import { Settings } from "lucide-react";
 import { useState } from "react";
+import { AccountMenu } from "@/components/ui/account-menu";
 import { AppLockContent } from "@/components/ui/app-lock";
 import { BoardErrorCard, EmptyBoardCard, SkeletonColumn } from "@/components/ui/board-states";
 import { Button } from "@/components/ui/button";
@@ -521,12 +522,30 @@ function SettingsPreview() {
 
   return (
     <>
+      <AccountMenu
+        login="camille-r"
+        mode="oauth"
+        accounts={[
+          { id: "U_CR", login: "camille-r", avatar_url: null, mode: "oauth", active: true },
+          { id: "U_WORK", login: "camille-work", avatar_url: null, mode: "pat", active: false },
+        ]}
+        onSwitch={() => {}}
+        onAdd={() => {}}
+        onSignOut={() => {}}
+      />
       <Button onClick={() => setOpen(true)}>Open settings</Button>
       <SettingsDialog
         onCheckUpdates={() => {}}
         open={open}
         onOpenChange={setOpen}
         login="camille-r"
+        mode="oauth"
+        accounts={[
+          { id: "U_CR", login: "camille-r", avatar_url: null, mode: "oauth", active: true },
+          { id: "U_WORK", login: "camille-work", avatar_url: null, mode: "pat", active: false },
+        ]}
+        onSwitchAccount={() => {}}
+        onAddAccount={() => {}}
         interval={interval}
         onIntervalChange={setInterval}
         onWake={wake}

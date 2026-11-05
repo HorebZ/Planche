@@ -16,6 +16,8 @@ fn builder() -> tauri_specta::Builder<tauri::Wry> {
         .error_handling(ErrorHandlingMode::Throw)
         .commands(collect_commands![
             commands::auth_status,
+            commands::auth_accounts,
+            commands::auth_switch_account,
             commands::auth_set_token,
             commands::auth_oauth_start,
             commands::auth_organizations_start,

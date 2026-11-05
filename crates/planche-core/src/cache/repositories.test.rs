@@ -10,7 +10,10 @@ fn repository_migration_preserves_existing_account_data_and_issue_actions() {
         }
     }
     conn.pragma_update(None, "user_version", 8).unwrap();
-    let mut cache = Cache { conn };
+    let mut cache = Cache {
+        conn,
+        pinned_account: None,
+    };
     let account = UserId("A".into());
     cache.set("account_id", "A").unwrap();
     let intent = IssueIntent::SetAssignees {

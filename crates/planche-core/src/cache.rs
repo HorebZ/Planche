@@ -33,6 +33,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../migrations/0008_issue_comments.sql"),
     include_str!("../migrations/0009_selected_repositories.sql"),
     include_str!("../migrations/0010_repository_issues.sql"),
+    include_str!("../migrations/0011_project_accounts.sql"),
 ];
 
 /// An acked row stays replayed until the snapshot reflects it, or for this many syncs.
@@ -43,6 +44,7 @@ const NOW: &str = "strftime('%Y-%m-%dT%H:%M:%SZ', 'now')";
 
 pub struct Cache {
     conn: Connection,
+    pinned_account: Option<UserId>,
 }
 
 /// A queued intent and its `pending_mutation.seq`.
@@ -90,7 +92,21 @@ impl Cache {
         conn.pragma_update(None, "foreign_keys", "ON")?;
         migrate(&mut conn)?;
 
-        Ok(Self { conn })
+        Ok(Self {
+            conn,
+            pinned_account: None,
+        })
+    }
+
+    pub fn bind_account(&mut self, account: UserId) {
+        self.pinned_account = Some(account);
+    }
+
+    fn mutation_account(&self) -> Result<Option<UserId>> {
+        match &self.pinned_account {
+            Some(account) => Ok(Some(account.clone())),
+            None => Ok(self.get("account_id")?.map(UserId)),
+        }
     }
 
     pub fn get(&self, key: &str) -> Result<Option<String>> {
@@ -433,11 +449,17 @@ impl Cache {
         let unacked: Vec<ItemId> = {
             let mut statement = self.conn.prepare_cached(
                 "SELECT DISTINCT item_id FROM pending_mutation
-                 WHERE project_id = ?1 AND status IN ('pending', 'in_flight', 'unknown')",
+                 WHERE project_id = ?1 AND project_account_id IS ?2 AND status IN ('pending', 'in_flight', 'unknown')",
             )?;
 
             statement
-                .query_map([project.as_str()], |r| r.get(0).map(ItemId))?
+                .query_map(
+                    params![
+                        project.as_str(),
+                        self.mutation_account()?.as_ref().map(UserId::as_str)
+                    ],
+                    |r| r.get(0).map(ItemId),
+                )?
                 .collect::<rusqlite::Result<_>>()?
         };
         let changed: Vec<ItemId> = match self.get(&changed_key(project))? {
@@ -491,6 +513,69 @@ impl Cache {
                 |r| Ok((r.get(0)?, r.get(1)?)),
             )
             .optional()?)
+    }
+
+    pub fn activate_account(&self, account: &UserId) -> Result<()> {
+        let previous = self.get("account_id")?;
+        self.conn.execute("UPDATE pending_mutation SET project_account_id = ?1 WHERE project_id IS NOT NULL AND project_account_id IS NULL", [previous.as_deref().unwrap_or(account.as_str())])?;
+        if previous.as_deref() == Some(account.as_str()) {
+            let key = format!("account_projects:{}", account.as_str());
+            if self.get(&key)?.is_none() {
+                self.remember_projects(&self.projects()?)?;
+            }
+            return Ok(());
+        }
+
+        if let Some(previous) = previous {
+            self.set(
+                &format!("last_project:{previous}"),
+                &self.get("last_project")?.unwrap_or_default(),
+            )?;
+        }
+        self.set("account_id", account.as_str())?;
+        if self
+            .get(&format!("account_projects:{}", account.as_str()))?
+            .is_none()
+        {
+            self.remember_projects(&ProjectList {
+                owners: Vec::new(),
+                sso_blocked: Vec::new(),
+            })?;
+        }
+        self.set(
+            "last_project",
+            &self
+                .get(&format!("last_project:{}", account.as_str()))?
+                .unwrap_or_default(),
+        )
+    }
+
+    pub fn remember_projects(&self, projects: &ProjectList) -> Result<()> {
+        let account = self.get("account_id")?.ok_or(Error::NotSignedIn)?;
+        let json =
+            serde_json::to_string(projects).map_err(|error| Error::Cache(error.to_string()))?;
+
+        self.set(&format!("account_projects:{account}"), &json)
+    }
+
+    pub fn account_projects(&self) -> Result<ProjectList> {
+        let Some(account) = self.get("account_id")? else {
+            return Ok(ProjectList {
+                owners: Vec::new(),
+                sso_blocked: Vec::new(),
+            });
+        };
+        self.get(&format!("account_projects:{account}"))?
+            .map(|json| {
+                serde_json::from_str(&json).map_err(|error| Error::Cache(error.to_string()))
+            })
+            .transpose()
+            .map(|projects| {
+                projects.unwrap_or(ProjectList {
+                    owners: Vec::new(),
+                    sso_blocked: Vec::new(),
+                })
+            })
     }
 
     /// The cached projects by owner, for a project list without the network.
@@ -612,9 +697,15 @@ impl Cache {
     /// Every queued intent of the project in order, sent or not.
     pub fn intents(&self, project: &ProjectId) -> Result<Vec<Intent>> {
         let mut statement = self.conn.prepare_cached(
-            "SELECT intent FROM pending_mutation WHERE project_id = ?1 ORDER BY seq",
+            "SELECT intent FROM pending_mutation WHERE project_id = ?1 AND project_account_id IS ?2 ORDER BY seq",
         )?;
-        let rows = statement.query_map([project.as_str()], |r| r.get::<_, String>(0))?;
+        let rows = statement.query_map(
+            params![
+                project.as_str(),
+                self.mutation_account()?.as_ref().map(UserId::as_str)
+            ],
+            |r| r.get::<_, String>(0),
+        )?;
 
         rows.map(|json| decode_intent(&json?)).collect()
     }
@@ -623,8 +714,8 @@ impl Cache {
     pub fn pending_count(&self, project: &ProjectId) -> Result<u32> {
         Ok(self.conn.query_row(
             "SELECT count(*) FROM pending_mutation
-             WHERE project_id = ?1 AND status IN ('pending', 'in_flight', 'unknown')",
-            [project.as_str()],
+             WHERE project_id = ?1 AND project_account_id IS ?2 AND status IN ('pending', 'in_flight', 'unknown')",
+            params![project.as_str(), self.mutation_account()?.as_ref().map(UserId::as_str)],
             |r| r.get(0),
         )?)
     }
@@ -638,18 +729,20 @@ impl Cache {
         {
             return Err(Error::ReadOnlyProject);
         }
+        let account = self.mutation_account()?;
+        let account = account.as_ref().map(UserId::as_str);
         let tx = self.write()?;
         let mut intent = intent.clone();
 
         if let Intent::MoveCard { placement, .. } = &mut intent {
             const PENDING_MOVES: &str = "FROM pending_mutation
-                WHERE project_id = ?1 AND item_id = ?2 AND status = 'pending'
+                WHERE project_id = ?1 AND item_id = ?2 AND project_account_id IS ?3 AND status = 'pending'
                 AND json_extract(intent, '$.type') = 'move_card'";
 
             let replaced: Option<String> = tx
                 .query_row(
                     &format!("SELECT intent {PENDING_MOVES} ORDER BY seq DESC LIMIT 1"),
-                    [project_id.as_str(), item_id.as_str()],
+                    params![project_id.as_str(), item_id.as_str(), account],
                     |r| r.get(0),
                 )
                 .optional()?;
@@ -665,19 +758,20 @@ impl Cache {
 
             tx.execute(
                 &format!("DELETE {PENDING_MOVES}"),
-                [project_id.as_str(), item_id.as_str()],
+                params![project_id.as_str(), item_id.as_str(), account],
             )?;
         }
 
         tx.execute(
             &format!(
-                "INSERT INTO pending_mutation (project_id, item_id, intent, created_at)
-                 VALUES (?1, ?2, ?3, {NOW})"
+                "INSERT INTO pending_mutation (project_id, item_id, intent, project_account_id, created_at)
+                 VALUES (?1, ?2, ?3, ?4, {NOW})"
             ),
             params![
                 project_id.as_str(),
                 item_id.as_str(),
-                encode_intent(&intent)
+                encode_intent(&intent),
+                account
             ],
         )?;
 
@@ -767,8 +861,8 @@ impl Cache {
             "UPDATE pending_mutation
              SET status = CASE json_extract(intent, '$.type')
                  WHEN 'create_draft' THEN 'unknown' ELSE 'pending' END
-             WHERE status = 'in_flight' AND project_id IS NOT NULL",
-            [],
+             WHERE status = 'in_flight' AND project_id IS NOT NULL AND project_account_id IS ?1",
+            [self.mutation_account()?.as_ref().map(UserId::as_str)],
         )?)
     }
 
@@ -783,7 +877,7 @@ impl Cache {
     /// Marks the oldest pending row of the project in flight and returns it. The update only
     /// matches a pending row, so two processes never claim the same one.
     pub fn claim_next(&self, project: &ProjectId) -> Result<Option<Mutation>> {
-        self.claim(Some(project), None)?
+        self.claim(Some(project), self.mutation_account()?.as_ref())?
             .map(|(seq, json)| {
                 Ok(Mutation {
                     seq,
@@ -815,7 +909,7 @@ impl Cache {
                 .conn
                 .query_row(
                     "SELECT seq, intent FROM pending_mutation
-                     WHERE project_id IS ?1 AND account_id IS ?2 AND status = 'pending' ORDER BY seq LIMIT 1",
+                     WHERE project_id IS ?1 AND (CASE WHEN project_id IS NULL THEN account_id ELSE project_account_id END) IS ?2 AND status = 'pending' ORDER BY seq LIMIT 1",
                     params![project.map(ProjectId::as_str), account.map(UserId::as_str)],
                     |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?)),
                 )
@@ -898,6 +992,7 @@ impl Cache {
             .into_iter()
             .map(|i| (i.id.clone(), i))
             .collect();
+        let mutation_account = self.mutation_account()?;
         let tx = self.write()?;
         let project = meta.id.as_str();
 
@@ -973,9 +1068,9 @@ impl Cache {
         let acked: Vec<ItemId> = tx
             .prepare_cached(
                 "SELECT item_id FROM pending_mutation
-                 WHERE project_id = ?1 AND status = 'acked' AND item_id IS NOT NULL",
+                 WHERE project_id = ?1 AND project_account_id IS ?2 AND status = 'acked' AND item_id IS NOT NULL",
             )?
-            .query_map([project], |r| r.get(0).map(ItemId))?
+            .query_map(params![project, mutation_account.as_ref().map(UserId::as_str)], |r| r.get(0).map(ItemId))?
             .collect::<rusqlite::Result<_>>()?;
         let changed: Vec<&ItemId> = if before.is_empty() {
             Vec::new()
@@ -992,7 +1087,12 @@ impl Cache {
             &changed_key(&meta.id),
             &serde_json::to_string(&changed).expect("ids serialize"),
         )?;
-        settle_acked(&tx, &meta.id, project_board(meta, None, items).ok())?;
+        settle_acked(
+            &tx,
+            &meta.id,
+            mutation_account.as_ref(),
+            project_board(meta, None, items).ok(),
+        )?;
         tx.commit()?;
 
         Ok(())
@@ -1494,15 +1594,21 @@ fn write_items(tx: &Transaction, meta: &ProjectMeta, items: &[Item]) -> Result<(
 /// Counts one more sync for each acked row, and deletes those that reached `ACKED_SYNCS`
 /// or that the snapshot reflects. An intent is reflected when replaying it changes nothing.
 /// A reflected row also retires the older acked rows on its card, which it supersedes.
-fn settle_acked(tx: &Transaction, project: &ProjectId, server: Option<Board>) -> Result<()> {
+fn settle_acked(
+    tx: &Transaction,
+    project: &ProjectId,
+    account: Option<&UserId>,
+    server: Option<Board>,
+) -> Result<()> {
     let acked: Vec<(i64, String, i64)> = tx
         .prepare_cached(
             "SELECT seq, intent, acked_at_sync FROM pending_mutation
-             WHERE project_id = ?1 AND status = 'acked' ORDER BY seq",
+             WHERE project_id = ?1 AND project_account_id IS ?2 AND status = 'acked' ORDER BY seq",
         )?
-        .query_map([project.as_str()], |r| {
-            Ok((r.get(0)?, r.get(1)?, r.get(2)?))
-        })?
+        .query_map(
+            params![project.as_str(), account.map(UserId::as_str)],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )?
         .collect::<rusqlite::Result<_>>()?;
     let intents = acked
         .iter()
@@ -1534,9 +1640,9 @@ fn settle_acked(tx: &Transaction, project: &ProjectId, server: Option<Board>) ->
     // A draft a dead process left in flight: done when the snapshot shows it, else sent again.
     let unknown: Vec<(i64, String)> = tx
         .prepare_cached(
-            "SELECT seq, intent FROM pending_mutation WHERE project_id = ?1 AND status = 'unknown'",
+            "SELECT seq, intent FROM pending_mutation WHERE project_id = ?1 AND project_account_id IS ?2 AND status = 'unknown'",
         )?
-        .query_map([project.as_str()], |r| Ok((r.get(0)?, r.get(1)?)))?
+        .query_map(params![project.as_str(), account.map(UserId::as_str)], |r| Ok((r.get(0)?, r.get(1)?)))?
         .collect::<rusqlite::Result<_>>()?;
 
     for (seq, json) in unknown {

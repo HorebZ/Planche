@@ -215,6 +215,7 @@ async fn board(project: &str, view: Option<u32>, json: bool, offline: bool) -> R
         let client = GithubClient::new(auth::load_token()?)?
             .for_owner(owner, cache.project_owner_is_org(owner, number)?)
             .await?;
+        cache.bind_account(ops::viewer(&client).await?.0.id);
         let sent = flush_known(&mut cache, &client, owner, number).await;
         let report = sync::full_sync(&mut cache, &client, owner, number, |_, _, _| {}).await?;
 
@@ -283,6 +284,7 @@ async fn move_card(
     let client = GithubClient::new(auth::load_token()?)?
         .for_owner(owner, cache.project_owner_is_org(owner, number)?)
         .await?;
+    cache.bind_account(ops::viewer(&client).await?.0.id);
     let id = match cache.project_id(owner, number)? {
         Some(id) => id,
         None => {
@@ -355,12 +357,15 @@ async fn sync_project(
     interval: Option<SyncInterval>,
 ) -> Result<(), Failure> {
     let (owner, number) = parse_project(project)?;
-    let cache = Cache::open_default()?;
+    let mut cache = Cache::open_default()?;
     let client = GithubClient::new(auth::load_token()?)?
         .for_owner(owner, cache.project_owner_is_org(owner, number)?)
         .await?;
+    let account = ops::viewer(&client).await?.0.id;
+    cache.bind_account(account.clone());
     // A second connection names the cards in the log. The engine owns the first.
-    let reader = Cache::open_default()?;
+    let mut reader = Cache::open_default()?;
+    reader.bind_account(account);
     let mut config = SyncConfig::load(&cache, owner, number)?;
 
     if let Some(interval) = interval {

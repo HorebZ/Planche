@@ -2,7 +2,7 @@ use std::sync::{Mutex, PoisonError};
 
 use serde::{Deserialize, Serialize};
 
-use super::{credentials, oauth};
+use super::{AuthMode, AuthStatus, SavedAccount, credentials, oauth};
 use crate::domain::UserId;
 use crate::error::{Error, Result};
 
@@ -20,6 +20,12 @@ pub(super) struct Session {
     pub user_id: Option<UserId>,
     #[serde(default)]
     pub app: Option<Box<Session>>,
+    #[serde(default)]
+    login: Option<String>,
+    #[serde(default)]
+    avatar_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    saved_accounts: Vec<Session>,
     #[serde(skip)]
     dirty: bool,
 }
@@ -32,6 +38,9 @@ impl Session {
             restricted_oauth: false,
             user_id: None,
             app: None,
+            login: None,
+            avatar_url: None,
+            saved_accounts: Vec::new(),
             dirty: false,
         }
     }
@@ -43,8 +52,17 @@ impl Session {
             restricted_oauth: false,
             user_id: None,
             app: None,
+            login: None,
+            avatar_url: None,
+            saved_accounts: Vec::new(),
             dirty: false,
         }
+    }
+
+    pub fn identity(&mut self, viewer: &crate::domain::Viewer) {
+        self.user_id = Some(viewer.id.clone());
+        self.login = Some(viewer.login.clone());
+        self.avatar_url = Some(viewer.avatar_url.clone());
     }
 
     fn decode(value: &str) -> Result<Self> {
@@ -65,7 +83,12 @@ impl Session {
     }
 
     fn encode(&self) -> Result<String> {
-        if self.oauth.is_none() && !self.restricted_oauth && self.app.is_none() {
+        if self.user_id.is_none()
+            && self.oauth.is_none()
+            && !self.restricted_oauth
+            && self.app.is_none()
+            && self.saved_accounts.is_empty()
+        {
             return Ok(self.token.clone());
         }
 
@@ -76,14 +99,21 @@ impl Session {
     fn valid(&self) -> bool {
         let primary = if self.restricted_oauth {
             !self.token.trim().is_empty() && self.oauth.is_none() && self.user_id.is_some()
+        } else if self.token.starts_with("ghu_") {
+            self.oauth.as_ref().is_some_and(oauth::Tokens::valid)
         } else {
-            self.token.starts_with("ghu_") && self.oauth.as_ref().is_some_and(oauth::Tokens::valid)
+            !self.token.trim().is_empty() && self.oauth.is_none() && self.user_id.is_some()
         };
         primary
+            && self
+                .saved_accounts
+                .iter()
+                .all(|account| account.saved_accounts.is_empty() && account.valid())
             && self.app.as_ref().is_none_or(|app| {
                 self.restricted_oauth
                     && !app.restricted_oauth
                     && app.app.is_none()
+                    && app.saved_accounts.is_empty()
                     && app.valid()
                     && app.user_id == self.user_id
             })
@@ -126,7 +156,7 @@ pub(crate) fn connection(token: &str) -> Option<(bool, Option<String>)> {
 
 pub(super) fn attach(anchor: &str, app: Session) -> Result<()> {
     let _lock = credentials::lock()?;
-    let mut root = Session::decode(&credentials::read()?)?;
+    let mut root = read_saved()?;
     let mut cache = SESSION.lock().unwrap_or_else(PoisonError::into_inner);
 
     attach_to(&mut root, anchor, app)?;
@@ -172,22 +202,158 @@ fn cached(cache: &Mutex<Option<Session>>, read: impl FnOnce() -> Result<String>)
     Ok(token)
 }
 
-pub(super) fn save(session: Session) -> Result<()> {
-    let _lock = credentials::lock()?;
-    let mut cache = SESSION.lock().unwrap_or_else(PoisonError::into_inner);
+fn read_saved() -> Result<Session> {
+    let saved = Session::decode(&credentials::read()?)?;
+    let cache = SESSION.lock().unwrap_or_else(PoisonError::into_inner);
 
+    // A failed Keychain write after rotation leaves the only valid refresh token in memory.
+    Ok(cache
+        .as_ref()
+        .filter(|current| current.token == saved.token && current.dirty())
+        .cloned()
+        .unwrap_or(saved))
+}
+
+pub(super) fn save(mut session: Session) -> Result<()> {
+    let _lock = credentials::lock()?;
+    let previous = match read_saved() {
+        Ok(previous) => Some(previous),
+        Err(Error::NotSignedIn) => None,
+        Err(error) => return Err(error),
+    };
+
+    if let Some(previous) = previous {
+        retain_accounts(&mut session, previous);
+    }
+    if !session.valid() {
+        return Err(Error::Credentials(
+            "Reconnect the saved GitHub account before adding another account".into(),
+        ));
+    }
     credentials::write(&session.encode()?)?;
-    *cache = Some(session);
+    *SESSION.lock().unwrap_or_else(PoisonError::into_inner) = Some(session);
 
     Ok(())
 }
 
+fn retain_accounts(session: &mut Session, mut previous: Session) {
+    session.saved_accounts = std::mem::take(&mut previous.saved_accounts);
+    session.saved_accounts.push(previous);
+    if session.restricted_oauth && session.app.is_none() {
+        session.app = session
+            .saved_accounts
+            .iter()
+            .find(|saved| saved.user_id == session.user_id && saved.restricted_oauth)
+            .and_then(|saved| saved.app.clone());
+    }
+    session
+        .saved_accounts
+        .retain(|saved| saved.user_id != session.user_id && saved.token != session.token);
+}
+
+pub(super) fn remember(token: &str, status: &AuthStatus) -> Result<()> {
+    let _lock = credentials::lock()?;
+    let mut root = read_saved()?;
+    if root.token != token {
+        return Err(Error::Unauthorized);
+    }
+    if root.user_id == status.id
+        && root.login == status.login
+        && root.avatar_url == status.avatar_url
+    {
+        return Ok(());
+    }
+    root.user_id = status.id.clone();
+    root.login = status.login.clone();
+    root.avatar_url = status.avatar_url.clone();
+    credentials::write(&root.encode()?)?;
+    *SESSION.lock().unwrap_or_else(PoisonError::into_inner) = Some(root);
+
+    Ok(())
+}
+
+pub(super) fn accounts() -> Vec<SavedAccount> {
+    let cache = SESSION.lock().unwrap_or_else(PoisonError::into_inner);
+    let Some(root) = cache.as_ref() else {
+        return Vec::new();
+    };
+
+    std::iter::once(root)
+        .chain(&root.saved_accounts)
+        .filter_map(|session| {
+            Some(SavedAccount {
+                id: session.user_id.clone()?,
+                login: session.login.clone()?,
+                avatar_url: session.avatar_url.clone(),
+                mode: if session.restricted_oauth {
+                    AuthMode::Oauth
+                } else if session.oauth.is_some() {
+                    AuthMode::GithubApp
+                } else {
+                    AuthMode::Pat
+                },
+                active: session.token == root.token,
+            })
+        })
+        .collect()
+}
+
+fn select(root: &mut Session, id: &UserId) -> Result<()> {
+    if root.user_id.as_ref() == Some(id) {
+        return Ok(());
+    }
+    let index = root
+        .saved_accounts
+        .iter()
+        .position(|account| account.user_id.as_ref() == Some(id))
+        .ok_or(Error::NotSignedIn)?;
+    let mut next = root.saved_accounts.remove(index);
+    next.saved_accounts = std::mem::take(&mut root.saved_accounts);
+    std::mem::swap(root, &mut next);
+    root.saved_accounts.push(next);
+
+    Ok(())
+}
+
+pub(super) fn switch(id: &UserId) -> Result<AuthStatus> {
+    let _lock = credentials::lock()?;
+    let mut root = read_saved()?;
+    select(&mut root, id)?;
+    let status = AuthStatus {
+        id: root.user_id.clone(),
+        login: root.login.clone(),
+        avatar_url: root.avatar_url.clone(),
+        ..Default::default()
+    };
+
+    credentials::write(&root.encode()?)?;
+    *SESSION.lock().unwrap_or_else(PoisonError::into_inner) = Some(root);
+
+    Ok(status)
+}
+
+fn remove_active(mut root: Session) -> Option<Session> {
+    if root.saved_accounts.is_empty() {
+        return None;
+    }
+    let mut next = root.saved_accounts.remove(0);
+    next.saved_accounts = root.saved_accounts;
+
+    Some(next)
+}
+
 pub(super) fn clear() -> Result<()> {
     let _lock = credentials::lock()?;
-    let mut cache = SESSION.lock().unwrap_or_else(PoisonError::into_inner);
-
-    credentials::delete()?;
-    *cache = None;
+    let next = match read_saved() {
+        Ok(root) => remove_active(root),
+        Err(Error::NotSignedIn) => None,
+        Err(error) => return Err(error),
+    };
+    match &next {
+        Some(session) => credentials::write(&session.encode()?)?,
+        None => credentials::delete()?,
+    }
+    *SESSION.lock().unwrap_or_else(PoisonError::into_inner) = next;
 
     Ok(())
 }

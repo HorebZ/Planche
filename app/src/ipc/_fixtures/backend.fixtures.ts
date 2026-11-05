@@ -7,6 +7,7 @@ import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
 import { applyIntent } from "../../board/moveCard";
 import type {
   AppError,
+  AuthStatus,
   Board,
   CommentSubmission,
   Intent,
@@ -107,6 +108,18 @@ export function installMockBackend(scenario: Scenario) {
     JSON.parse(sessionStorage.getItem(issueCacheKey(args)) ?? "null");
   let prefs: SyncPrefs = { interval: "five_minutes", on_wake: true };
   let auth = structuredClone(onboarding(scenario) ? signedOut : signedIn);
+  const savedAccounts = new Map<string, AuthStatus>();
+  if (auth.id) {
+    savedAccounts.set(auth.id, structuredClone(auth));
+  }
+  if (scenario === "accounts") {
+    savedAccounts.set("U_WORK", {
+      ...structuredClone(signedIn),
+      id: "U_WORK",
+      login: "camille-work",
+      mode: "oauth",
+    });
+  }
   let board = boardFor(scenario);
   const boards = new Map<string, Board>();
   let boardError = scenario === "board-error";
@@ -189,10 +202,16 @@ export function installMockBackend(scenario: Scenario) {
       }
       auth = {
         ...structuredClone(signedIn),
+        ...(scenario === "accounts" && !organizationsActive
+          ? { id: "U_ADDED", login: "camille-added" }
+          : {}),
         mode: "oauth",
         organizations_connected: organizationsActive,
       };
 
+      if (auth.id) {
+        savedAccounts.set(auth.id, structuredClone(auth));
+      }
       return auth;
     },
     auth_oauth_cancel: () => {
@@ -227,12 +246,37 @@ export function installMockBackend(scenario: Scenario) {
         throw { kind: "Auth", message: "token rejected by GitHub (401)" } satisfies AppError;
       }
 
-      auth = structuredClone(signedIn);
+      auth =
+        scenario === "accounts"
+          ? { ...structuredClone(signedIn), id: "U_ADDED", login: "camille-added" }
+          : structuredClone(signedIn);
+      if (auth.id) {
+        savedAccounts.set(auth.id, structuredClone(auth));
+      }
 
       return auth;
     },
+    auth_accounts: () =>
+      [...savedAccounts.values()].map((saved) => ({
+        id: saved.id,
+        login: saved.login,
+        avatar_url: saved.avatar_url,
+        mode: saved.mode,
+        active: saved.id === auth.id,
+      })),
+    auth_switch_account: (args) => {
+      const saved = savedAccounts.get(String(args.id));
+      if (!saved) {
+        throw { kind: "Auth", message: "Account is no longer saved" } satisfies AppError;
+      }
+      auth = structuredClone(saved);
+      return auth;
+    },
     auth_sign_out: () => {
-      auth = structuredClone(signedOut);
+      if (auth.id) {
+        savedAccounts.delete(auth.id);
+      }
+      auth = structuredClone(savedAccounts.values().next().value ?? signedOut);
 
       return null;
     },

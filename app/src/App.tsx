@@ -110,8 +110,18 @@ function Root() {
   }
 
   if (!auth.data?.login || !projectId) {
-    return <Onboarding signedIn={Boolean(auth.data?.login)} />;
+    return (
+      <Onboarding
+        accountId={auth.data?.id}
+        signedIn={Boolean(auth.data?.login)}
+      />
+    );
   }
 
-  return <Shell projectId={projectId} />;
+  return (
+    <Shell
+      key={auth.data?.id}
+      projectId={projectId}
+    />
+  );
 }

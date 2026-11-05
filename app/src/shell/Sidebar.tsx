@@ -1,24 +1,11 @@
-import { type QueryClient, useQueryClient } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { EyeOff, Search, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { SettingsDialog } from "@/components/ui/settings";
-import {
-  defaultProjectTones,
-  Sidebar,
-  SidebarAccount,
-  SidebarFooter,
-  SidebarGroup,
-} from "@/components/ui/sidebar";
+import { defaultProjectTones, Sidebar, SidebarFooter, SidebarGroup } from "@/components/ui/sidebar";
 import { SidebarProject } from "@/components/ui/sidebar-project";
 import { commands, type ProjectId, type SyncInterval } from "@/ipc/bindings.types";
 import { useAuth, useProjects, useSetSyncPrefs, useSyncPrefs, useSyncStatus } from "@/ipc/queries";
@@ -27,6 +14,7 @@ import { GitHubStep } from "@/onboarding/Onboarding";
 import { usePreferences } from "@/stores/preferences";
 import { useUi } from "@/stores/ui";
 import { showUpdates, UpdateButton } from "@/update/Updates";
+import { AccountsMenu, AddAccountDialog, useAccounts } from "./Accounts";
 import { RepositorySection } from "./Repositories";
 import { footerText } from "./syncText";
 
@@ -52,12 +40,12 @@ export function AppSidebar({
   onSelect,
   onSearch,
 }: AppSidebarProps) {
-  const queryClient = useQueryClient();
   const auth = useAuth();
   const projects = useProjects();
   const login = auth.data?.login ?? "";
   const { hiddenProjects, setProjectHidden, projectColors, setProjectColor } = usePreferences();
   const [showHidden, setShowHidden] = useState(false);
+  const [addingAccount, setAddingAccount] = useState(false);
   const [organizationsOpen, setOrganizationsOpen] = useState(false);
   const hidden = hiddenProjects[login] ?? [];
   const all =
@@ -85,33 +73,10 @@ export function AppSidebar({
   return (
     <Sidebar>
       <div className="flex items-center gap-1">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarAccount
-              login={login}
-              avatarUrl={auth.data?.avatar_url ?? undefined}
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-[216px]">
-            <DropdownMenuLabel>Signed in as {login}</DropdownMenuLabel>
-            {auth.data?.mode === "oauth" && auth.data.organizations_available ? (
-              <DropdownMenuItem onSelect={() => setOrganizationsOpen(true)}>
-                {auth.data.organizations_connected
-                  ? "Reconnect organizations…"
-                  : "Connect organizations…"}
-              </DropdownMenuItem>
-            ) : null}
-            <DropdownMenuItem
-              variant="destructive"
-              onSelect={async () => {
-                await commands.authSignOut();
-                await queryClient.invalidateQueries({ queryKey: ["auth"] });
-              }}
-            >
-              Sign out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <AccountsMenu
+          onAdd={() => setAddingAccount(true)}
+          onOrganizations={() => setOrganizationsOpen(true)}
+        />
         <Button
           variant="ghost"
           size="icon"
@@ -141,7 +106,12 @@ export function AppSidebar({
         <RepositorySection />
       </div>
       <span className="flex-1" />
+      <AddAccountDialog
+        open={addingAccount}
+        onOpenChange={setAddingAccount}
+      />
       <SyncFooter
+        onAddAccount={() => setAddingAccount(true)}
         syncedAt={syncedAt}
         error={error}
       />
@@ -168,10 +138,18 @@ export function AppSidebar({
   );
 }
 
-function SyncFooter({ syncedAt, error }: { syncedAt: string | null; error?: string | null }) {
+function SyncFooter({
+  syncedAt,
+  error,
+  onAddAccount,
+}: {
+  syncedAt: string | null;
+  error?: string | null;
+  onAddAccount: () => void;
+}) {
   const status = useSyncStatus();
   const auth = useAuth();
-  const queryClient = useQueryClient();
+  const { accounts, switchAccount, signOut, pending } = useAccounts();
   const prefs = useSyncPrefs();
   const setPrefs = useSetSyncPrefs();
   const { theme, setTheme, highContrast, setHighContrast } = usePreferences();
@@ -207,6 +185,14 @@ function SyncFooter({ syncedAt, error }: { syncedAt: string | null; error?: stri
         }}
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
+        mode={auth.data?.mode ?? "pat"}
+        accounts={accounts.data ?? []}
+        accountPending={pending}
+        onSwitchAccount={(id) => switchAccount.mutate(id)}
+        onAddAccount={() => {
+          setSettingsOpen(false);
+          onAddAccount();
+        }}
         login={auth.data?.login ?? ""}
         interval={prefs.data?.interval ?? "five_minutes"}
         onIntervalChange={(interval) =>
@@ -218,10 +204,7 @@ function SyncFooter({ syncedAt, error }: { syncedAt: string | null; error?: stri
         onThemeChange={setTheme}
         highContrast={highContrast}
         onHighContrastChange={setHighContrast}
-        onSignOut={async () => {
-          await commands.authSignOut();
-          await queryClient.invalidateQueries({ queryKey: ["auth"] });
-        }}
+        onSignOut={() => signOut.mutate()}
         shortcuts={shortcuts
           .filter((s, index) => shortcuts.findIndex((row) => row.command === s.command) === index)
           .map((s) => ({ label: s.label, keys: keysOf(s.key).join("") }))}

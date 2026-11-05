@@ -12,6 +12,8 @@ export const commands = {
 	 *  so the cached board shows at once. A revoked token surfaces as an auth error in the sync.
 	 */
 	authStatus: () => __TAURI_INVOKE<AuthStatus>("auth_status"),
+	authAccounts: () => __TAURI_INVOKE<SavedAccount[]>("auth_accounts"),
+	authSwitchAccount: (id: UserId) => __TAURI_INVOKE<AuthStatus>("auth_switch_account", { id }),
 	authSetToken: (token: string) => __TAURI_INVOKE<AuthStatus>("auth_set_token", { token }),
 	authOauthStart: () => __TAURI_INVOKE<DeviceCode>("auth_oauth_start"),
 	authOrganizationsStart: () => __TAURI_INVOKE<DeviceCode>("auth_organizations_start"),
@@ -118,7 +120,7 @@ export const commands = {
 	/**  Syncs now and waits for the result. */
 	refreshProject: (projectId: ProjectId) => __TAURI_INVOKE<SyncReport>("refresh_project", { projectId }),
 	/**  Accepted confirms the local enqueue commit, not synchronization with GitHub. */
-	dispatchIntent: (intent: Intent) => __TAURI_INVOKE<DispatchOutcome>("dispatch_intent", { intent }),
+	dispatchIntent: (account: UserId, intent: Intent) => __TAURI_INVOKE<DispatchOutcome>("dispatch_intent", { account, intent }),
 	dispatchIssueIntent: (account: UserId, intent: IssueIntent) => __TAURI_INVOKE<DispatchOutcome>("dispatch_issue_intent", { account, intent }),
 	/**  Who can be assigned in `repo`, an `owner/name`. */
 	listAssignableUsers: (repo: string) => __TAURI_INVOKE<User[]>("list_assignable_users", { repo }),
@@ -475,6 +477,14 @@ export type RepositorySummary = {
 	owner_is_org: boolean,
 	has_issues: boolean,
 	archived: boolean,
+};
+
+export type SavedAccount = {
+	id: UserId,
+	login: string,
+	avatar_url: string | null,
+	mode: AuthMode,
+	active: boolean,
 };
 
 export type SelectOption = {

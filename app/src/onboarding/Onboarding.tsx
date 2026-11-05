@@ -28,6 +28,7 @@ import {
   useProjects,
 } from "@/ipc/queries";
 import { growWindow } from "@/lib/growWindow";
+import { AccountsMenu, AddAccountDialog } from "@/shell/Accounts";
 import { RepositorySection } from "@/shell/Repositories";
 import { useUi } from "@/stores/ui";
 import { showUpdates } from "@/update/Updates";
@@ -49,8 +50,21 @@ type Check =
   | { state: "error"; message: string };
 
 /** The first launch: a GitHub account, then a project. */
-export function Onboarding({ signedIn }: { signedIn: boolean }) {
+export function Onboarding({
+  signedIn,
+  accountId,
+}: {
+  signedIn: boolean;
+  accountId?: string | null;
+}) {
+  const [addingAccount, setAddingAccount] = useState(false);
   const [step, setStep] = useState<1 | 2>(signedIn ? 2 : 1);
+
+  useEffect(() => {
+    if (!signedIn) {
+      setStep(1);
+    }
+  }, [signedIn]);
 
   return (
     <div className="grid h-screen grid-cols-[270px_minmax(0,1fr)] bg-bg-sunken">
@@ -60,6 +74,7 @@ export function Onboarding({ signedIn }: { signedIn: boolean }) {
       >
         <AppIcon size={64} />
         <OnboardingIntro />
+        {signedIn ? <AccountsMenu onAdd={() => setAddingAccount(true)} /> : null}
         <span className="flex-1" />
         <span className="text-[11.5px] text-fg-3 tabular-nums">v{pkg.version} · macOS 15+</span>
         <Button
@@ -71,10 +86,17 @@ export function Onboarding({ signedIn }: { signedIn: boolean }) {
           Check for updates…
         </Button>
       </aside>
+      <AddAccountDialog
+        open={addingAccount}
+        onOpenChange={setAddingAccount}
+      />
       {step === 1 ? (
         <SignInStep onDone={() => setStep(2)} />
       ) : (
-        <ProjectStep onBack={() => setStep(1)} />
+        <ProjectStep
+          key={accountId}
+          onBack={() => setStep(1)}
+        />
       )}
     </div>
   );
@@ -95,18 +117,26 @@ function StepHeader({ step, title, children }: { step: 1 | 2; title: string; chi
 const panelClass =
   "my-2 mr-2 flex min-h-0 min-w-0 flex-col gap-4 overflow-y-auto rounded-xl bg-bg px-10 pt-9 pb-[18px] shadow-panel";
 
-function SignInStep({ onDone }: { onDone: () => void }) {
+export function SignInStep({
+  onDone,
+  embedded = false,
+}: {
+  onDone: () => void;
+  embedded?: boolean;
+}) {
   const [manual, setManual] = useState(false);
   const [organizations, setOrganizations] = useState(false);
 
   return manual ? (
     <TokenStep
+      embedded={embedded}
       onDone={onDone}
       onBack={() => setManual(false)}
     />
   ) : (
     <GitHubStep
       key={organizations ? "organizations" : "personal"}
+      embedded={embedded}
       organizations={organizations}
       onDone={onDone}
       onManual={() => (organizations ? setOrganizations(false) : setManual(true))}
@@ -377,7 +407,15 @@ export function GitHubStep({
   );
 }
 
-function TokenStep({ onDone, onBack }: { onDone: () => void; onBack: () => void }) {
+function TokenStep({
+  onDone,
+  onBack,
+  embedded = false,
+}: {
+  onDone: () => void;
+  onBack: () => void;
+  embedded?: boolean;
+}) {
   const queryClient = useQueryClient();
   const [token, setToken] = useState("");
   const [check, setCheck] = useState<Check>({ state: "idle" });
@@ -427,7 +465,7 @@ function TokenStep({ onDone, onBack }: { onDone: () => void; onBack: () => void 
 
   return (
     <form
-      className={panelClass}
+      className={embedded ? "flex flex-col gap-4 p-6" : panelClass}
       onSubmit={verify}
     >
       <StepHeader

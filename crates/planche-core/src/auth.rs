@@ -25,6 +25,46 @@ pub enum AuthMode {
     GithubApp,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct SavedAccount {
+    pub id: UserId,
+    pub login: String,
+    pub avatar_url: Option<String>,
+    pub mode: AuthMode,
+    pub active: bool,
+}
+
+pub fn accounts() -> Vec<SavedAccount> {
+    if environment_token() {
+        return Vec::new();
+    }
+
+    session::accounts()
+}
+
+fn environment_token() -> bool {
+    std::env::var("PLANCHE_TOKEN").is_ok_and(|value| !value.trim().is_empty())
+}
+
+pub fn remember_session(token: &str, status: &AuthStatus) -> Result<()> {
+    if environment_token() {
+        return Ok(());
+    }
+
+    session::remember(token, status)
+}
+
+pub fn switch_account(id: &UserId) -> Result<AuthStatus> {
+    if environment_token() {
+        return Err(Error::Credentials(
+            "PLANCHE_TOKEN overrides sign-in; unset it and restart to change accounts".into(),
+        ));
+    }
+    let status = session::switch(id)?;
+
+    Ok(connection_status(status, &load_token()?))
+}
+
 fn identity_key(token: &str) -> String {
     let digest: String = Sha256::digest(token.trim().as_bytes())
         .iter()
@@ -63,7 +103,7 @@ pub fn load_token() -> Result<String> {
     session::load(credentials::read)
 }
 
-/// Checks the token against GitHub and its scopes before replacing the saved session.
+/// Checks GitHub identity and scopes before saving and activating this account.
 pub async fn login(token: &str) -> Result<Viewer> {
     if token.trim().starts_with("ghu_") {
         return Err(Error::ClassicTokenRequired);
@@ -104,7 +144,7 @@ async fn verify_session(mut session: Session) -> Result<(Session, Viewer)> {
         return Err(Error::MissingScopes(missing));
     }
 
-    session.user_id = Some(viewer.id.clone());
+    session.identity(&viewer);
 
     Ok((session, viewer))
 }

@@ -10,6 +10,7 @@ export type Scenario =
   | "description-denied"
   | "description-loading"
   | "relations"
+  | "accounts"
   | "board"
   | "readonly-project"
   | "locked"

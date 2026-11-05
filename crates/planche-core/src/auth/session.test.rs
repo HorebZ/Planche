@@ -232,3 +232,113 @@ fn refresh_failures_never_discard_pending_mutations() {
         assert!(refresh_error(error).is_transient());
     }
 }
+
+fn account(id: &str, token: &str) -> Session {
+    let mut session = Session::plain(token.into());
+    session.user_id = Some(UserId(id.into()));
+    session.login = Some(id.into());
+
+    session
+}
+
+#[test]
+fn saved_accounts_survive_switches_and_restarts_with_their_auth_methods() {
+    let mut personal = personal_session();
+    personal.login = Some("personal".into());
+    let mut app = app_session();
+    app.user_id = personal.user_id.clone();
+    attach_to(&mut personal, "gho_personal", app).unwrap();
+    let mut work = account("work", "ghp_work");
+    retain_accounts(&mut work, personal);
+
+    let mut restored = Session::decode(&work.encode().unwrap()).unwrap();
+    select(&mut restored, &UserId("account-a".into())).unwrap();
+
+    assert_eq!(restored.token, "gho_personal");
+    assert!(restored.restricted_oauth);
+    assert_eq!(restored.app.as_ref().unwrap().token, "ghu_verified");
+    assert_eq!(restored.saved_accounts[0].token, "ghp_work");
+
+    let mut restored = Session::decode(&restored.encode().unwrap()).unwrap();
+    select(&mut restored, &UserId("work".into())).unwrap();
+
+    assert_eq!(restored.token, "ghp_work");
+    assert!(!restored.restricted_oauth);
+    assert_eq!(restored.saved_accounts.len(), 1);
+    assert!(select(&mut restored, &UserId("unknown".into())).is_err());
+    assert_eq!(restored.token, "ghp_work");
+}
+
+#[test]
+fn reconnecting_an_account_replaces_its_credential_without_duplicates() {
+    let mut first = account("first", "ghp_old");
+    retain_accounts(&mut first, account("second", "ghp_second"));
+    let mut replacement = account("first", "ghp_new");
+
+    retain_accounts(&mut replacement, first);
+    let restored = Session::decode(&replacement.encode().unwrap()).unwrap();
+
+    assert_eq!(restored.token, "ghp_new");
+    assert_eq!(restored.saved_accounts.len(), 1);
+    assert_eq!(restored.saved_accounts[0].token, "ghp_second");
+}
+
+#[test]
+fn refreshing_an_active_connection_preserves_inactive_accounts() {
+    let mut active = personal_session();
+    let mut app = app_session();
+    app.user_id = active.user_id.clone();
+    attach_to(&mut active, "gho_personal", app).unwrap();
+    retain_accounts(&mut active, account("work", "ghp_work"));
+    let cache = Mutex::new(Some(active));
+
+    persist_rotation(&cache, "ghu_verified", app_session().oauth, |encoded| {
+        let restored = Session::decode(encoded).unwrap();
+        assert_eq!(restored.saved_accounts[0].token, "ghp_work");
+
+        Ok(())
+    })
+    .unwrap();
+
+    assert!(matches!(
+        persist_rotation(&cache, "ghp_work", None, |_| panic!("inactive credential")),
+        Err(Error::Unauthorized)
+    ));
+}
+
+#[test]
+fn reconnecting_oauth_keeps_organization_access_for_the_same_account_only() {
+    let mut previous = personal_session();
+    let mut app = app_session();
+    app.user_id = previous.user_id.clone();
+    attach_to(&mut previous, "gho_personal", app).unwrap();
+    let mut replacement = personal_session();
+    replacement.token = "gho_reconnected".into();
+
+    retain_accounts(&mut replacement, previous);
+
+    assert_eq!(replacement.app.unwrap().token, "ghu_verified");
+    assert!(replacement.saved_accounts.is_empty());
+}
+
+#[test]
+fn removing_the_active_account_keeps_other_saved_credentials() {
+    let mut root = account("active", "ghp_active");
+    retain_accounts(&mut root, account("saved", "ghp_saved"));
+
+    let remaining = remove_active(root).unwrap();
+
+    assert_eq!(remaining.token, "ghp_saved");
+    assert!(remaining.saved_accounts.is_empty());
+    assert!(remove_active(remaining).is_none());
+}
+
+#[test]
+fn reconnecting_a_legacy_pat_upgrades_it_without_saving_a_duplicate() {
+    let mut verified = account("legacy", "ghp_legacy");
+
+    retain_accounts(&mut verified, Session::plain("ghp_legacy".into()));
+
+    assert!(verified.saved_accounts.is_empty());
+    assert!(Session::decode(&verified.encode().unwrap()).is_ok());
+}

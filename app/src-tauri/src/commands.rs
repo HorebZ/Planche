@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use planche_core::auth::oauth::{DeviceCode, DeviceFlow};
-use planche_core::auth::{self, AuthStatus};
+use planche_core::auth::{self, AuthStatus, SavedAccount};
 use planche_core::cache::Cache;
 use planche_core::description::Descriptions;
 use planche_core::domain::{
@@ -103,6 +103,7 @@ pub struct Core {
     projects: Mutex<Option<ProjectList>>,
     token: Mutex<Option<String>>,
     oauth: DeviceFlow,
+    account_gate: tokio::sync::Mutex<()>,
     descriptions: Arc<Descriptions>,
     repositories: Repositories,
     issue_sender: Mutex<Option<IssueSender>>,
@@ -124,6 +125,7 @@ impl Core {
             projects: Mutex::default(),
             token: Mutex::default(),
             oauth: DeviceFlow::default(),
+            account_gate: tokio::sync::Mutex::default(),
             descriptions: Arc::default(),
             repositories: Repositories::default(),
             issue_sender: Mutex::default(),
@@ -240,7 +242,11 @@ impl Core {
     }
 
     pub fn current_project(&self) -> Result<Option<ProjectId>> {
-        Ok(self.cache().get("last_project")?.map(ProjectId))
+        Ok(self
+            .cache()
+            .get("last_project")?
+            .filter(|id| !id.is_empty())
+            .map(ProjectId))
     }
 
     /// Starts the sync engine on `project`, unless it already runs there.
@@ -274,12 +280,14 @@ impl Core {
         let config = SyncConfig::load(&self.cache(), &owner, number)?;
         let known_organization = self.cache().meta(project)?.map(|meta| meta.owner_is_org);
         let client = client.for_owner(&owner, known_organization).await?;
-        let handle = sync::spawn(
-            Cache::open_default()?,
-            client,
-            config,
-            Arc::new(SystemClock),
-        );
+        let account = self
+            .cache()
+            .get("account_id")?
+            .map(UserId)
+            .ok_or(Error::NotSignedIn)?;
+        let mut cache = Cache::open_default()?;
+        cache.bind_account(account);
+        let handle = sync::spawn(cache, client, config, Arc::new(SystemClock));
 
         events::relay(app.clone(), project.clone(), handle.subscribe());
         handle.send(SyncCommand::Now).await;
@@ -337,6 +345,7 @@ impl Core {
 #[tauri::command]
 #[specta::specta]
 pub async fn auth_status(app: AppHandle, core: State<'_, Core>) -> Result<AuthStatus> {
+    let _gate = core.account_gate.lock().await;
     let token = tauri::async_runtime::spawn_blocking(auth::load_token)
         .await
         .map_err(|_| AppError {
@@ -355,7 +364,7 @@ pub async fn auth_status(app: AppHandle, core: State<'_, Core>) -> Result<AuthSt
     let cached = auth::cached_status(&core.cache(), &token)?;
 
     if let Some(status) = cached {
-        remember_account(&core, &status, &token)?;
+        remember_account(&core, &status, &token).await?;
         *core.token.lock().expect("token lock") = Some(token);
         core.start_issue_sender(&app, status.id.clone().ok_or(Error::NotSignedIn)?)?;
 
@@ -364,18 +373,25 @@ pub async fn auth_status(app: AppHandle, core: State<'_, Core>) -> Result<AuthSt
 
     let status = auth::status().await?;
 
-    remember_account(&core, &status, &token)?;
+    remember_account(&core, &status, &token).await?;
     *core.token.lock().expect("token lock") = Some(token);
     core.start_issue_sender(&app, status.id.clone().ok_or(Error::NotSignedIn)?)?;
 
     Ok(status)
 }
 
-fn remember_account(core: &Core, status: &AuthStatus, token: &str) -> Result<()> {
+async fn remember_account(core: &Core, status: &AuthStatus, token: &str) -> Result<()> {
+    let saved_token = token.to_owned();
+    let saved_status = status.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        auth::remember_session(&saved_token, &saved_status)
+    })
+    .await
+    .map_err(|_| Error::Unauthorized)??;
     let cache = core.cache();
 
     if let Some(id) = &status.id {
-        cache.set("account_id", id.as_str())?;
+        cache.activate_account(id)?;
     }
 
     if let Some(login) = &status.login {
@@ -398,26 +414,52 @@ pub async fn auth_set_token(
     core: State<'_, Core>,
     token: String,
 ) -> Result<AuthStatus> {
+    let _gate = core.account_gate.lock().await;
     core.oauth.cancel_all().await;
     let status = auth::set_token(&token).await?;
 
     core.stop().await;
-    accept_account(&app, &core, &status)?;
+    accept_account(&app, &core, &status).await?;
 
     Ok(status)
 }
 
-fn accept_account(app: &AppHandle, core: &Core, status: &AuthStatus) -> Result<()> {
+async fn accept_account(app: &AppHandle, core: &Core, status: &AuthStatus) -> Result<()> {
     let token = auth::load_token()?;
 
     core.descriptions.lock();
     core.repositories.lock();
     *core.projects.lock().expect("projects lock") = None;
-    remember_account(core, status, &token)?;
+    remember_account(core, status, &token).await?;
     *core.token.lock().expect("token lock") = Some(token);
     core.start_issue_sender(app, status.id.clone().ok_or(Error::NotSignedIn)?)?;
 
     Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn auth_accounts() -> Result<Vec<SavedAccount>> {
+    Ok(auth::accounts())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn auth_switch_account(
+    app: AppHandle,
+    core: State<'_, Core>,
+    id: UserId,
+) -> Result<AuthStatus> {
+    let _gate = core.account_gate.lock().await;
+    core.oauth.cancel_all().await;
+    let status = tauri::async_runtime::spawn_blocking(move || auth::switch_account(&id))
+        .await
+        .map_err(|_| Error::Unauthorized)??;
+
+    core.stop().await;
+    accept_account(&app, &core, &status).await?;
+
+    Ok(status)
 }
 
 #[tauri::command]
@@ -439,11 +481,12 @@ pub async fn auth_oauth_poll(
     core: State<'_, Core>,
     user_code: String,
 ) -> Result<Option<AuthStatus>> {
+    let _gate = core.account_gate.lock().await;
     let status = core.oauth.poll(&user_code).await?;
 
     if let Some(status) = &status {
         core.stop().await;
-        accept_account(&app, &core, status)?;
+        accept_account(&app, &core, status).await?;
     }
 
     Ok(status)
@@ -466,6 +509,7 @@ pub async fn auth_oauth_copy_code(core: State<'_, Core>, user_code: String) -> R
 #[tauri::command]
 #[specta::specta]
 pub async fn auth_sign_out(core: State<'_, Core>) -> Result<()> {
+    let _gate = core.account_gate.lock().await;
     core.oauth.cancel_all().await;
     core.stop().await;
     tauri::async_runtime::spawn_blocking(auth::sign_out)
@@ -498,7 +542,7 @@ pub async fn list_projects(core: State<'_, Core>) -> Result<ProjectList> {
 
             Ok(list)
         }
-        Err(Error::Network(_)) => Ok(core.cache().projects()?),
+        Err(Error::Network(_)) => Ok(core.cache().account_projects()?),
         Err(error) => Err(error.into()),
     }
 }
@@ -507,7 +551,7 @@ pub async fn list_projects(core: State<'_, Core>) -> Result<ProjectList> {
 #[tauri::command]
 #[specta::specta]
 pub async fn cached_projects(core: State<'_, Core>) -> Result<ProjectList> {
-    Ok(core.cache().projects()?)
+    Ok(core.cache().account_projects()?)
 }
 
 #[tauri::command]
@@ -759,7 +803,16 @@ pub async fn refresh_issue(
 /// Accepted confirms the local enqueue commit, not synchronization with GitHub.
 #[tauri::command]
 #[specta::specta]
-pub async fn dispatch_intent(core: State<'_, Core>, intent: Intent) -> Result<DispatchOutcome> {
+pub async fn dispatch_intent(
+    core: State<'_, Core>,
+    account: UserId,
+    intent: Intent,
+) -> Result<DispatchOutcome> {
+    let _gate = core.account_gate.lock().await;
+    core.client()?;
+    if core.cache().get("account_id")?.as_deref() != Some(account.as_str()) {
+        return Err(Error::NotSignedIn.into());
+    }
     let outcome = core.dispatch_intent(&intent);
 
     if matches!(outcome, DispatchOutcome::Accepted { .. })

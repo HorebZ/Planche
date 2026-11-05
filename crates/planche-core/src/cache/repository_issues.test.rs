@@ -157,7 +157,10 @@ fn migration_from_favorites_keeps_selection_and_shared_issue_refusal_redacts_rep
         }
     }
     conn.pragma_update(None, "user_version", 9).unwrap();
-    let mut cache = Cache { conn };
+    let mut cache = Cache {
+        conn,
+        pinned_account: None,
+    };
     let account = UserId("A".into());
     cache.select_repository(&account, &repository()).unwrap();
     migrate(&mut cache.conn).unwrap();

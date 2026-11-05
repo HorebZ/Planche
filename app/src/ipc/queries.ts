@@ -165,7 +165,8 @@ export function createQueryClient() {
       return;
     }
 
-    const next = client.getQueryData<AuthStatus>(["auth"])?.id ?? null;
+    const auth = client.getQueryData<AuthStatus>(["auth"]);
+    const next = auth?.id ? `${auth.id}:${auth.mode}` : null;
 
     if (next === identity) {
       return;
@@ -178,6 +179,10 @@ export function createQueryClient() {
 
     current.accountEpoch++;
     for (const family of [
+      "accounts",
+      "projects",
+      "project",
+      "sync-status",
       "repositories",
       "repository",
       "repository-catalog",
@@ -206,7 +211,11 @@ export function createQueryClient() {
     }
 
     current.gates.clear();
+    void client.cancelQueries({ queryKey: ["current-project"] }, { revert: false, silent: true });
+    client.setQueryData(["current-project"], null);
+    void client.invalidateQueries({ queryKey: ["current-project"] });
     useUi.getState().invalidateUndo();
+    useUi.getState().selectProject(null);
   });
 
   return client;

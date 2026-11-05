@@ -88,7 +88,10 @@ export function dispatchIntent(
       let receipt: Promise<DispatchOutcome>;
 
       try {
-        receipt = commands.dispatchIntent(intent);
+        receipt = commands.dispatchIntent(
+          client.getQueryData(authQuery.queryKey)?.id ?? "",
+          intent,
+        );
       } catch (error) {
         receipt = Promise.reject(error);
       }

@@ -1,16 +1,23 @@
 import { CircleUserRound, Keyboard, Monitor, Moon, Sun } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { authModeLabel } from "@/components/ui/account-menu";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import type { AuthMode, SavedAccount } from "@/ipc/bindings.types";
 
 export type SettingsProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   login: string;
+  mode: AuthMode;
+  accounts: SavedAccount[];
+  accountPending?: boolean;
+  onSwitchAccount: (id: string) => void;
+  onAddAccount: () => void;
   interval: string;
   onIntervalChange: (interval: string) => void;
   onWake: boolean;
@@ -28,6 +35,11 @@ export function SettingsDialog({
   open,
   onOpenChange,
   login,
+  mode,
+  accounts,
+  accountPending,
+  onSwitchAccount,
+  onAddAccount,
   interval,
   onIntervalChange,
   onWake,
@@ -86,15 +98,38 @@ export function SettingsDialog({
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="font-medium">{login}</span>
-                    <p className="text-fg-3 text-sm">Connected to GitHub</p>
+                    <p className="text-fg-3 text-sm">Connected via {authModeLabel(mode)}</p>
                   </div>
                   <button
                     type="button"
+                    disabled={accountPending}
                     onClick={onSignOut}
                     className="h-7 rounded-md px-2 text-fg-2 shadow-[inset_0_0_0_1px_var(--pl-border-strong)] hover:bg-hover focus-visible:shadow-ring"
                   >
                     Sign out
                   </button>
+                </div>
+                <div className="mt-3 flex flex-col gap-2">
+                  {accounts
+                    .filter((account) => !account.active)
+                    .map((account) => (
+                      <Button
+                        key={account.id}
+                        disabled={accountPending}
+                        onClick={() => onSwitchAccount(account.id)}
+                        className="justify-between"
+                      >
+                        <span>{account.login}</span>
+                        <span className="text-fg-3">{authModeLabel(account.mode)}</span>
+                      </Button>
+                    ))}
+                  <Button
+                    disabled={accountPending}
+                    onClick={onAddAccount}
+                    className="self-start"
+                  >
+                    Add account…
+                  </Button>
                 </div>
               </SettingsGroup>
               <SettingsGroup title="Sync">

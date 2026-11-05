@@ -81,6 +81,12 @@ redacted because `project` does not grant repository access. A classic PAT with
 also permits code access. These modes never fall back to one another on refusal.
 Existing broad OAuth grants must be revoked on GitHub before reduced-scope sign-in.
 
+Use **Add account…** in the account menu or Settings to save another GitHub account.
+Switch between saved accounts without signing out; both screens show each account's
+PAT or OAuth connection. Credentials stay in macOS Keychain, and pending actions
+remain tied to the account that created them. **Sign out** removes only the active
+account and switches to another saved account when available.
+
 The alpha is not notarized. If macOS blocks the downloaded app after the first
 launch attempt, approval may be available in **System Settings → Privacy &
 Security → Open Anyway**. Managed Macs can prohibit this exception.

@@ -236,7 +236,10 @@ fn issue_migration_preserves_legacy_intents_and_the_queue_sequence() {
 
     conn.pragma_update(None, "user_version", 3).unwrap();
     conn.execute("INSERT INTO project (id, owner_login, owner_kind, number, title, url, updated_at) VALUES ('PVT_1', 'HorebZ', 'user', 2, 'Planche', 'https://github.com', 'now')", []).unwrap();
-    let mut cache = Cache { conn };
+    let mut cache = Cache {
+        conn,
+        pinned_account: None,
+    };
     let mut board = crate::fixtures::board();
     board.columns[0].cards.push(crate::fixtures::issue(
         "legacy",
@@ -312,7 +315,10 @@ fn issue_completeness_migration_preserves_both_version_four_schemas() {
         }
 
         conn.pragma_update(None, "user_version", 4).unwrap();
-        let mut cache = Cache { conn };
+        let mut cache = Cache {
+            conn,
+            pinned_account: None,
+        };
         let account = UserId("A".into());
         let issue = crate::fixtures::issue_record();
         let content = ContentId("I_standalone".into());
@@ -538,4 +544,151 @@ fn only_a_project_fetch_started_after_a_refusal_can_restore_an_issue() {
     assert_eq!(issue.content, items[0].content);
     assert!(!issue.complete);
     assert!(issue.permissions.is_none());
+}
+
+#[test]
+fn account_switching_restores_each_project_list_and_last_open_project() {
+    let cache = Cache::open(":memory:").unwrap();
+    let first = UserId("first".into());
+    let second = UserId("second".into());
+
+    cache.activate_account(&first).unwrap();
+    let list = ProjectList {
+        owners: vec![OwnerProjects {
+            login: "first".into(),
+            is_org: false,
+            projects: Vec::new(),
+        }],
+        sso_blocked: Vec::new(),
+    };
+    cache.remember_projects(&list).unwrap();
+    cache.set("last_project", "first-project").unwrap();
+
+    cache.activate_account(&second).unwrap();
+
+    assert!(cache.account_projects().unwrap().owners.is_empty());
+    assert_eq!(cache.get("last_project").unwrap().as_deref(), Some(""));
+
+    cache.activate_account(&second).unwrap();
+    cache.set("last_project", "second-project").unwrap();
+    cache.activate_account(&first).unwrap();
+
+    assert_eq!(cache.account_projects().unwrap(), list);
+    assert_eq!(
+        cache.get("last_project").unwrap().as_deref(),
+        Some("first-project")
+    );
+
+    cache.activate_account(&second).unwrap();
+
+    assert!(cache.account_projects().unwrap().owners.is_empty());
+    assert_eq!(
+        cache.get("last_project").unwrap().as_deref(),
+        Some("second-project")
+    );
+}
+
+#[test]
+fn pending_project_actions_remain_with_their_account_in_shared_projects() {
+    let mut cache = Cache::open(":memory:").unwrap();
+    let meta =
+        crate::github::ops::decode_project_meta(crate::github::fixtures::PROJECT_META).unwrap();
+    cache.write_snapshot(&meta, &[], true).unwrap();
+    let first = UserId("first".into());
+    let second = UserId("second".into());
+    let intent = Intent::MoveCard {
+        project_id: meta.id.clone(),
+        item_id: ItemId("card".into()),
+        field_id: FieldId("status".into()),
+        to: None,
+        placement: Placement::Top,
+    };
+    cache.activate_account(&first).unwrap();
+    let first_seq = cache.enqueue(&intent).unwrap();
+
+    cache.activate_account(&second).unwrap();
+
+    assert!(cache.intents(intent.project_id()).unwrap().is_empty());
+    assert!(cache.claim_next(intent.project_id()).unwrap().is_none());
+    let second_seq = cache.enqueue(&intent).unwrap();
+    assert_eq!(cache.pending_count(intent.project_id()).unwrap(), 1);
+    assert_eq!(
+        cache.claim_next(intent.project_id()).unwrap().unwrap().seq,
+        second_seq
+    );
+
+    cache.bind_account(first);
+
+    assert_eq!(cache.pending_count(intent.project_id()).unwrap(), 1);
+    assert_eq!(cache.reset_in_flight().unwrap(), 0);
+    assert_eq!(
+        cache.claim_next(intent.project_id()).unwrap().unwrap().seq,
+        first_seq
+    );
+    assert!(cache.claim_next(intent.project_id()).unwrap().is_none());
+}
+
+#[test]
+fn switching_migrates_legacy_pending_actions_to_the_previous_account() {
+    let mut cache = Cache::open(":memory:").unwrap();
+    let meta =
+        crate::github::ops::decode_project_meta(crate::github::fixtures::PROJECT_META).unwrap();
+    cache.write_snapshot(&meta, &[], true).unwrap();
+    let intent = Intent::Archive {
+        project_id: meta.id.clone(),
+        item_id: ItemId("card".into()),
+    };
+    cache.enqueue(&intent).unwrap();
+    cache.set("account_id", "first").unwrap();
+
+    cache.activate_account(&UserId("second".into())).unwrap();
+
+    assert!(cache.intents(intent.project_id()).unwrap().is_empty());
+    cache.activate_account(&UserId("first".into())).unwrap();
+    assert_eq!(cache.intents(intent.project_id()).unwrap(), [intent]);
+}
+
+#[test]
+fn project_account_migration_preserves_pending_actions_and_comment_receipts() {
+    let conn = Cache::open(":memory:").unwrap().conn;
+    conn.execute_batch("ALTER TABLE pending_mutation DROP COLUMN project_account_id")
+        .unwrap();
+    conn.pragma_update(None, "user_version", (MIGRATIONS.len() - 1) as u32)
+        .unwrap();
+    conn.execute(
+        "INSERT INTO kv (key, value) VALUES ('account_id', 'legacy-account')",
+        [],
+    )
+    .unwrap();
+    conn.execute("INSERT INTO project (id, owner_login, owner_kind, number, title, url, updated_at) VALUES ('project', 'owner', 'user', 1, 'Project', 'https://github.com', 'now')", []).unwrap();
+    conn.execute("INSERT INTO pending_mutation (project_id, item_id, intent, created_at) VALUES ('project', 'card', '{}', 'now')", []).unwrap();
+    let project_seq = conn.last_insert_rowid();
+    conn.execute("INSERT INTO pending_mutation (account_id, content_id, intent, created_at) VALUES ('legacy-account', 'issue', '{}', 'now')", []).unwrap();
+    let issue_seq = conn.last_insert_rowid();
+    conn.execute("INSERT INTO issue_comment (account_id, request_id, content_id, seq, body, status) VALUES ('legacy-account', 'request', 'issue', ?1, 'Saved comment', 'queued')", [issue_seq]).unwrap();
+    let mut conn = conn;
+
+    migrate(&mut conn).unwrap();
+
+    let project_account: String = conn
+        .query_row(
+            "SELECT project_account_id FROM pending_mutation WHERE seq = ?1",
+            [project_seq],
+            |row| row.get(0),
+        )
+        .unwrap();
+    let issue_account: (String, Option<String>) = conn
+        .query_row(
+            "SELECT account_id, project_account_id FROM pending_mutation WHERE seq = ?1",
+            [issue_seq],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap();
+    let receipt_seq: i64 = conn
+        .query_row("SELECT seq FROM issue_comment", [], |row| row.get(0))
+        .unwrap();
+
+    assert_eq!(project_account, "legacy-account");
+    assert_eq!(issue_account, ("legacy-account".into(), None));
+    assert_eq!(receipt_seq, issue_seq);
 }
