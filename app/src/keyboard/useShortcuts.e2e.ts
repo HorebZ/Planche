@@ -97,7 +97,8 @@ test("⇧→ moves the card a column, ⌘Z puts it back where it was, and the to
 
 test("list selection, status menu and palette restore focus to visible rows", async ({ page }) => {
   await open(page);
-  await page.getByRole("button", { name: "List", exact: true }).click();
+  await page.getByRole("button", { name: "Display", exact: true }).click();
+  await page.getByRole("menuitemradio", { name: "List", exact: true }).click();
 
   const rows = page.locator('[data-slot="issue-list-row"]');
 

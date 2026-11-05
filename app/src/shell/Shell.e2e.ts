@@ -7,10 +7,11 @@ for (const layout of ["Board", "List"] as const) {
     page,
   }) => {
     await page.goto("/?mock=big");
-    await page.getByRole("button", { name: layout, exact: true }).click();
+    await page.getByRole("button", { name: "Display", exact: true }).click();
+    await page.getByRole("menuitemradio", { name: layout, exact: true }).click();
 
     const sidebar = page.locator('[data-slot="sidebar"]');
-    const projects = sidebar.locator('[data-slot="sidebar-group"]').locator("..");
+    const projects = sidebar.locator('[data-slot="sidebar-group"]').first().locator("..");
     const content = page
       .locator(layout === "Board" ? '[data-slot="column-scroll"]' : '[data-slot="issue-list"]')
       .first();
@@ -40,6 +41,35 @@ for (const layout of ["Board", "List"] as const) {
     expect(await page.evaluate(() => [window.scrollX, window.scrollY])).toEqual([0, 0]);
     expect(
       await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight),
+    ).toBe(true);
+  });
+}
+
+for (const width of [980, 1440]) {
+  test(`named views and external link share one toolbar row at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 700 });
+    await page.goto("/?mock=board");
+    const views = page.getByRole("group", { name: "Project views", exact: true });
+    const external = page.getByRole("button", { name: "Open project on GitHub", exact: true });
+
+    await expect(views.getByRole("button")).toHaveCount(2);
+    await views.getByRole("button", { name: "Planning", exact: true }).click();
+
+    await expect(page.getByRole("tab", { selected: true })).toHaveText("Planche — v1.2 / Planning");
+    await expect(views.getByRole("button", { name: "Planning", exact: true })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    const viewBounds = await views.boundingBox();
+    const linkBounds = await external.boundingBox();
+    const toolbarBounds = await page.locator('[data-slot="project-toolbar"]').boundingBox();
+
+    expect(viewBounds).not.toBeNull();
+    expect(linkBounds).not.toBeNull();
+    expect(toolbarBounds?.height).toBeLessThanOrEqual(44);
+    expect(Math.abs((viewBounds?.y ?? 0) - (linkBounds?.y ?? 0))).toBeLessThanOrEqual(2);
+    expect(
+      await page.locator("main").evaluate((element) => element.scrollWidth <= element.clientWidth),
     ).toBe(true);
   });
 }

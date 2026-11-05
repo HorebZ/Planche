@@ -24,6 +24,7 @@ import { IssueResources } from "@/components/ui/issue-resources";
 import { IssueTabPanel, IssueTabs } from "@/components/ui/issue-tabs";
 import { LabelChip } from "@/components/ui/label-chip";
 import { PriorityGlyph, ProgressRing } from "@/components/ui/planche-glyph";
+import type { ProjectTone } from "@/components/ui/sidebar";
 import { StatusChip, type StatusKey, StatusSquare, statusLabels } from "@/components/ui/status";
 import type { IssueActivity } from "@/ipc/bindings.types";
 import { Row, Section, State } from "../kit";
@@ -753,11 +754,19 @@ function IssueTabsPreview() {
       title: string;
       project: string;
       kind?: "board";
+      tone?: ProjectTone;
       closable?: boolean;
       status?: StatusKey;
     }[]
   >([
-    { id: "source", title: "Planche", project: "Planche", kind: "board", closable: false },
+    {
+      id: "source",
+      title: "Planche / Cabane",
+      project: "Planche",
+      kind: "board",
+      tone: "doing",
+      closable: false,
+    },
     {
       id: "issue-223",
       title: "Issue 223: column counter ignores filtered cards",
@@ -791,7 +800,10 @@ function IssueTabsPreview() {
         onAdd={() => {
           const id = crypto.randomUUID();
 
-          setTabs([...tabs, { id, title: "Planche", project: "Planche", kind: "board" }]);
+          setTabs([
+            ...tabs,
+            { id, title: "Planche / Cabane", project: "Planche", kind: "board", tone: "doing" },
+          ]);
           setActive(id);
         }}
         onClose={(id) => {
@@ -924,11 +936,14 @@ function DraftColumnPreview() {
 }
 
 function DisplayPreview() {
+  const [layout, setLayout] = useState<"board" | "list">("board");
   const [hidden, setHidden] = useState<DisplayProperty[]>([]);
 
   return (
     <div className="flex w-[218px] flex-col gap-2">
       <DisplayMenu
+        layout={layout}
+        onLayoutChange={setLayout}
         hidden={hidden}
         onChange={(property, visible) =>
           setHidden((current) =>

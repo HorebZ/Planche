@@ -14,6 +14,7 @@ import {
   installMockBackend,
   key,
   render,
+  selectProjectLayout,
   submit,
 } from "@/test-support";
 
@@ -41,10 +42,43 @@ function menuItem(role: string, name: string) {
   return element;
 }
 
+test("named view buttons update the current tab and retain each tab's view", async () => {
+  await open();
+  const views = get('fieldset[aria-label="Project views"]');
+
+  expect([...views.querySelectorAll("button")].map((button) => button.textContent)).toEqual([
+    "Board",
+    "Planning",
+  ]);
+  expect(get('[role="tab"][aria-selected="true"]').textContent).toBe("Planche — v1.2 / Board");
+  expect(document.querySelector('[aria-label^="GitHub view:"]')).toBeNull();
+  const filters = { ...emptyFilters, statuses: ["todo"] };
+  useUi.getState().setFilters(filters);
+  click(button("Board", views));
+
+  expect(useUi.getState().filters).toEqual(filters);
+  click(button("Planning", views));
+
+  await expect
+    .poll(() => get('[role="tab"][aria-selected="true"]').textContent)
+    .toBe("Planche — v1.2 / Planning");
+  expect(button("Planning", views).getAttribute("aria-pressed")).toBe("true");
+  const original = useUi.getState().activeBoardTab;
+  click(button("New tab"));
+
+  await expect
+    .poll(() => get('[role="tab"][aria-selected="false"]').textContent)
+    .toBe("Planche — v1.2 / Planning");
+  key("Enter", get(`[data-tab-id="${original}"] [role="tab"]`));
+
+  await expect.poll(() => button("Planning").getAttribute("aria-pressed")).toBe("true");
+  expect(useUi.getState().viewId).toBe("PVTV_2");
+});
+
 test("layouts and collapsed groups remain independent between projects and GitHub views", async () => {
   await open();
 
-  click(button("List"));
+  await selectProjectLayout("List");
 
   expect(document.querySelectorAll('[data-slot="issue-list-row"]')).toHaveLength(17);
   click(get('[data-slot="issue-list-group"]:nth-child(2) [data-slot="issue-list-toggle"]'));
@@ -59,14 +93,10 @@ test("layouts and collapsed groups remain independent between projects and GitHu
   await expect
     .poll(() => document.querySelectorAll('[data-slot="issue-list-row"]').length)
     .toBe(14);
-  key("Enter", button("GitHub view: Board"));
+  click(button("Planning"));
 
-  await expect.poll(() => document.querySelector('[role="menuitemradio"]')).not.toBeNull();
-  click(menuItem("menuitemradio", "Planning"));
-
-  await expect.poll(() => button("GitHub view: Planning")).toBeDefined();
-  await expect.poll(() => button("Board").getAttribute("aria-pressed")).toBe("true");
-  click(button("List"));
+  await expect.poll(() => button("Planning").getAttribute("aria-pressed")).toBe("true");
+  await selectProjectLayout("List");
 
   expect(document.querySelectorAll('[data-slot="issue-list-row"]')).toHaveLength(17);
   expect(
@@ -81,7 +111,7 @@ test("status filters share counts across layouts and clear empty results", async
   await expect.poll(() => document.querySelector('[role="menuitemcheckbox"]')).not.toBeNull();
   click(menuItem("menuitemcheckbox", "Todo"));
   key("Escape", get('[role="menu"]'));
-  click(button("List"));
+  await selectProjectLayout("List");
 
   expect(document.querySelectorAll('[data-slot="issue-list-row"]')).toHaveLength(3);
   expect(get("main header").textContent).toContain("3/17 issues");
@@ -102,7 +132,7 @@ test("status filters share counts across layouts and clear empty results", async
 
 test("search clears status filters and reveals a result in a collapsed List group", async () => {
   await open();
-  click(button("List"));
+  await selectProjectLayout("List");
 
   const done = get('[data-slot="issue-list-group"]:nth-child(5)');
 
@@ -157,7 +187,7 @@ test("combined filters keep their options, share Board/List results and reset th
   const expected = ["PVTI_214", "PVTI_226", "PVTI_231", "PVTI_229"];
 
   expect(get("main header").textContent).toContain("4/17 issues");
-  click(button("List"));
+  await selectProjectLayout("List");
 
   expect(ids("issue-list-row")).toEqual(expected);
   click(button("Remove assignee filter: Me (camille-r)"));
@@ -176,8 +206,8 @@ test.each(["board", "empty"] as const)(
   async (scenario) => {
     const backend = await open(scenario);
 
-    for (const layout of ["Board", "List"]) {
-      click(button(layout));
+    for (const layout of ["Board", "List"] as const) {
+      await selectProjectLayout(layout);
       click(button("Add draft to Todo"));
 
       const input = get<HTMLInputElement>('[aria-label="Draft title"]');
@@ -199,7 +229,7 @@ test.each(["board", "empty"] as const)(
 
 test("adding a draft expands a collapsed List group", async () => {
   await open();
-  click(button("List"));
+  await selectProjectLayout("List");
 
   const group = get('[data-slot="issue-list-group"]:nth-child(2)');
   const toggle = get('[data-slot="issue-list-toggle"]', group);
@@ -213,7 +243,7 @@ test("adding a draft expands a collapsed List group", async () => {
 
 test("Display hides properties in the list and persists the selected view preferences", async () => {
   await open("labels");
-  click(button("List"));
+  await selectProjectLayout("List");
   key("Enter", button("Display"));
 
   await expect.poll(() => document.querySelectorAll('[role="menuitemcheckbox"]').length).toBe(3);
@@ -293,13 +323,32 @@ test("the hide shortcut hides the current project from the board without closing
 
 test("project colors update only their project, and hidden projects can be restored", async () => {
   await open();
+  const original = useUi.getState().activeBoardTab;
+  const originalColor = get(`[data-tab-id="${original}"] [data-slot="project-color"]`);
+
+  expect(originalColor.className).toContain("bg-project-yellow");
+  click(button("New tab"));
+  click(button("API Gateway"));
+  const current = useUi.getState().activeBoardTab;
+
+  await expect
+    .poll(() => get(`[data-tab-id="${current}"] [data-slot="project-color"]`).className)
+    .toContain("bg-project-red");
   click(button("Change color for API Gateway"));
 
   await expect.poll(() => document.querySelectorAll('[role="dialog"] button').length).toBe(12);
   click(button("Blue"));
 
   expect(usePreferences.getState().projectColors["camille-r"]).toEqual({ PVT_api: "blue" });
-  expect(get('main header [data-slot="project-color"]').className).toContain("bg-project-yellow");
+  expect(get(`[data-tab-id="${current}"] [data-slot="project-color"]`).className).toContain(
+    "bg-project-blue",
+  );
+  expect(originalColor.className).toContain("bg-project-yellow");
+  key("Enter", get(`[data-tab-id="${original}"] [role="tab"]`));
+
+  expect(get(`[data-tab-id="${current}"] [data-slot="project-color"]`).className).toContain(
+    "bg-project-blue",
+  );
 
   key("h", button("Design system"), { metaKey: true, shiftKey: true });
 

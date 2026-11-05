@@ -28,7 +28,8 @@ test("detail walkthrough in WebKit", async ({ page }) => {
   await pause();
   await page.keyboard.press("Escape");
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "List", exact: true }).click();
+  await page.getByRole("button", { name: "Display", exact: true }).click();
+  await page.getByRole("menuitemradio", { name: "List", exact: true }).click();
   await page.locator('[data-slot="issue-list-row"][data-item-id="PVTI_226"]').click();
   await pause();
   await page.keyboard.press("s");

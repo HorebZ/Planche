@@ -2,6 +2,7 @@ import { Columns3, Plus, X } from "lucide-react";
 import { Tabs } from "radix-ui";
 import { type ComponentProps, type ReactNode, useLayoutEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { type ProjectTone, projectTones } from "@/components/ui/sidebar";
 import { type StatusKey, StatusSquare } from "@/components/ui/status";
 import { commandFor } from "@/keyboard/shortcuts";
 import { cn } from "@/lib/cn";
@@ -20,6 +21,7 @@ export function IssueTabs({
     title: string;
     project: string;
     kind?: "board";
+    tone?: ProjectTone;
     closable?: boolean;
     status?: StatusKey;
   }[];
@@ -84,10 +86,21 @@ export function IssueTabs({
                 className="flex h-7 min-w-0 items-center gap-2 rounded-lg px-3 text-left font-medium text-md focus-visible:shadow-ring"
               >
                 {tab.kind === "board" ? (
-                  <Columns3
-                    className="size-3.5 shrink-0"
+                  <span
                     aria-hidden
-                  />
+                    className="relative size-3.5 shrink-0"
+                  >
+                    <Columns3 className="size-full" />
+                    {tab.tone ? (
+                      <span
+                        data-slot="project-color"
+                        className={cn(
+                          "absolute -right-0.5 -bottom-0.5 size-1.5 rounded-full ring-1 ring-bg-sunken",
+                          projectTones[tab.tone],
+                        )}
+                      />
+                    ) : null}
+                  </span>
                 ) : (
                   <StatusSquare
                     status={tab.status ?? "draft"}

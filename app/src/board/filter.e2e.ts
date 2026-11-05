@@ -133,7 +133,8 @@ test("combined filters share results between Board/List, removable chips and res
 
   await expect.poll(() => ids("issue-card")).toEqual(expected);
   await expect(page.locator('[data-slot="project-toolbar"]')).toContainText("4/17 issues");
-  await page.getByRole("button", { name: "List", exact: true }).click();
+  await page.getByRole("button", { name: "Display", exact: true }).click();
+  await page.getByRole("menuitemradio", { name: "List", exact: true }).click();
 
   await expect.poll(() => ids("issue-list-row")).toEqual(expected);
   await page.getByRole("button", { name: "Remove assignee filter: Me (camille-r)" }).click();

@@ -44,7 +44,8 @@ test("search reveals a result in a collapsed List group and releases focus after
   page,
 }) => {
   await page.goto("/?mock=board");
-  await page.getByRole("button", { name: "List", exact: true }).click();
+  await page.getByRole("button", { name: "Display", exact: true }).click();
+  await page.getByRole("menuitemradio", { name: "List", exact: true }).click();
 
   const group = page
     .locator('[data-slot="issue-list-group"]')
@@ -86,7 +87,8 @@ for (const layout of ["Board", "List"] as const) {
 
     await expect(page.locator('[data-slot="issue-card"]').first()).toBeVisible();
 
-    await page.getByRole("button", { name: layout, exact: true }).click();
+    await page.getByRole("button", { name: "Display", exact: true }).click();
+    await page.getByRole("menuitemradio", { name: layout, exact: true }).click();
 
     const slot = layout === "Board" ? "issue-card" : "issue-list-row";
     const card = page.locator(`[data-slot="${slot}"][data-item-id="PVTI_199"]`);

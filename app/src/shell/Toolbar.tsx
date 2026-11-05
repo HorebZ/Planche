@@ -1,26 +1,16 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { ArrowUpRight, Columns3, List, Search } from "lucide-react";
+import { ArrowUpRight, Columns3, Search } from "lucide-react";
 import { useMemo } from "react";
 import { statusTone } from "@/board/statusTone";
 import { BoardFilter, type BoardFilters } from "@/components/ui/board-filter";
 import { Button } from "@/components/ui/button";
 import { DisplayMenu, type DisplayProperty } from "@/components/ui/display-menu";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { type ProjectTone, projectTones } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ViewButton } from "@/components/ui/view-button";
 import type { Board, ProjectMeta, User, ViewId } from "@/ipc/bindings.types";
 import type { ProjectLayout } from "@/stores/preferences";
 
 type ToolbarProps = {
-  tone: ProjectTone;
   board: Board | null | undefined;
   project: ProjectMeta | null | undefined;
   onSelectView: (viewId: ViewId) => void;
@@ -40,7 +30,6 @@ type ToolbarProps = {
 };
 
 export function Toolbar({
-  tone,
   board,
   project,
   onSelectView,
@@ -118,90 +107,29 @@ export function Toolbar({
       data-slot="project-toolbar"
       className="shrink-0"
     >
-      <div
-        data-tauri-drag-region
-        className="flex h-12 items-center gap-2 pr-3 pl-[18px]"
-      >
-        {board ? (
-          <>
-            <span
-              aria-hidden
-              data-slot="project-color"
-              className={`size-2.5 rounded-[3px] ${projectTones[tone]}`}
-            />
-            <span className="truncate font-medium">{board.project.title}</span>
-            {project?.can_update === false ? (
-              <span className="text-fg-3 text-xs">Read-only</span>
-            ) : null}
-            <span
-              aria-hidden
-              className="text-fg-3"
-            >
-              /
-            </span>
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                aria-label={`GitHub view: ${board.view?.name ?? "No GitHub view"}`}
-                className="flex h-7 min-w-0 items-center gap-2 rounded-md px-0.5 text-fg-2 outline-none hover:bg-hover focus-visible:shadow-ring"
-              >
-                <span className="truncate">{board.view?.name ?? "No GitHub view"}</span>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-[240px]">
-                <DropdownMenuLabel>Project views</DropdownMenuLabel>
-                <DropdownMenuRadioGroup
-                  value={currentView?.id}
-                  onValueChange={onSelectView}
-                >
-                  {boardViews.map((view) => (
-                    <DropdownMenuRadioItem
-                      key={view.id}
-                      value={view.id}
-                    >
-                      {view.name}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </>
-        ) : (
-          <Skeleton className="h-3 w-[140px] rounded-xs" />
-        )}
-        <span className="flex-1" />
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Open project on GitHub"
-          disabled={!board}
-          onClick={() => board && openUrl(board.project.url)}
-          className="size-7 text-fg-3"
-        >
-          <ArrowUpRight className="size-4" />
-        </Button>
-      </div>
       <div className="flex min-h-[42px] flex-wrap items-center gap-1.5 py-1.5 pr-3 pl-4">
         <fieldset
-          aria-label="Project layout"
-          className="flex gap-1.5"
+          aria-label="Project views"
+          className="flex min-w-0 gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden"
         >
-          {(
-            [
-              { id: "board", label: "Board", Icon: Columns3 },
-              { id: "list", label: "List", Icon: List },
-            ] as const
-          ).map(({ id, label, Icon }) => (
+          {boardViews.map((view) => (
             <ViewButton
-              key={id}
-              type="button"
-              aria-pressed={layout === id}
-              disabled={!board}
-              onClick={() => onLayoutChange(id)}
+              key={view.id}
+              aria-pressed={currentView?.id === view.id}
+              disabled={!board || dragging}
+              onClick={() => currentView?.id !== view.id && onSelectView(view.id)}
+              className="max-w-[220px] shrink-0"
+              title={view.name}
             >
-              <Icon className="size-[15px] text-fg-3" />
-              {label}
+              <Columns3 />
+              <span className="truncate">{view.name}</span>
             </ViewButton>
           ))}
+          {!board ? <Skeleton className="h-7 w-[100px] rounded-full" /> : null}
         </fieldset>
+        {project?.can_update === false ? (
+          <span className="text-fg-3 text-xs">Read-only</span>
+        ) : null}
         <BoardFilter
           groups={filterGroups}
           selected={filters}
@@ -218,6 +146,8 @@ export function Toolbar({
           </span>
         ) : null}
         <DisplayMenu
+          layout={layout}
+          onLayoutChange={onLayoutChange}
           hidden={hiddenProperties}
           onChange={onPropertyChange}
           disabled={!board}
@@ -230,6 +160,16 @@ export function Toolbar({
           className="size-[30px] rounded-full shadow-[inset_0_0_0_1px_var(--pl-border-strong)]"
         >
           <Search className="size-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Open project on GitHub"
+          disabled={!board}
+          onClick={() => board && openUrl(board.project.url)}
+          className="size-7 text-fg-3"
+        >
+          <ArrowUpRight className="size-4" />
         </Button>
       </div>
     </header>

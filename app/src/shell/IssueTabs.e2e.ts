@@ -5,7 +5,8 @@ test("two retained issues, reopening without duplicates and closing the active t
   page,
 }) => {
   await page.goto("/?mock=board");
-  await page.getByRole("button", { name: "List", exact: true }).click();
+  await page.getByRole("button", { name: "Display", exact: true }).click();
+  await page.getByRole("menuitemradio", { name: "List", exact: true }).click();
   const detail = page.getByRole("article", { name: "Issue detail" });
   const origin = page.locator('[data-slot="issue-list-row"][data-item-id="PVTI_226"]');
 
@@ -44,7 +45,8 @@ for (const layout of ["Board", "List"] as const) {
     page,
   }) => {
     await page.goto("/?mock=big");
-    await page.getByRole("button", { name: layout, exact: true }).click();
+    await page.getByRole("button", { name: "Display", exact: true }).click();
+    await page.getByRole("menuitemradio", { name: layout, exact: true }).click();
     await page.getByRole("button", { name: "Filter issues" }).click();
     await page.getByRole("menuitemcheckbox", { name: "Todo", exact: true }).click();
     await page.keyboard.press("Escape");
@@ -90,7 +92,8 @@ test("a narrow tab bar scrolls, supports arrow navigation and closes from the ke
 }) => {
   await page.setViewportSize({ width: 1100, height: 700 });
   await page.goto("/?mock=board");
-  await page.getByRole("button", { name: "List", exact: true }).click();
+  await page.getByRole("button", { name: "Display", exact: true }).click();
+  await page.getByRole("menuitemradio", { name: "List", exact: true }).click();
 
   for (const id of [218, 214, 209, 201, 198]) {
     await page.locator(`[data-slot="issue-list-row"][data-item-id="PVTI_${id}"]`).click();
@@ -117,7 +120,7 @@ test("a narrow tab bar scrolls, supports arrow navigation and closes from the ke
   await page.getByRole("tab", { name: /^#218 / }).click();
   await page.keyboard.press("ArrowLeft");
 
-  await expect(page.getByRole("tab", { selected: true })).toHaveText("Planche — v1.2");
+  await expect(page.getByRole("tab", { selected: true })).toHaveText("Planche — v1.2 / Board");
   await expect(page.getByRole("tab", { selected: true })).toBeFocused();
   await page.keyboard.press("ArrowRight");
 
@@ -128,7 +131,8 @@ test("reopening from another Project keeps the original context, status and muta
   page,
 }) => {
   await page.goto("/?mock=board");
-  await page.getByRole("button", { name: "List", exact: true }).click();
+  await page.getByRole("button", { name: "Display", exact: true }).click();
+  await page.getByRole("menuitemradio", { name: "List", exact: true }).click();
   await page.evaluate(() => {
     const backend = (
       window as unknown as {
@@ -151,7 +155,8 @@ test("reopening from another Project keeps the original context, status and muta
   await page.locator('[data-slot="issue-list-row"][data-item-id="PVTI_226"]').click();
   await page.keyboard.press("Meta+Enter");
   await page.getByRole("button", { name: "API Gateway", exact: true }).click();
-  await page.getByRole("button", { name: "List", exact: true }).click();
+  await page.getByRole("button", { name: "Display", exact: true }).click();
+  await page.getByRole("menuitemradio", { name: "List", exact: true }).click();
   await page.locator('[data-slot="issue-list-row"][data-item-id="api-PVTI_226"]').click();
 
   const detail = page.getByRole("article", { name: "Issue detail" });
@@ -181,28 +186,28 @@ test("the tab bar is permanent and plus opens the first board in a new tab", asy
   await page.goto("/?mock=board");
 
   await expect(page.getByRole("tab")).toHaveCount(1);
-  await expect(page.getByRole("tab", { selected: true })).toHaveText("Planche — v1.2");
+  await expect(page.getByRole("tab", { selected: true })).toHaveText("Planche — v1.2 / Board");
   await page.getByRole("button", { name: "New tab", exact: true }).click();
 
   await expect(page.getByRole("tab")).toHaveCount(2);
-  await expect(page.getByRole("tab", { selected: true })).toHaveText("Roadmap Q4");
+  await expect(page.getByRole("tab", { selected: true })).toHaveText("Roadmap Q4 / Board");
   await page.getByRole("button", { name: "API Gateway", exact: true }).click();
 
-  await expect(page.getByRole("tab", { selected: true })).toHaveText("API Gateway");
-  await page.getByRole("tab", { name: "Planche — v1.2", exact: true }).click();
+  await expect(page.getByRole("tab", { selected: true })).toHaveText("API Gateway / Board");
+  await page.getByRole("tab", { name: "Planche — v1.2 / Board", exact: true }).click();
 
-  await expect(page.getByRole("tab", { selected: true })).toHaveText("Planche — v1.2");
+  await expect(page.getByRole("tab", { selected: true })).toHaveText("Planche — v1.2 / Board");
   await page.getByRole("button", { name: "New tab", exact: true }).click();
 
   await expect(page.getByRole("tab")).toHaveCount(3);
-  await expect(page.getByRole("tab", { selected: true })).toHaveText("Roadmap Q4");
+  await expect(page.getByRole("tab", { selected: true })).toHaveText("Roadmap Q4 / Board");
   await page.keyboard.press("Meta+w");
 
   await expect(page.getByRole("tab")).toHaveCount(2);
-  await expect(page.getByRole("tab", { selected: true })).toHaveText("API Gateway");
-  await page.getByRole("button", { name: "Close tab: API Gateway", exact: true }).click();
+  await expect(page.getByRole("tab", { selected: true })).toHaveText("API Gateway / Board");
+  await page.getByRole("button", { name: "Close tab: API Gateway / Board", exact: true }).click();
 
   await expect(page.getByRole("tab")).toHaveCount(1);
-  await expect(page.getByRole("tab", { selected: true })).toHaveText("Planche — v1.2");
+  await expect(page.getByRole("tab", { selected: true })).toHaveText("Planche — v1.2 / Board");
   await expect(page.getByRole("button", { name: "New tab", exact: true })).toBeVisible();
 });

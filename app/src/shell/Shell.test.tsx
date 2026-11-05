@@ -4,7 +4,15 @@ import { Toaster } from "@/components/ui/toast";
 import type { Scenario } from "@/ipc/_fixtures/scenarios.fixtures";
 import { type Board, commands } from "@/ipc/bindings.types";
 import { listenToCore } from "@/ipc/queries";
-import { button, click, get, installMockBackend, key, render } from "@/test-support";
+import {
+  button,
+  click,
+  get,
+  installMockBackend,
+  key,
+  render,
+  selectProjectLayout,
+} from "@/test-support";
 import { Shell } from "./Shell";
 
 function renderShell() {
@@ -63,7 +71,7 @@ test.each([
         ),
       ).toEqual(["6", "3", "3", "2", "3"]);
 
-      click(button("List"));
+      await selectProjectLayout("List");
 
       expect(document.querySelectorAll('[data-slot="issue-list-row"]')).toHaveLength(17);
 

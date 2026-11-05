@@ -7,7 +7,8 @@ test("an empty List creates drafts with keyboard focus and releases shortcuts on
 
   await expect(page.getByText("This board is empty")).toBeVisible();
 
-  await page.getByRole("button", { name: "List", exact: true }).click();
+  await page.getByRole("button", { name: "Display", exact: true }).click();
+  await page.getByRole("menuitemradio", { name: "List", exact: true }).click();
 
   const add = page.getByRole("button", { name: "Add draft to Todo", exact: true });
 

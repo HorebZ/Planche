@@ -7,7 +7,17 @@ import { mockupBoard, PROJECT } from "@/ipc/_fixtures/scenarios.fixtures";
 import type { Board } from "@/ipc/bindings.types";
 import { boardQuery, queryClient } from "@/ipc/queries";
 import { useUi } from "@/stores/ui";
-import { button, calls, click, fill, get, installMockBackend, key, render } from "@/test-support";
+import {
+  button,
+  calls,
+  click,
+  fill,
+  get,
+  installMockBackend,
+  key,
+  render,
+  selectProjectLayout,
+} from "@/test-support";
 
 async function open(scenario: "board" | "markdown" = "board") {
   const backend = installMockBackend(scenario);
@@ -15,7 +25,7 @@ async function open(scenario: "board" | "markdown" = "board") {
   render(<App />, queryClient);
 
   await expect.poll(() => document.querySelectorAll('[data-slot="board-column"]').length).toBe(5);
-  click(button("List"));
+  await selectProjectLayout("List");
 
   return backend;
 }

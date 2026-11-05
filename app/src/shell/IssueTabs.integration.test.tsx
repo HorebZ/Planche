@@ -4,7 +4,15 @@ import App from "@/App";
 import { authStatus } from "@/ipc/_fixtures/user.fixtures";
 import { authQuery, currentProjectQuery, queryClient } from "@/ipc/queries";
 import { useUi } from "@/stores/ui";
-import { button, click, get, installMockBackend, key, render } from "@/test-support";
+import {
+  button,
+  click,
+  get,
+  installMockBackend,
+  key,
+  render,
+  selectProjectLayout,
+} from "@/test-support";
 
 const detail = () => get('[data-slot="issue-detail"][data-active="true"]');
 const tabStatus = () => get('[data-tab-id="I_226"] [data-slot="status-square"] svg');
@@ -33,7 +41,7 @@ async function open() {
   render(<App />, queryClient);
 
   await expect.poll(() => document.querySelectorAll('[data-slot="board-column"]').length).toBe(5);
-  click(button("List"));
+  await selectProjectLayout("List");
 
   return backend;
 }
@@ -47,8 +55,7 @@ test("reopening shared content from another Project keeps the original actions a
   click(button("API Gateway"));
 
   await expect.poll(() => button("Board").getAttribute("aria-pressed")).toBe("true");
-  await expect.poll(() => button("List").disabled).toBe(false);
-  click(button("List"));
+  await selectProjectLayout("List");
 
   await expect.poll(() => document.querySelector('[data-item-id="api-PVTI_226"]')).not.toBeNull();
   useUi.getState().openDetail("api-PVTI_226");

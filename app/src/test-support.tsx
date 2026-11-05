@@ -3,7 +3,7 @@ import { clearMocks } from "@tauri-apps/api/mocks";
 import type { ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
-import { afterEach, beforeEach, vi } from "vitest";
+import { afterEach, beforeEach, expect, vi } from "vitest";
 import { calls, installMockBackend } from "./ipc/_fixtures/backend.fixtures";
 import { createQueryClient, queryClient } from "./ipc/queries";
 import { useCommentDrafts } from "./stores/comment-drafts";
@@ -111,4 +111,19 @@ export function key(key: string, target: EventTarget = document, options: Keyboa
       new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...options }),
     ),
   );
+}
+
+export async function selectProjectLayout(layout: "Board" | "List") {
+  key("Enter", button("Display"));
+
+  await expect.poll(() => document.querySelector('[role="menuitemradio"]')).not.toBeNull();
+  const option = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find(
+    (option) => option.textContent?.trim() === layout,
+  );
+
+  if (!option) {
+    throw new Error(`Missing layout: ${layout}`);
+  }
+
+  click(option);
 }

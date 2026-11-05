@@ -48,7 +48,8 @@ for (const colorScheme of ["light", "dark"] as const) {
       });
       await page.keyboard.press("Escape");
       await detail.getByRole("button", { name: "Close detail" }).click();
-      await page.getByRole("button", { name: "List", exact: true }).click();
+      await page.getByRole("button", { name: "Display", exact: true }).click();
+      await page.getByRole("menuitemradio", { name: "List", exact: true }).click();
       await page.locator('[data-slot="issue-list-row"][data-item-id="PVTI_226"]').click();
 
       await expect(detail.getByRole("heading", { level: 1 })).toBeVisible();

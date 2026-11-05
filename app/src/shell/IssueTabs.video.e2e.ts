@@ -8,7 +8,8 @@ test.use({
 
 test("retained issue tabs walkthrough in WebKit", async ({ page }) => {
   await page.goto("/?mock=markdown");
-  await page.getByRole("button", { name: "List", exact: true }).click();
+  await page.getByRole("button", { name: "Display", exact: true }).click();
+  await page.getByRole("menuitemradio", { name: "List", exact: true }).click();
   const pause = () => page.waitForTimeout(1500);
 
   for (const id of [226, 223]) {

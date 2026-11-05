@@ -31,6 +31,7 @@ import {
   boardQuery,
   currentProjectQuery,
   errorMessage,
+  projectQuery,
   useAuth,
   useBoard,
   useOpenProject,
@@ -105,11 +106,13 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   const status = useSyncStatus();
   const auth = useAuth();
   const hiddenProjects = usePreferences((s) => s.hiddenProjects[auth.data?.login ?? ""]);
+  const projectColors = usePreferences((s) => s.projectColors[auth.data?.login ?? ""]);
   const projectList = projects.data?.owners.flatMap((owner) => owner.projects) ?? [];
   const firstProject = projectList.find(
     (project) => !project.closed && !hiddenProjects?.includes(project.id),
   );
-  const projectColor = usePreferences((s) => s.projectColors[auth.data?.login ?? ""]?.[projectId]);
+  const boardProjects = [...new Set(boardTabs.map((tab) => tab.projectId))];
+  const tabProjects = useQueries({ queries: boardProjects.map(projectQuery) });
   const openProject = useOpenProject();
   const refresh = useRefresh();
   const actions = useActions(actionProjectId, actionViewId);
@@ -570,16 +573,36 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
       <main className="relative my-2 mr-2 flex min-w-0 flex-1 flex-col overflow-hidden">
         <IssueTabs
           tabs={[
-            ...boardTabs.map((tab) => ({
-              id: tab.id,
-              title:
-                projectList.find((project) => project.id === tab.projectId)?.title ??
+            ...boardTabs.map((tab) => {
+              const meta = tabProjects[boardProjects.indexOf(tab.projectId)]?.data;
+              const summary = projectList.find((project) => project.id === tab.projectId);
+              const title =
+                summary?.title ??
+                meta?.title ??
                 (tab.projectId === projectId ? data?.project.title : null) ??
-                "Project",
-              project: "Project",
-              kind: "board" as const,
-              closable: boardTabs.length > 1,
-            })),
+                "Project";
+              const view =
+                tab.projectId === projectId && tab.id === activeBoardTab
+                  ? data?.view
+                  : tab.viewId
+                    ? meta?.views.find((view) => view.id === tab.viewId)
+                    : meta?.views
+                        .filter((view) => view.layout === "Board")
+                        .sort((left, right) => left.number - right.number)[0];
+
+              return {
+                id: tab.id,
+                title: view ? `${title} / ${view.name}` : title,
+                project: title,
+                kind: "board" as const,
+                tone:
+                  projectColors?.[tab.projectId] ??
+                  defaultProjectTones[
+                    (summary?.number ?? meta?.number ?? 0) % defaultProjectTones.length
+                  ],
+                closable: boardTabs.length > 1,
+              };
+            }),
             ...issueTabs.map((tab, index) => {
               const source = tabBoards[index].data;
               const column = source?.columns.find((column) =>
@@ -618,10 +641,6 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
               )}
             >
               <Toolbar
-                tone={
-                  projectColor ??
-                  defaultProjectTones[(data?.project.number ?? 0) % defaultProjectTones.length]
-                }
                 board={data}
                 project={project.data}
                 onSelectView={selectView}

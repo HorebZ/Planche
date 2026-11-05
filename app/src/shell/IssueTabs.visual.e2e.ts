@@ -6,7 +6,8 @@ for (const colorScheme of ["light", "dark"] as const) {
       await page.setViewportSize({ width, height: 900 });
       await page.emulateMedia({ colorScheme });
       await page.goto("/?mock=markdown");
-      await page.getByRole("button", { name: "List", exact: true }).click();
+      await page.getByRole("button", { name: "Display", exact: true }).click();
+      await page.getByRole("menuitemradio", { name: "List", exact: true }).click();
 
       for (const id of [218, 214, 226, 223]) {
         await page.locator(`[data-slot="issue-list-row"][data-item-id="PVTI_${id}"]`).click();
@@ -40,8 +41,9 @@ for (const colorScheme of ["light", "dark"] as const) {
         animations: "disabled",
       });
       await page.keyboard.press("Escape");
-      await page.getByRole("tab", { name: "Planche — v1.2", exact: true }).click();
-      await page.getByRole("button", { name: "Board", exact: true }).click();
+      await page.getByRole("tab", { name: "Planche — v1.2 / Board", exact: true }).click();
+      await page.getByRole("button", { name: "Display", exact: true }).click();
+      await page.getByRole("menuitemradio", { name: "Board", exact: true }).click();
 
       await expect(page.getByRole("region", { name: "Project view" })).toBeVisible();
       await page.screenshot({
@@ -56,7 +58,7 @@ for (const colorScheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme });
     await page.goto("/?mock=board");
 
-    await expect(page.getByRole("tab", { selected: true })).toHaveText("Planche — v1.2");
+    await expect(page.getByRole("tab", { selected: true })).toHaveText("Planche — v1.2 / Board");
     await expect(page.getByRole("button", { name: "New tab", exact: true })).toBeInViewport();
     await page.screenshot({
       path: test.info().outputPath(`tabs-single-${colorScheme}.png`),
@@ -64,7 +66,7 @@ for (const colorScheme of ["light", "dark"] as const) {
     });
     await page.getByRole("button", { name: "New tab", exact: true }).click();
 
-    await expect(page.getByRole("tab", { selected: true })).toHaveText("Roadmap Q4");
+    await expect(page.getByRole("tab", { selected: true })).toHaveText("Roadmap Q4 / Board");
     await page.screenshot({
       path: test.info().outputPath(`tabs-new-${colorScheme}.png`),
       animations: "disabled",

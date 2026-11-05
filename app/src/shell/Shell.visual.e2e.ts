@@ -37,7 +37,8 @@ test.describe("v2 visual checks", () => {
     test(`list, palette and settings ${colorScheme}`, async ({ page }) => {
       await page.emulateMedia({ colorScheme });
       await page.goto("/?mock=board");
-      await page.getByRole("button", { name: "List", exact: true }).click();
+      await page.getByRole("button", { name: "Display", exact: true }).click();
+      await page.getByRole("menuitemradio", { name: "List", exact: true }).click();
       await page.locator('[data-slot="issue-list-row"]').first().waitFor();
       await page.screenshot({
         path: `screenshots/v2-list-${colorScheme}.png`,
@@ -145,7 +146,8 @@ for (const theme of ["light", "dark"] as const) {
 
     await expect(error).toHaveCount(0);
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.getByRole("button", { name: "List", exact: true }).click();
+    await page.getByRole("button", { name: "Display", exact: true }).click();
+    await page.getByRole("menuitemradio", { name: "List", exact: true }).click();
     await expect(error).toHaveCount(0);
   });
 }

@@ -5,7 +5,8 @@ for (const layout of ["Board", "List"] as const) {
     page,
   }) => {
     await page.goto("/?mock=board");
-    await page.getByRole("button", { name: layout, exact: true }).click();
+    await page.getByRole("button", { name: "Display", exact: true }).click();
+    await page.getByRole("menuitemradio", { name: layout, exact: true }).click();
 
     const slot = layout === "Board" ? "issue-card" : "issue-list-row";
     const origin = page.locator(`[data-slot="${slot}"][data-item-id="PVTI_226"]`);
@@ -66,7 +67,8 @@ for (const layout of ["Board", "List"] as const) {
 
   test(`${layout} returns from detail to the same scroll, groups and focus`, async ({ page }) => {
     await page.goto("/?mock=big");
-    await page.getByRole("button", { name: layout, exact: true }).click();
+    await page.getByRole("button", { name: "Display", exact: true }).click();
+    await page.getByRole("menuitemradio", { name: layout, exact: true }).click();
 
     if (layout === "List") {
       await page.getByRole("button", { name: /^Done.*200$/ }).click();
