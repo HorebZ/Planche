@@ -38,6 +38,8 @@ import { SidebarProject } from "@/components/ui/sidebar-project";
 import { SidebarRepository } from "@/components/ui/sidebar-repository";
 import { Spinner } from "@/components/ui/spinner";
 import { SyncIndicator } from "@/components/ui/sync-indicator";
+import { repositoryIssueOptions } from "@/ipc/_fixtures/repository-issues.fixtures";
+import type { RepositoryIssueFilter } from "@/ipc/bindings.types";
 import { Row, Section, State } from "../kit";
 
 const settings = (
@@ -52,6 +54,11 @@ const settings = (
 );
 
 export function ShellSection() {
+  const [repositoryFilter, setRepositoryFilter] = useState<RepositoryIssueFilter>({
+    state: "open",
+    milestone: 1,
+    labels: ["bug"],
+  });
   const [designTone, setDesignTone] = useState<ProjectTone>("review");
   const [hiddenTone, setHiddenTone] = useState<ProjectTone>("todo");
 
@@ -66,12 +73,14 @@ export function ShellSection() {
             label="Repository issues · Open and Closed lists"
             className="w-full"
           >
-            <RepositoryIssueFilters
-              filter={{ state: "open", milestone: null, labels: [] }}
-              options={{ milestones: [], labels: [] }}
-              onChange={() => {}}
-              onSave={() => {}}
-            />
+            <div className="flex flex-wrap items-center gap-1.5">
+              <RepositoryIssueFilters
+                filter={repositoryFilter}
+                options={repositoryIssueOptions()}
+                onChange={setRepositoryFilter}
+                onSave={() => {}}
+              />
+            </div>
             <div className="w-full">
               <RepositoryIssueList
                 issues={[
@@ -108,12 +117,14 @@ export function ShellSection() {
             label="Repository issues · Simulated kanban"
             className="w-full min-w-0 overflow-auto"
           >
-            <RepositoryIssueFilters
-              filter={{ state: "all", milestone: null, labels: [] }}
-              options={{ milestones: [], labels: [] }}
-              onChange={() => {}}
-              onSave={() => {}}
-            />
+            <div className="flex flex-wrap items-center gap-1.5">
+              <RepositoryIssueFilters
+                filter={{ state: "all", milestone: null, labels: [] }}
+                options={{ milestones: [], labels: [] }}
+                onChange={() => {}}
+                onSave={() => {}}
+              />
+            </div>
             <div className="h-[340px] w-full min-w-0">
               <RepositoryIssueBoard
                 issues={[

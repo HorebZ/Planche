@@ -25,17 +25,18 @@ test("source pagination, AND milestone and OR labels, and persistent deletable f
 }) => {
   await openRepository(page);
   const rows = page.locator('[aria-label="Repository kanban"]').getByRole("listitem");
-  await page.getByRole("button", { name: "Board", exact: true }).click();
+  await page.getByRole("button", { name: "Planche", exact: true }).click();
   await expect(rows).toHaveCount(50);
   await page.getByRole("button", { name: "Load more issues", exact: true }).click();
   await expect(rows).toHaveCount(100);
   await page.getByRole("button", { name: "Load more issues", exact: true }).click();
   await expect(rows).toHaveCount(123);
   await expect(page.getByText(/123 issues loaded · Complete result/)).toBeVisible();
-  await page.getByRole("button", { name: "Filter by milestone", exact: true }).click();
-  await page.getByRole("menuitemradio", { name: "Backlog", exact: true }).click();
+  await page.getByRole("button", { name: "Filter issues", exact: true }).click();
+  await page.getByRole("menuitemcheckbox", { name: "Backlog", exact: true }).click();
+  await page.keyboard.press("Escape");
   await expect(rows).toHaveCount(50);
-  await page.getByRole("button", { name: "Filter by labels", exact: true }).click();
+  await page.getByRole("button", { name: "Filter issues", exact: true }).click();
   await page.getByRole("menuitemcheckbox", { name: "bug", exact: true }).click();
   await expect(rows).toHaveCount(0);
   await page.getByRole("menuitemcheckbox", { name: "help", exact: true }).click();
@@ -55,7 +56,7 @@ test("source pagination, AND milestone and OR labels, and persistent deletable f
   await page.getByRole("button", { name: "Triage", exact: true }).click();
   await expect(rows).toHaveCount(21);
   await expect(
-    page.getByRole("button", { name: "Filter by milestone", exact: true }),
+    page.getByRole("button", { name: "Remove milestone filter: Backlog", exact: true }),
   ).toContainText("Backlog");
   await page.getByRole("button", { name: "Options for filter Triage", exact: true }).click();
   await page.getByRole("menuitem", { name: "Duplicate", exact: true }).click();
@@ -148,11 +149,11 @@ test("a partial offline cache remains partial, can resume, and does not invent c
   await expect(page.getByText(/82 issues loaded · Complete result/)).toBeVisible();
 });
 
-test("Board uses independent column scrolling while Open and Closed stay lists", async ({
+test("Planche uses independent column scrolling while Open and Closed stay lists", async ({
   page,
 }) => {
   await openRepository(page);
-  await page.getByRole("button", { name: "Board", exact: true }).click();
+  await page.getByRole("button", { name: "Planche", exact: true }).click();
   const board = page.getByRole("region", { name: "Repository kanban", exact: true });
   await expect(board.getByRole("listitem")).toHaveCount(50);
   await expect(page.getByRole("list", { name: "Repository issues", exact: true })).toHaveCount(0);
@@ -179,4 +180,50 @@ test("Board uses independent column scrolling while Open and Closed stay lists",
     page.getByRole("list", { name: "Repository issues", exact: true }).getByRole("listitem"),
   ).toHaveCount(41);
   await expect(board).toHaveCount(0);
+});
+
+test("repository issue tabs preserve the shared Markdown editor when returning to fixed views", async ({
+  page,
+}) => {
+  await openRepository(page);
+  await page
+    .getByRole("button", { name: "Open issue #122: Repository issue 122", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Open in tab", exact: true }).click();
+  const issueTab = page.getByRole("tab", { name: "#122 Repository issue 122", exact: true });
+  const detail = page.locator('[data-slot="issue-detail"][data-active="true"]');
+  await expect(issueTab).toHaveAttribute("aria-selected", "true");
+  await detail.getByRole("button", { name: "Edit description", exact: true }).click();
+  await detail
+    .getByRole("textbox", { name: "Description Markdown", exact: true })
+    .fill("**Repository draft**");
+  await detail
+    .getByRole("region", { name: "Edit description", exact: true })
+    .getByRole("radio", { name: "Preview", exact: true })
+    .click();
+  await expect(
+    detail
+      .getByRole("region", { name: "Description Markdown preview", exact: true })
+      .locator("strong"),
+  ).toHaveText("Repository draft");
+
+  await page.getByRole("tab", { name: "HorebZ/Planche", exact: true }).click();
+  await page.getByRole("button", { name: "Closed", exact: true }).click();
+  await expect(
+    page.getByRole("list", { name: "Repository issues", exact: true }).getByRole("listitem"),
+  ).toHaveCount(41);
+  await issueTab.click();
+  await expect(
+    detail
+      .getByRole("region", { name: "Description Markdown preview", exact: true })
+      .locator("strong"),
+  ).toHaveText("Repository draft");
+  await page
+    .getByRole("button", { name: "Close tab: #122 Repository issue 122", exact: true })
+    .click();
+  await expect(page.getByRole("button", { name: "Closed", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.getByRole("tab")).toHaveCount(1);
 });

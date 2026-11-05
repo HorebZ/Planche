@@ -29,7 +29,8 @@ export function IssuePanel({
   offline: boolean;
   active?: boolean;
   expanded: boolean;
-  onExpandedChange: (expanded: boolean) => void;
+  onExpandedChange?: (expanded: boolean) => void;
+  onOpenTab?: () => void;
   onBack: () => void;
   onPrevious?: () => void;
   onNext?: () => void;

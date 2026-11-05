@@ -75,7 +75,7 @@ async function choose(name: string, option: string, role: string) {
 test("native repositories paginate complete source filters, union labels and save deletable shortcuts", async () => {
   await setup();
   expect(document.body.textContent).toContain("Partial cache");
-  click(button("Board"));
+  click(button("Planche"));
   await expect.poll(() => rows().length).toBe(50);
   click(button("Load more issues"));
   await expect.poll(() => rows().length).toBe(100);
@@ -83,9 +83,10 @@ test("native repositories paginate complete source filters, union labels and sav
   await expect.poll(() => rows().length).toBe(123);
   expect(document.body.textContent).toContain("Complete result");
 
-  await choose("Filter by milestone", "Backlog", "menuitemradio");
+  await choose("Filter issues", "Backlog", "menuitemcheckbox");
+  key("Escape", get('[role="menu"]'));
   await expect.poll(() => rows().length).toBe(50);
-  await choose("Filter by labels", "bug", "menuitemcheckbox");
+  await choose("Filter issues", "bug", "menuitemcheckbox");
   await expect.poll(() => rows().length).toBe(0);
   const help = [...document.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]')].find(
     (item) => item.textContent?.trim() === "help",
@@ -111,7 +112,7 @@ test("native repositories paginate complete source filters, union labels and sav
   await expect.poll(() => rows().length).toBe(123);
   click(button("Triage"));
   await expect.poll(() => rows().length).toBe(21);
-  expect(button("Filter by milestone").textContent).toContain("Backlog");
+  expect(button("Remove milestone filter: Backlog").textContent).toContain("Backlog");
   await choose("Options for filter Triage", "Delete", "menuitem");
   await expect
     .poll(() => document.querySelector('[aria-label="Options for filter Triage"]'))
@@ -177,7 +178,7 @@ test("offline pagination keeps the partial snapshot and explicitly distinguishes
   expect(document.body.textContent).toContain("Complete result");
 });
 
-test("Open is the default list, Closed stays a list, and Board is a separate view", async () => {
+test("Open is the default list, Closed stays a list, and Planche is a separate view", async () => {
   await setup();
   expect(button("Open").getAttribute("aria-pressed")).toBe("true");
   expect(document.querySelector('ul[aria-label="Repository issues"]')).not.toBeNull();
@@ -188,7 +189,7 @@ test("Open is the default list, Closed stays a list, and Board is a separate vie
   expect(document.querySelector('ul[aria-label="Repository issues"]')).not.toBeNull();
   expect(document.querySelector('[aria-label="Repository kanban"]')).toBeNull();
 
-  click(button("Board"));
+  click(button("Planche"));
   await expect.poll(() => rows().length).toBe(50);
   expect(document.querySelector('ul[aria-label="Repository issues"]')).toBeNull();
   const columns = [
@@ -229,4 +230,78 @@ test("Open is the default list, Closed stays a list, and Board is a separate vie
   await expect
     .poll(() => document.querySelector('[data-slot="issue-detail"] h1')?.textContent)
     .toBe("Repository issue 110");
+});
+
+test("repository tabs reuse the editor, preserve drafts and return to the fixed source views", async () => {
+  await setup();
+  click(get('[data-item-id="I_repo_122"]'));
+  click(button("Open in tab"));
+
+  const activeDetail = () => get('[data-slot="issue-detail"][data-active="true"]');
+  await expect.poll(() => activeDetail().textContent).toContain("Edit description");
+  expect(document.querySelectorAll('[role="tab"]')).toHaveLength(2);
+  expect(activeDetail().getAttribute("data-expanded")).toBe("true");
+
+  click(button("Edit description", activeDetail()));
+  fill(get('[aria-label="Edit description"] textarea'), "**Repository draft**");
+  click(button("Preview", activeDetail()));
+
+  expect(activeDetail().querySelector("strong")?.textContent).toBe("Repository draft");
+
+  click(get('[data-tab-id="source"] [role="tab"]'));
+  click(get('[data-item-id="I_repo_122"]'));
+
+  expect(document.querySelectorAll('[role="tab"]')).toHaveLength(2);
+  expect(activeDetail().querySelector("strong")?.textContent).toBe("Repository draft");
+
+  click(get('[data-tab-id="source"] [role="tab"]'));
+  click(button("Closed"));
+  await expect.poll(() => rows().length).toBe(41);
+  click(get('[data-item-id="I_repo_123"]'));
+  key("Enter", window, { metaKey: true });
+
+  await expect.poll(() => document.querySelectorAll('[role="tab"]').length).toBe(3);
+  key("ArrowLeft", window, { metaKey: true, shiftKey: true });
+
+  expect(activeDetail().querySelector("strong")?.textContent).toBe("Repository draft");
+  click(button("Write", activeDetail()));
+  expect(get<HTMLTextAreaElement>('[aria-label="Edit description"] textarea').value).toBe(
+    "**Repository draft**",
+  );
+  click(button("Cancel", activeDetail()));
+  key("w", window, { metaKey: true });
+
+  expect(document.querySelectorAll('[role="tab"]')).toHaveLength(2);
+  key("w", window, { metaKey: true });
+
+  expect(document.querySelectorAll('[role="tab"]')).toHaveLength(1);
+  expect(button("Closed").getAttribute("aria-pressed")).toBe("true");
+  expect(document.querySelector('[aria-label^="Close tab: HorebZ/Planche"]')).toBeNull();
+
+  click(button("New tab"));
+  await expect.poll(() => document.querySelector("[cmdk-item]")).not.toBeNull();
+  click(get("[cmdk-item]"));
+
+  expect(document.querySelectorAll('[role="tab"]')).toHaveLength(2);
+  expect(activeDetail().querySelector("h1")?.textContent).toBe("Repository issue 123");
+});
+
+test("the shared repository filter replaces milestones and removes individual chips", async () => {
+  await setup();
+  await choose("Filter issues", "Backlog", "menuitemcheckbox");
+  const option = [...document.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]')].find(
+    (item) => item.textContent?.trim() === "v1.3",
+  );
+  if (!option) {
+    throw new Error("Missing v1.3 milestone");
+  }
+  click(option);
+  key("Escape", option);
+
+  expect(document.querySelector('[aria-label="Remove milestone filter: Backlog"]')).toBeNull();
+  expect(button("Filter issues").textContent).toContain("Filter · 1");
+  click(button("Remove milestone filter: v1.3"));
+
+  await expect.poll(() => rows().length).toBe(50);
+  expect(button("Filter issues").textContent).not.toContain("· 1");
 });

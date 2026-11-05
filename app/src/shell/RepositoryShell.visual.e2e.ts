@@ -24,6 +24,13 @@ for (const colorScheme of ["light", "dark"] as const) {
       path: test.info().outputPath(`repository-list-${colorScheme}.png`),
       animations: "disabled",
     });
+    await page.getByRole("button", { name: "Filter issues", exact: true }).click();
+    await expect(page.getByRole("group", { name: "Milestone", exact: true })).toBeVisible();
+    await page.screenshot({
+      path: test.info().outputPath(`repository-filters-${colorScheme}.png`),
+      animations: "disabled",
+    });
+    await page.keyboard.press("Escape");
     await page.getByRole("button", { name: "Save filter", exact: true }).click();
     await page.getByRole("button", { name: "Options for filter Filtre 1", exact: true }).click();
     for (const name of ["Rename", "Duplicate", "Delete"]) {
@@ -49,7 +56,7 @@ for (const colorScheme of ["light", "dark"] as const) {
       path: test.info().outputPath(`repository-closed-${colorScheme}.png`),
       animations: "disabled",
     });
-    await page.getByRole("button", { name: "Board", exact: true }).click();
+    await page.getByRole("button", { name: "Planche", exact: true }).click();
     const board = page.getByRole("region", { name: "Repository kanban", exact: true });
     await expect(board.locator('[data-slot="board-column"]')).toHaveCount(5);
     await expect(board.getByRole("listitem")).toHaveCount(50);
@@ -73,6 +80,14 @@ for (const colorScheme of ["light", "dark"] as const) {
     ).toBe(true);
     await page.screenshot({
       path: test.info().outputPath(`detail-${colorScheme}.png`),
+      animations: "disabled",
+    });
+    await detail.getByRole("button", { name: "Open in tab", exact: true }).click();
+    await expect(
+      page.getByRole("tab", { name: "#122 Repository issue 122", exact: true }),
+    ).toHaveAttribute("aria-selected", "true");
+    await page.screenshot({
+      path: test.info().outputPath(`repository-tab-${colorScheme}.png`),
       animations: "disabled",
     });
     await page.setViewportSize({ width: 1100, height: 700 });

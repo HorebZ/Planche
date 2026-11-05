@@ -25,7 +25,7 @@ export const emptyFilters: BoardFilters = {
   repositories: [],
 };
 
-export function BoardFilter({
+export function BoardFilter<Key extends string>({
   groups,
   selected,
   onChange,
@@ -35,19 +35,22 @@ export function BoardFilter({
   onCloseAutoFocus,
 }: {
   groups: {
-    key: keyof BoardFilters;
+    key: Key;
+    single?: boolean;
     name: string;
     options: { id: string | null; name: string; status?: StatusKey }[];
   }[];
-  selected: BoardFilters;
-  onChange: (selected: BoardFilters) => void;
+  selected: Record<Key, (string | null)[]>;
+  onChange: (selected: Record<Key, (string | null)[]>) => void;
   disabled?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   onCloseAutoFocus?: (event: Event) => void;
 }) {
-  const count = Object.values(selected).reduce((sum, values) => sum + values.length, 0);
-  const remove = (key: keyof BoardFilters, id: string | null) =>
+  const count = groups.reduce((sum, group) => sum + selected[group.key].length, 0);
+  const clear = () =>
+    onChange({ ...selected, ...Object.fromEntries(groups.map((group) => [group.key, []])) });
+  const remove = (key: Key, id: string | null) =>
     onChange({ ...selected, [key]: selected[key].filter((value) => value !== id) });
 
   return (
@@ -87,7 +90,9 @@ export function BoardFilter({
                     onChange({
                       ...selected,
                       [group.key]: checked
-                        ? [...selected[group.key], option.id]
+                        ? group.single
+                          ? [option.id]
+                          : [...selected[group.key], option.id]
                         : selected[group.key].filter((id) => id !== option.id),
                     })
                   }
@@ -104,7 +109,7 @@ export function BoardFilter({
               ))}
             </DropdownMenuGroup>
           ))}
-          <DropdownMenuItem onSelect={() => onChange(emptyFilters)}>Clear filters</DropdownMenuItem>
+          <DropdownMenuItem onSelect={clear}>Clear filters</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       {groups.flatMap((group) =>
@@ -130,7 +135,7 @@ export function BoardFilter({
           variant="ghost"
           size="sm"
           disabled={disabled}
-          onClick={() => onChange(emptyFilters)}
+          onClick={clear}
         >
           Clear filters
         </Button>

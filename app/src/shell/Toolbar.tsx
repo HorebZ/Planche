@@ -99,7 +99,7 @@ export function Toolbar({
         name: "Repository",
         options: repositories.map((name) => ({ id: name, name })),
       },
-    ] satisfies Parameters<typeof BoardFilter>[0]["groups"];
+    ] satisfies Parameters<typeof BoardFilter<keyof BoardFilters>>[0]["groups"];
   }, [board, viewerId, viewerLogin]);
 
   return (
@@ -130,7 +130,7 @@ export function Toolbar({
         {project?.can_update === false ? (
           <span className="text-fg-3 text-xs">Read-only</span>
         ) : null}
-        <BoardFilter
+        <BoardFilter<keyof BoardFilters>
           groups={filterGroups}
           selected={filters}
           onChange={onFiltersChange}

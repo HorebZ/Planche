@@ -1,15 +1,8 @@
-import { Bookmark, ChevronDown, CircleCheck, CircleDot, Columns3 } from "lucide-react";
+import { Bookmark, CircleCheck, CircleDot, Columns3 } from "lucide-react";
 import { AvatarStack } from "@/components/ui/avatar";
 import { BoardColumn, BoardColumnScroll } from "@/components/ui/board-column";
+import { BoardFilter } from "@/components/ui/board-filter";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { IssueCard, type IssueCardData } from "@/components/ui/issue-card";
 import { LabelSummary } from "@/components/ui/label-summary";
 import type { StatusKey } from "@/components/ui/status";
@@ -27,19 +20,25 @@ export function RepositoryIssueFilters({
   onChange,
   onSave,
   saving = false,
+  open,
+  onOpenChange,
+  onCloseAutoFocus,
 }: {
   filter: RepositoryIssueFilter;
   options: RepositoryIssueOptions | null;
   onChange: (filter: RepositoryIssueFilter) => void;
   onSave?: () => void;
   saving?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onCloseAutoFocus?: (event: Event) => void;
 }) {
   const labels = [
     ...new Set([...(options?.labels.map((label) => label.name) ?? []), ...filter.labels]),
   ];
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <>
       <fieldset
         className="flex gap-1.5"
         aria-label="Repository view"
@@ -51,78 +50,44 @@ export function RepositoryIssueFilters({
             onClick={() => onChange({ ...filter, state })}
           >
             {state === "open" ? <CircleDot /> : state === "closed" ? <CircleCheck /> : <Columns3 />}
-            {state === "open" ? "Open" : state === "closed" ? "Closed" : "Board"}
+            {state === "open" ? "Open" : state === "closed" ? "Closed" : "Planche"}
           </ViewButton>
         ))}
       </fieldset>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            size="sm"
-            variant="ghost"
-            aria-label="Filter by milestone"
-          >
-            {filter.milestone === null
-              ? "All milestones"
-              : (options?.milestones.find((milestone) => milestone.number === filter.milestone)
-                  ?.title ?? `Milestone #${filter.milestone}`)}
-            <ChevronDown />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="max-h-80 overflow-y-auto">
-          <DropdownMenuRadioGroup
-            value={String(filter.milestone ?? "all")}
-            onValueChange={(value) =>
-              onChange({ ...filter, milestone: value === "all" ? null : Number(value) })
-            }
-          >
-            <DropdownMenuRadioItem value="all">All milestones</DropdownMenuRadioItem>
-            {options?.milestones.map((milestone) => (
-              <DropdownMenuRadioItem
-                key={milestone.number}
-                value={String(milestone.number)}
-              >
-                {milestone.title}
-              </DropdownMenuRadioItem>
-            ))}
-          </DropdownMenuRadioGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            size="sm"
-            variant="ghost"
-            aria-label="Filter by labels"
-          >
-            {filter.labels.length ? `${filter.labels.length} labels (any)` : "All labels"}
-            <ChevronDown />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="max-h-80 overflow-y-auto">
-          {labels.length ? (
-            labels.map((label) => (
-              <DropdownMenuCheckboxItem
-                key={label}
-                checked={filter.labels.includes(label)}
-                onSelect={(event) => event.preventDefault()}
-                onCheckedChange={(checked) =>
-                  onChange({
-                    ...filter,
-                    labels: checked
-                      ? [...filter.labels, label]
-                      : filter.labels.filter((name) => name !== label),
-                  })
-                }
-              >
-                {label}
-              </DropdownMenuCheckboxItem>
-            ))
-          ) : (
-            <p className="px-2 py-1 text-fg-3 text-sm">No labels loaded</p>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <BoardFilter
+        groups={[
+          {
+            key: "milestones",
+            name: "Milestone",
+            single: true,
+            options: [
+              ...(options?.milestones.map((milestone) => ({
+                id: String(milestone.number),
+                name: milestone.title,
+              })) ?? []),
+              ...(filter.milestone !== null &&
+              !options?.milestones.some((milestone) => milestone.number === filter.milestone)
+                ? [{ id: String(filter.milestone), name: `Milestone #${filter.milestone}` }]
+                : []),
+            ],
+          },
+          { key: "labels", name: "Label", options: labels.map((name) => ({ id: name, name })) },
+        ]}
+        selected={{
+          milestones: filter.milestone === null ? [] : [String(filter.milestone)],
+          labels: filter.labels,
+        }}
+        onChange={(selected) =>
+          onChange({
+            ...filter,
+            milestone: selected.milestones.length ? Number(selected.milestones[0]) : null,
+            labels: selected.labels.filter((label) => label !== null),
+          })
+        }
+        open={open}
+        onOpenChange={onOpenChange}
+        onCloseAutoFocus={onCloseAutoFocus}
+      />
       {onSave && (
         <Button
           variant="ghost"
@@ -136,16 +101,7 @@ export function RepositoryIssueFilters({
           <Bookmark />
         </Button>
       )}
-      {(filter.milestone !== null || filter.labels.length > 0) && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onChange({ ...filter, milestone: null, labels: [] })}
-        >
-          Clear filters
-        </Button>
-      )}
-    </div>
+    </>
   );
 }
 

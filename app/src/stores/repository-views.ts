@@ -8,6 +8,8 @@ export const emptyRepositoryView = {
   detail: null as string | null,
   selected: null as string | null,
   expanded: false,
+  tabs: [] as string[],
+  activeTab: null as string | null,
 };
 export const repositoryViewKey = (account: string, repository: string) =>
   JSON.stringify([account, repository]);
