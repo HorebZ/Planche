@@ -18,6 +18,20 @@ for (const colorScheme of ["light", "dark"] as const) {
         true,
       );
       await expect(detail.getByRole("button", { name: "Change assignees" })).toBeInViewport();
+      expect(
+        await detail.locator("header, dl").evaluateAll((elements) =>
+          elements.every((element) => {
+            const style = getComputedStyle(element);
+            return style.borderTopWidth === "0px" && style.borderBottomWidth === "0px";
+          }),
+        ),
+      ).toBe(true);
+      expect(
+        await detail.getByRole("button", { name: "Change project status" }).evaluate((element) => {
+          const style = getComputedStyle(element);
+          return Number.parseFloat(style.borderRadius) >= element.clientHeight / 2;
+        }),
+      ).toBe(true);
       await expect(page.getByRole("region", { name: "Project view" })).toBeVisible({
         visible: width === 1440,
       });
@@ -61,6 +75,7 @@ for (const colorScheme of ["light", "dark"] as const) {
     );
 
     await expect(preview.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(preview.getByRole("img", { name: "Priority: low" })).toBeVisible();
     await preview.screenshot({
       path: test.info().outputPath(`playground-${colorScheme}.png`),
       animations: "disabled",

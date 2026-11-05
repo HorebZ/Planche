@@ -73,6 +73,8 @@ export function ProjectIssueDetail({ board, account, offline, contextNotice, ...
             content={card.id}
             sourceUrl={card.url}
             offline={offline}
+            blockedBy={card.details?.blocked_by}
+            blocking={card.details?.blocking}
           />
           <IssueComments
             account={account}

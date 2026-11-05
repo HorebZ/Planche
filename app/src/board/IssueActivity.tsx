@@ -9,11 +9,15 @@ export function IssueActivity({
   content,
   offline,
   sourceUrl,
+  blockedBy,
+  blocking,
 }: {
   account: string;
   content: string;
   offline: boolean;
   sourceUrl: string;
+  blockedBy?: number;
+  blocking?: number;
 }) {
   const onOpenLink = useIssueLink(account);
   const cached = useQuery(cachedActivityQuery(account, content));
@@ -43,6 +47,8 @@ export function IssueActivity({
       status={status}
       message={failure && !networkError ? errorMessage(failure) : undefined}
       sourceUrl={sourceUrl}
+      blockedBy={blockedBy}
+      blocking={blocking}
       onRetry={() => void fresh.refetch()}
       onOpenLink={onOpenLink}
     />

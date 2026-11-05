@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/issue-description";
 import { IssueDetail } from "@/components/ui/issue-detail";
 import { IssueListGroup } from "@/components/ui/issue-list";
+import { IssueResources } from "@/components/ui/issue-resources";
 import { IssueTabPanel, IssueTabs } from "@/components/ui/issue-tabs";
 import { LabelChip } from "@/components/ui/label-chip";
 import { PriorityGlyph, ProgressRing } from "@/components/ui/planche-glyph";
@@ -285,6 +286,32 @@ export function BoardSection() {
                         ]
                       : []
                   }
+                />
+              </State>
+            ))}
+          </Row>
+          <Row label="issue resources">
+            {(["empty", "dependencies", "pull requests"] as const).map((state) => (
+              <State
+                key={state}
+                label={state}
+                className="w-full rounded-xl bg-bg p-4"
+              >
+                <IssueResources
+                  blockedBy={state === "dependencies" ? 2 : 0}
+                  blocking={state === "dependencies" ? 1 : 0}
+                  pullRequests={
+                    state === "pull requests"
+                      ? ["open", "closed", "merged", "draft"].map((state) => ({
+                          ...activityPreview.pull_requests[0],
+                          id: state,
+                          state:
+                            state === "draft" ? "open" : (state as "open" | "closed" | "merged"),
+                          is_draft: state === "draft",
+                        }))
+                      : []
+                  }
+                  onOpenLink={() => {}}
                 />
               </State>
             ))}
@@ -686,7 +713,7 @@ function IssuePanelPreview() {
       {opened ? (
         <IssueDetail
           itemId="panel-preview"
-          item={openIssue}
+          item={{ ...openIssue, priority: "low" }}
           project="Planche"
           status={{ name: "Todo", tone: "todo" }}
           editable
@@ -702,6 +729,14 @@ function IssuePanelPreview() {
             body={
               "Keep the **board or list** visible while reading an issue.\n\n- Close to return to the collection\n- Expand for more space"
             }
+            onRetry={() => {}}
+            onOpenLink={() => {}}
+          />
+          <IssueActivityContent
+            status="ready"
+            activity={activityPreview}
+            blockedBy={2}
+            blocking={1}
             onRetry={() => {}}
             onOpenLink={() => {}}
           />

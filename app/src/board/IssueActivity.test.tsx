@@ -42,6 +42,7 @@ test("offline activity shows its timestamp without making a network request", as
 
   await expect.poll(() => document.body.textContent).toContain("Saved activity · Offline");
   expect(document.body.textContent).toContain("Ready for review");
+  expect(document.querySelector('[aria-label="Resources"] h2')?.textContent).toBe("Resources");
   expect(get<HTMLTimeElement>("time").dateTime).toBe("2026-11-03T12:00:00Z");
   expect(commands).toEqual(["cached_issue_activity"]);
 });
@@ -60,7 +61,14 @@ test("a failed refresh keeps saved activity; access denial removes all protected
     return attempt === 2 ? null : issueActivity({ entries: [], pull_requests: [] });
   });
 
-  render(<IssueActivity {...props} />, client);
+  render(
+    <IssueActivity
+      {...props}
+      blockedBy={2}
+      blocking={1}
+    />,
+    client,
+  );
 
   await expect.poll(() => document.body.textContent).toContain("Saved activity · Offline");
   expect(document.body.textContent).toContain("Ready for review");
@@ -68,12 +76,14 @@ test("a failed refresh keeps saved activity; access denial removes all protected
 
   await expect.poll(() => document.body.textContent).toContain("Your access may have changed");
   expect(document.body.textContent).not.toContain("Ready for review");
+  expect(document.querySelector('[aria-label="Resources"]')).toBeNull();
   expect(client.getQueryData(cachedActivityQuery("A", "issue").queryKey)).toBeNull();
   expect(client.getQueryData(cachedDescriptionQuery("A", "issue").queryKey)).toBeNull();
   click(button("Retry activity"));
 
   await expect.poll(() => document.body.textContent).toContain("No activity yet.");
-  expect(document.body.textContent).toContain("No closing pull requests.");
+  expect(document.querySelector('[aria-label="Resources"]')).not.toBeNull();
+  expect(document.querySelector('[aria-label="Resources"] a')).toBeNull();
 });
 
 test("an API error shows Retry and retains the dated cache", async () => {
@@ -241,10 +251,11 @@ test("comments use safe Markdown and missing text/authors and all PR states have
   );
 
   expect(document.body.textContent).toContain("Deleted user");
+  expect(document.querySelector('[data-slot="avatar"]')?.textContent).toBe("DU");
   expect(document.body.textContent).toContain("Comment text unavailable.");
   expect(document.body.textContent).toContain("Image not loaded: tracking");
   expect(document.querySelector("script, img")).toBeNull();
   for (const state of ["Open", "Closed", "Merged"]) {
-    expect(document.body.textContent).toContain(state);
+    expect(document.querySelector(`[role="img"][aria-label="${state}"]`)).not.toBeNull();
   }
 });

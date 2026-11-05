@@ -80,6 +80,8 @@ export function IssuePanel({
             content={content}
             sourceUrl={issue.url}
             offline={offline}
+            blockedBy={issue.details?.blocked_by}
+            blocking={issue.details?.blocking}
           />
           <IssueComments
             account={account}
