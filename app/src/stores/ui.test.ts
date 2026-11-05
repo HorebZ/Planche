@@ -126,3 +126,67 @@ test("closing an inactive tab leaves the active one and changing account clears 
 
   expect(useUi.getState()).toMatchObject({ issueTabs: [], activeIssueTab: null });
 });
+
+test("board tabs retain their project and view, allow duplicates and keep one board open", () => {
+  const ui = useUi.getState();
+
+  ui.openBoardTab("project-a");
+  const first = useUi.getState().activeBoardTab as string;
+  ui.selectView("view-a");
+  ui.openBoardTab("project-a");
+  const second = useUi.getState().activeBoardTab as string;
+  ui.selectProject("project-b");
+  ui.activateBoardTab(first);
+
+  expect(useUi.getState()).toMatchObject({
+    projectId: "project-a",
+    viewId: "view-a",
+    boardTabs: [
+      { id: first, projectId: "project-a", viewId: "view-a" },
+      { id: second, projectId: "project-b", viewId: null },
+    ],
+  });
+
+  ui.setFilters({ ...emptyFilters, labels: ["bug"] });
+  ui.select("origin");
+  ui.openIssueTab({ id: "I_1", projectId: "project-a", viewId: "view-a", itemId: "first" });
+  ui.activateBoardTab(first);
+
+  expect(useUi.getState()).toMatchObject({
+    activeIssueTab: null,
+    selectedId: "origin",
+    filters: { ...emptyFilters, labels: ["bug"] },
+  });
+
+  ui.closeBoardTab(first);
+
+  expect(useUi.getState()).toMatchObject({
+    activeBoardTab: second,
+    projectId: "project-b",
+    viewId: null,
+  });
+  ui.closeBoardTab(second);
+
+  expect(useUi.getState().boardTabs).toHaveLength(1);
+});
+
+test("board tabs freeze during drag and are discarded on account changes", () => {
+  const ui = useUi.getState();
+
+  ui.openBoardTab("project-a");
+  const first = useUi.getState().activeBoardTab as string;
+  ui.openBoardTab("project-b");
+  const second = useUi.getState().activeBoardTab;
+  ui.setDragging(true);
+  ui.openBoardTab("project-c");
+  ui.activateBoardTab(first);
+  ui.closeBoardTab(first);
+
+  expect(useUi.getState().boardTabs).toHaveLength(2);
+  expect(useUi.getState().activeBoardTab).toBe(second);
+
+  ui.invalidateUndo();
+
+  expect(useUi.getState().boardTabs).toEqual([]);
+  expect(useUi.getState().activeBoardTab).toBeNull();
+});

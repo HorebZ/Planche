@@ -19,6 +19,7 @@ for (const colorScheme of ["light", "dark"] as const) {
       const detail = page.getByRole("article", { name: "Issue detail" });
 
       await expect(page.getByRole("tab", { selected: true })).toBeInViewport();
+      await expect(page.getByRole("button", { name: "New tab", exact: true })).toBeInViewport();
       await expect(detail.getByRole("heading", { level: 1 })).toHaveText(
         "Column counter ignores filtered cards",
       );
@@ -49,6 +50,26 @@ for (const colorScheme of ["light", "dark"] as const) {
       });
     });
   }
+
+  test(`board tabs and add button stay visible in ${colorScheme}`, async ({ page }) => {
+    await page.setViewportSize({ width: 1100, height: 700 });
+    await page.emulateMedia({ colorScheme });
+    await page.goto("/?mock=board");
+
+    await expect(page.getByRole("tab", { selected: true })).toHaveText("Planche — v1.2");
+    await expect(page.getByRole("button", { name: "New tab", exact: true })).toBeInViewport();
+    await page.screenshot({
+      path: test.info().outputPath(`tabs-single-${colorScheme}.png`),
+      animations: "disabled",
+    });
+    await page.getByRole("button", { name: "New tab", exact: true }).click();
+
+    await expect(page.getByRole("tab", { selected: true })).toHaveText("Roadmap Q4");
+    await page.screenshot({
+      path: test.info().outputPath(`tabs-new-${colorScheme}.png`),
+      animations: "disabled",
+    });
+  });
 
   test(`issue tabs playground in ${colorScheme}`, async ({ page }) => {
     await page.goto("/playground");

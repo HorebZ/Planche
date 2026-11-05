@@ -26,6 +26,7 @@ export const shortcuts = [
   { key: "Meta+,", command: "settings.open", scope: "global", label: "Settings" },
   { key: "Meta+Shift+ArrowRight", command: "tab.next", scope: "global", label: "Next tab" },
   { key: "Meta+Shift+ArrowLeft", command: "tab.prev", scope: "global", label: "Previous tab" },
+  { key: "Meta+w", command: "tab.close", scope: "global", label: "Close tab" },
   { key: "Meta+Shift+h", command: "sidebar.hide", scope: "global", label: "Hide from sidebar" },
   { key: "Meta+Shift+h", command: "sidebar.hide", scope: "sidebar", label: "Hide from sidebar" },
 

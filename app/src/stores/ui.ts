@@ -20,6 +20,8 @@ export type IssueTab = {
   itemId: ItemId;
 };
 
+type BoardTab = { id: string; projectId: ProjectId; viewId: ViewId | null };
+
 type UiState = {
   updatesOpen: boolean;
   setUpdatesOpen: (open: boolean) => void;
@@ -39,6 +41,11 @@ type UiState = {
   closeDetail: () => void;
   issueTabs: IssueTab[];
   activeIssueTab: string | null;
+  boardTabs: BoardTab[];
+  activeBoardTab: string | null;
+  openBoardTab: (projectId: ProjectId) => void;
+  activateBoardTab: (id: string) => void;
+  closeBoardTab: (id: string) => void;
   openIssueTab: (tab: IssueTab) => void;
   activateIssueTab: (id: string | null) => void;
   closeIssueTab: (id: string) => void;
@@ -55,7 +62,7 @@ type UiState = {
   dragging: boolean;
   /** The card going back after a failed move, and where it was, to slide it back. */
   reverting: { id: ItemId; from: Rect } | null;
-  selectProject: (projectId: ProjectId | null) => void;
+  selectProject: (projectId: ProjectId | null, viewId?: ViewId | null) => void;
   selectView: (viewId: ViewId | null) => void;
   select: (selectedId: ItemId | null) => void;
   open: (
@@ -112,6 +119,55 @@ export const useUi = create<UiState>()((set, get) => ({
     set({ detailId: null, linkedIssue: null, detailExpanded: false, overlay: null }),
   issueTabs: [],
   activeIssueTab: null,
+  boardTabs: [],
+  activeBoardTab: null,
+  openBoardTab: (projectId) => {
+    if (get().dragging) {
+      return;
+    }
+
+    const tab = { id: crypto.randomUUID(), projectId, viewId: null };
+
+    set((state) => ({ boardTabs: [...state.boardTabs, tab], activeBoardTab: tab.id }));
+    get().selectProject(projectId);
+  },
+  activateBoardTab: (id) => {
+    const tab = get().boardTabs.find((tab) => tab.id === id);
+
+    if (!tab || get().dragging) {
+      return;
+    }
+
+    if (id === get().activeBoardTab) {
+      get().activateIssueTab(null);
+      return;
+    }
+
+    set({ activeBoardTab: id });
+    get().selectProject(tab.projectId, tab.viewId);
+  },
+  closeBoardTab: (id) => {
+    const state = get();
+    const index = state.boardTabs.findIndex((tab) => tab.id === id);
+
+    if (index < 0 || state.boardTabs.length === 1 || state.dragging) {
+      return;
+    }
+
+    const boardTabs = state.boardTabs.filter((tab) => tab.id !== id);
+
+    set({ boardTabs });
+
+    if (state.activeBoardTab === id) {
+      const next = boardTabs[Math.max(0, index - 1)];
+
+      if (state.activeIssueTab) {
+        set({ activeBoardTab: next.id, projectId: next.projectId, viewId: next.viewId });
+      } else {
+        get().activateBoardTab(next.id);
+      }
+    }
+  },
   openIssueTab: (tab) => {
     if (get().dragging) {
       return;
@@ -164,12 +220,15 @@ export const useUi = create<UiState>()((set, get) => ({
   contextVersion: 0,
   dragging: false,
   reverting: null,
-  selectProject: (projectId) =>
+  selectProject: (projectId, viewId = null) =>
     set((s) => ({
       projectId,
+      boardTabs: s.boardTabs.map((tab) =>
+        tab.id === s.activeBoardTab && projectId ? { ...tab, projectId, viewId } : tab,
+      ),
       linkedIssue: null,
       overlay: null,
-      viewId: null,
+      viewId,
       filters: emptyFilters,
       selectedId: null,
       detailId: null,
@@ -183,6 +242,7 @@ export const useUi = create<UiState>()((set, get) => ({
   selectView: (viewId) =>
     set((s) => ({
       viewId,
+      boardTabs: s.boardTabs.map((tab) => (tab.id === s.activeBoardTab ? { ...tab, viewId } : tab)),
       linkedIssue: null,
       detailId: null,
       detailExpanded: false,
@@ -217,6 +277,8 @@ export const useUi = create<UiState>()((set, get) => ({
       detailExpanded: false,
       issueTabs: [],
       activeIssueTab: null,
+      boardTabs: [],
+      activeBoardTab: null,
       filters: emptyFilters,
       revealId: null,
       overlay: null,

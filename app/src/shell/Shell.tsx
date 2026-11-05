@@ -68,6 +68,9 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   const detailExpanded = useUi((s) => s.detailExpanded);
   const issueTabs = useUi((s) => s.issueTabs);
   const activeIssueTab = useUi((s) => s.activeIssueTab);
+  const boardTabs = useUi((s) => s.boardTabs);
+  const activeBoardTab = useUi((s) => s.activeBoardTab);
+  const sourceTabId = activeBoardTab ?? "source";
   const activeTab = issueTabs.find((tab) => tab.id === activeIssueTab);
   const revealId = useUi((s) => s.revealId);
   const overlay = useUi((s) => s.overlay);
@@ -101,10 +104,21 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
   const projects = useProjects();
   const status = useSyncStatus();
   const auth = useAuth();
+  const hiddenProjects = usePreferences((s) => s.hiddenProjects[auth.data?.login ?? ""]);
+  const projectList = projects.data?.owners.flatMap((owner) => owner.projects) ?? [];
+  const firstProject = projectList.find(
+    (project) => !project.closed && !hiddenProjects?.includes(project.id),
+  );
   const projectColor = usePreferences((s) => s.projectColors[auth.data?.login ?? ""]?.[projectId]);
   const openProject = useOpenProject();
   const refresh = useRefresh();
   const actions = useActions(actionProjectId, actionViewId);
+
+  useLayoutEffect(() => {
+    if (!boardTabs.length && !useUi.getState().boardTabs.length) {
+      useUi.getState().openBoardTab(projectId);
+    }
+  }, [projectId, boardTabs.length]);
 
   const data = board.data ?? null;
   const actionData = activeBoard.data ?? null;
@@ -396,15 +410,20 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
     }
   };
   const cycleTab = (offset: number) => {
-    if (!issueTabs.length) {
-      return;
-    }
+    const ids = [...boardTabs.map((tab) => tab.id), ...issueTabs.map((tab) => tab.id)];
+    const index = ids.indexOf(activeIssueTab ?? sourceTabId);
+    const id = ids[(index + offset + ids.length) % ids.length];
 
-    const ids = [null, ...issueTabs.map((tab) => tab.id)];
-    const index = ids.indexOf(activeIssueTab);
-
-    useUi.getState().activateIssueTab(ids[(index + offset + ids.length) % ids.length]);
+    selectTab(id);
   };
+  const selectTab = (id: string) =>
+    boardTabs.some((tab) => tab.id === id)
+      ? useUi.getState().activateBoardTab(id)
+      : useUi.getState().activateIssueTab(id);
+  const closeTab = (id: string) =>
+    boardTabs.some((tab) => tab.id === id)
+      ? useUi.getState().closeBoardTab(id)
+      : useUi.getState().closeIssueTab(id);
 
   useShortcuts({
     "sidebar.hide": () =>
@@ -413,7 +432,9 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
     "tab.close": () =>
       activeIssueTab
         ? useUi.getState().closeIssueTab(activeIssueTab)
-        : useUi.getState().closeDetail(),
+        : detailId || linkedIssue
+          ? useUi.getState().closeDetail()
+          : activeBoardTab && useUi.getState().closeBoardTab(activeBoardTab),
     "tab.next": () => cycleTab(1),
     "tab.prev": () => cycleTab(-1),
     "filters.open": () => data && show({ type: "filters" }),
@@ -548,29 +569,42 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
       />
       <main className="relative my-2 mr-2 flex min-w-0 flex-1 flex-col overflow-hidden">
         <IssueTabs
-          source={data?.project.title ?? "Project"}
-          tabs={issueTabs.map((tab, index) => {
-            const source = tabBoards[index].data;
-            const item = source?.columns
-              .flatMap((column) => column.cards)
-              .find((card) => card.item_id === tab.itemId);
-
-            return {
+          tabs={[
+            ...boardTabs.map((tab) => ({
               id: tab.id,
               title:
-                item && "number" in item
-                  ? `#${item.number} ${item.title}`
-                  : item && "title" in item
-                    ? item.title
-                    : "Unavailable item",
-              project: source?.project.title ?? "Project unavailable",
-            };
-          })}
-          active={activeIssueTab}
-          onSelect={useUi.getState().activateIssueTab}
-          onClose={useUi.getState().closeIssueTab}
+                projectList.find((project) => project.id === tab.projectId)?.title ??
+                (tab.projectId === projectId ? data?.project.title : null) ??
+                "Project",
+              project: "Project",
+              kind: "board" as const,
+              closable: boardTabs.length > 1,
+            })),
+            ...issueTabs.map((tab, index) => {
+              const source = tabBoards[index].data;
+              const item = source?.columns
+                .flatMap((column) => column.cards)
+                .find((card) => card.item_id === tab.itemId);
+
+              return {
+                id: tab.id,
+                title:
+                  item && "number" in item
+                    ? `#${item.number} ${item.title}`
+                    : item && "title" in item
+                      ? item.title
+                      : "Unavailable item",
+                project: source?.project.title ?? "Project unavailable",
+              };
+            }),
+          ]}
+          active={activeIssueTab ?? sourceTabId}
+          onSelect={selectTab}
+          onClose={closeTab}
+          onAdd={() => firstProject && useUi.getState().openBoardTab(firstProject.id)}
+          addDisabled={!firstProject || dragging}
         >
-          <IssueTabPanel value="source">
+          <IssueTabPanel value={sourceTabId}>
             <div
               className={cn(
                 "flex min-h-0 min-w-0 flex-1 flex-col",
@@ -735,6 +769,14 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
               />
             ) : null}
           </IssueTabPanel>
+          {boardTabs
+            .filter((tab) => tab.id !== sourceTabId)
+            .map((tab) => (
+              <IssueTabPanel
+                key={tab.id}
+                value={tab.id}
+              />
+            ))}
           {issueTabs.map((tab, index) => (
             <IssueTabPanel
               key={tab.id}

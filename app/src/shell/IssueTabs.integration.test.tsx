@@ -94,6 +94,29 @@ test("account changes discard every tab and its mounted content", async () => {
 
   await expect.poll(() => useUi.getState().issueTabs).toEqual([]);
   expect(useUi.getState().activeIssueTab).toBeNull();
-  expect(document.querySelector('[role="tablist"]')).toBeNull();
+  await expect.poll(() => document.querySelectorAll('[role="tab"]').length).toBe(1);
   expect(document.querySelector('[data-slot="issue-detail"]')).toBeNull();
+});
+
+test("new board tabs open the first visible project and keep existing tabs", async () => {
+  await open();
+  click(get('[data-slot="issue-list-row"][data-item-id="PVTI_226"]'));
+  click(button("Open in tab", detail()));
+  const original = useUi.getState().activeBoardTab;
+
+  click(button("New tab"));
+
+  expect(useUi.getState().boardTabs).toHaveLength(2);
+  expect(useUi.getState().projectId).toBe("PVT_personal");
+  expect(useUi.getState().activeIssueTab).toBeNull();
+  expect(useUi.getState().issueTabs).toHaveLength(1);
+  key("Enter", get('[role="tab"][data-state="inactive"]'));
+
+  expect(useUi.getState().activeBoardTab).toBe(original);
+  expect(useUi.getState().projectId).toBe("PVT_planche");
+  click(button("API Gateway"));
+  click(button("New tab"));
+
+  expect(useUi.getState().boardTabs).toHaveLength(3);
+  expect(useUi.getState().projectId).toBe("PVT_personal");
 });

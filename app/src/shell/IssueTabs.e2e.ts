@@ -33,7 +33,8 @@ test("two retained issues, reopening without duplicates and closing the active t
   );
   await page.getByRole("button", { name: /^Close tab: #223 / }).click();
 
-  await expect(page.getByRole("tablist")).toHaveCount(0);
+  await expect(page.getByRole("tablist")).toHaveCount(1);
+  await expect(page.getByRole("tab")).toHaveCount(1);
   await expect(detail).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Project view" })).toBeVisible();
 });
@@ -77,7 +78,8 @@ for (const layout of ["Board", "List"] as const) {
     await page.getByRole("tab", { name: /^#1199 / }).click();
     await page.keyboard.press("Meta+w");
 
-    await expect(page.getByRole("tablist")).toHaveCount(0);
+    await expect(page.getByRole("tablist")).toHaveCount(1);
+    await expect(page.getByRole("tab")).toHaveCount(1);
     await expect(origin).toBeFocused();
     await expect.poll(scrolls).toEqual(before);
   });
@@ -173,4 +175,34 @@ test("reopening from another Project keeps the original context, status and muta
       .locator('[data-slot="issue-list-group"]')
       .filter({ has: page.locator('[data-item-id="api-PVTI_226"]') }),
   ).toContainText("In progress");
+});
+
+test("the tab bar is permanent and plus opens the first board in a new tab", async ({ page }) => {
+  await page.goto("/?mock=board");
+
+  await expect(page.getByRole("tab")).toHaveCount(1);
+  await expect(page.getByRole("tab", { selected: true })).toHaveText("Planche — v1.2");
+  await page.getByRole("button", { name: "New tab", exact: true }).click();
+
+  await expect(page.getByRole("tab")).toHaveCount(2);
+  await expect(page.getByRole("tab", { selected: true })).toHaveText("Roadmap Q4");
+  await page.getByRole("button", { name: "API Gateway", exact: true }).click();
+
+  await expect(page.getByRole("tab", { selected: true })).toHaveText("API Gateway");
+  await page.getByRole("tab", { name: "Planche — v1.2", exact: true }).click();
+
+  await expect(page.getByRole("tab", { selected: true })).toHaveText("Planche — v1.2");
+  await page.getByRole("button", { name: "New tab", exact: true }).click();
+
+  await expect(page.getByRole("tab")).toHaveCount(3);
+  await expect(page.getByRole("tab", { selected: true })).toHaveText("Roadmap Q4");
+  await page.keyboard.press("Meta+w");
+
+  await expect(page.getByRole("tab")).toHaveCount(2);
+  await expect(page.getByRole("tab", { selected: true })).toHaveText("API Gateway");
+  await page.getByRole("button", { name: "Close tab: API Gateway", exact: true }).click();
+
+  await expect(page.getByRole("tab")).toHaveCount(1);
+  await expect(page.getByRole("tab", { selected: true })).toHaveText("Planche — v1.2");
+  await expect(page.getByRole("button", { name: "New tab", exact: true })).toBeVisible();
 });

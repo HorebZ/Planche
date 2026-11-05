@@ -1,4 +1,4 @@
-import { Columns3, FileText, X } from "lucide-react";
+import { Columns3, FileText, Plus, X } from "lucide-react";
 import { Tabs } from "radix-ui";
 import { type ComponentProps, type ReactNode, useLayoutEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
@@ -8,16 +8,18 @@ import { cn } from "@/lib/cn";
 export function IssueTabs({
   tabs,
   active,
-  source,
   onSelect,
   onClose,
+  onAdd,
+  addDisabled,
   children,
 }: {
-  tabs: { id: string; title: string; project: string }[];
-  active: string | null;
-  source: string;
-  onSelect: (id: string | null) => void;
+  tabs: { id: string; title: string; project: string; kind?: "board"; closable?: boolean }[];
+  active: string;
+  onSelect: (id: string) => void;
   onClose: (id: string) => void;
+  onAdd: () => void;
+  addDisabled?: boolean;
   children: ReactNode;
 }) {
   const list = useRef<HTMLDivElement>(null);
@@ -30,43 +32,35 @@ export function IssueTabs({
 
   useLayoutEffect(() => {
     list.current
-      ?.querySelector(`[data-tab-id="${CSS.escape(active ?? "source")}"]`)
+      ?.querySelector(`[data-tab-id="${CSS.escape(active)}"]`)
       ?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [active]);
 
   return (
     <Tabs.Root
-      value={active ?? "source"}
-      onValueChange={(id) => onSelect(id === "source" ? null : id)}
+      value={active}
+      onValueChange={onSelect}
       className="flex min-h-0 min-w-0 flex-1 flex-col gap-2"
     >
-      {tabs.length ? (
+      <div className="flex shrink-0 items-center gap-1">
         <Tabs.List
           ref={list}
-          aria-label="Open issues"
+          aria-label="Open tabs"
           onKeyDown={(event) => {
             const id = (event.target as HTMLElement).closest<HTMLElement>("[data-tab-id]")?.dataset
               .tabId;
 
-            if (id && id !== "source" && commandFor(event.nativeEvent, "tabs") === "tab.close") {
+            if (
+              id &&
+              tabs.find((tab) => tab.id === id)?.closable !== false &&
+              commandFor(event.nativeEvent, "tabs") === "tab.close"
+            ) {
               event.preventDefault();
               close(id);
             }
           }}
-          className="flex shrink-0 items-center gap-1 overflow-x-auto px-1 py-0.5 [&::-webkit-scrollbar]:hidden"
+          className="flex min-w-0 items-center gap-1.5 overflow-x-auto px-1 py-0.5 [&::-webkit-scrollbar]:hidden"
         >
-          <Tabs.Trigger
-            value="source"
-            data-tab-id="source"
-            title={`Return to ${source}`}
-            className="flex h-7 max-w-[240px] shrink-0 items-center gap-1.5 rounded-lg bg-hover px-2.5 font-medium text-fg-3 text-md transition-colors hover:bg-active hover:text-fg-2 focus-visible:shadow-ring data-[state=active]:bg-active data-[state=active]:text-fg"
-          >
-            <Columns3
-              className="size-3.5 shrink-0"
-              aria-hidden
-            />
-            <span className="truncate">{source}</span>
-          </Tabs.Trigger>
           {tabs.map((tab) => (
             <div
               key={tab.id}
@@ -79,27 +73,47 @@ export function IssueTabs({
               <Tabs.Trigger
                 value={tab.id}
                 title={`${tab.title} · ${tab.project}`}
-                className="flex h-7 min-w-0 items-center gap-1.5 rounded-lg pr-1 pl-2.5 text-left font-medium text-md focus-visible:shadow-ring"
+                className="flex h-8 min-w-0 items-center gap-2 rounded-lg px-3 text-left font-medium text-md focus-visible:shadow-ring"
               >
-                <FileText
-                  className="size-3.5 shrink-0"
-                  aria-hidden
-                />
+                {tab.kind === "board" ? (
+                  <Columns3
+                    className="size-3.5 shrink-0"
+                    aria-hidden
+                  />
+                ) : (
+                  <FileText
+                    className="size-3.5 shrink-0"
+                    aria-hidden
+                  />
+                )}
                 <span className="truncate">{tab.title}</span>
               </Tabs.Trigger>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="mr-0.5 size-6 rounded-md opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
-                aria-label={`Close tab: ${tab.title}`}
-                onClick={() => close(tab.id)}
-              >
-                <X className="size-3" />
-              </Button>
+              {tab.closable !== false ? (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="mr-1 size-6 shrink-0 rounded-md opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+                  aria-label={`Close tab: ${tab.title}`}
+                  onClick={() => close(tab.id)}
+                >
+                  <X className="size-3" />
+                </Button>
+              ) : null}
             </div>
           ))}
         </Tabs.List>
-      ) : null}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8 shrink-0 text-fg-3"
+          aria-label="New tab"
+          title="New tab"
+          onClick={onAdd}
+          disabled={addDisabled}
+        >
+          <Plus className="size-3.5" />
+        </Button>
+      </div>
       <div
         data-slot="issue-tabs-content"
         className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl bg-bg shadow-panel"

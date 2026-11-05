@@ -712,7 +712,10 @@ function IssuePanelPreview() {
 }
 
 function IssueTabsPreview() {
-  const [tabs, setTabs] = useState([
+  const [tabs, setTabs] = useState<
+    { id: string; title: string; project: string; kind?: "board"; closable?: boolean }[]
+  >([
+    { id: "source", title: "Planche", project: "Planche", kind: "board", closable: false },
     {
       id: "issue-223",
       title: "Issue 223: column counter ignores filtered cards",
@@ -721,7 +724,7 @@ function IssueTabsPreview() {
     { id: "issue-226", title: "Issue 226: show linked PRs in issue detail", project: "Planche" },
     { id: "issue-219", title: "Issue 219: compare Solo and Team", project: "Website" },
   ]);
-  const [active, setActive] = useState<string | null>(tabs[0].id);
+  const [active, setActive] = useState<string>("issue-223");
 
   return (
     <div
@@ -729,42 +732,48 @@ function IssueTabsPreview() {
       className="flex h-[440px] w-full overflow-hidden bg-bg-sunken"
     >
       <IssueTabs
-        source="Planche"
         tabs={tabs}
         active={active}
         onSelect={setActive}
+        onAdd={() => {
+          const id = crypto.randomUUID();
+
+          setTabs([...tabs, { id, title: "Planche", project: "Planche", kind: "board" }]);
+          setActive(id);
+        }}
         onClose={(id) => {
           setTabs(tabs.filter((tab) => tab.id !== id));
           if (active === id) {
-            setActive(null);
+            setActive("source");
           }
         }}
       >
-        <IssueTabPanel value="source">
-          <IssueListGroup
-            name="Todo"
-            status="todo"
-            items={[{ ...openIssue, id: "preview" }]}
-            onOpen={() => setActive(tabs[0]?.id ?? null)}
-          />
-        </IssueTabPanel>
         {tabs.map((tab) => (
           <IssueTabPanel
             key={tab.id}
             value={tab.id}
           >
-            <IssueDetail
-              itemId={tab.id}
-              item={{ ...openIssue, title: tab.title }}
-              project={tab.project}
-              status={{ name: "Todo", tone: "todo" }}
-              editable
-              expanded
-              active={active === tab.id}
-              onBack={() => setActive(null)}
-              onStatus={() => {}}
-              onAssign={() => {}}
-            />
+            {tab.kind === "board" ? (
+              <IssueListGroup
+                name="Todo"
+                status="todo"
+                items={[{ ...openIssue, id: "preview" }]}
+                onOpen={() => setActive("issue-223")}
+              />
+            ) : (
+              <IssueDetail
+                itemId={tab.id}
+                item={{ ...openIssue, title: tab.title }}
+                project={tab.project}
+                status={{ name: "Todo", tone: "todo" }}
+                editable
+                expanded
+                active={active === tab.id}
+                onBack={() => setActive("source")}
+                onStatus={() => {}}
+                onAssign={() => {}}
+              />
+            )}
           </IssueTabPanel>
         ))}
       </IssueTabs>
