@@ -81,6 +81,45 @@ test("the keyboard lifts, moves across and down, and drops", async ({ page }) =>
   await expect.poll(() => numbers(column(page, "In progress"))).toEqual([231, 226, 232, 228]);
 });
 
+for (const input of ["keyboard", "pointer"] as const) {
+  for (const number of [226, 223]) {
+    test(`${input} moves card ${number} while the side panel stays open on card 226`, async ({
+      page,
+    }) => {
+      await open(page, "board");
+      await card(page, 226).click();
+
+      const detail = page.getByRole("article", { name: "Issue detail" });
+
+      await expect(detail.getByRole("heading", { level: 1 })).toHaveText(
+        "Show linked PRs in issue detail",
+      );
+
+      if (input === "keyboard") {
+        await card(page, number).focus();
+        await page.keyboard.press("Space");
+
+        await expect(page.locator('[data-slot="drag-help-bar"]')).toBeVisible();
+        await page.keyboard.press("ArrowRight");
+        await page.keyboard.press("Enter");
+      } else {
+        await lift(page, card(page, number), card(page, 231));
+        await page.mouse.up();
+      }
+
+      await expect.poll(() => numbers(column(page, "In progress"))).toContain(number);
+      await expect.poll(() => numbers(column(page, "Todo"))).not.toContain(number);
+      await expect(page.locator('[data-slot="drag-help-bar"]')).toHaveCount(0);
+      await expect(detail.getByRole("heading", { level: 1 })).toHaveText(
+        "Show linked PRs in issue detail",
+      );
+      await expect(detail.getByRole("button", { name: "Change project status" })).toHaveText(
+        number === 226 ? "In progress" : "Todo",
+      );
+    });
+  }
+}
+
 test("a drop animates into the optimistic column before the local receipt", async ({ page }) => {
   await open(page, "board");
   await page.evaluate(() => {

@@ -78,7 +78,7 @@ export const Card = memo(function Card({
   const detailing = useUi((state) => state.detailId !== null || state.activeIssueTab !== null);
   const { setNodeRef, attributes, listeners } = useSortable({
     id: card.item_id,
-    disabled: detailing || readOnly,
+    disabled: readOnly,
   });
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -106,7 +106,6 @@ export const Card = memo(function Card({
       }}
       {...attributes}
       {...listeners}
-      aria-disabled={detailing ? undefined : attributes["aria-disabled"]}
       onKeyDown={(event) => {
         listeners?.onKeyDown?.(event);
 
