@@ -16,8 +16,13 @@ import {
   ProjectAccessState,
   ScopeRow,
 } from "@/components/ui/onboarding";
-import { RepositoryIssueFilters, RepositoryIssueList } from "@/components/ui/repository-issues";
+import {
+  RepositoryIssueBoard,
+  RepositoryIssueFilters,
+  RepositoryIssueList,
+} from "@/components/ui/repository-issues";
 import { RepositoryPickerContent } from "@/components/ui/repository-picker";
+import { RepositoryShortcut } from "@/components/ui/repository-shortcut";
 import { SettingsDialog } from "@/components/ui/settings";
 import {
   type ProjectTone,
@@ -57,41 +62,156 @@ export function ShellSection() {
     >
       {() => (
         <div className="flex flex-col gap-5">
-          <State label="Repository issues · GitHub states">
+          <State
+            label="Repository issues · Open and Closed lists"
+            className="w-full"
+          >
             <RepositoryIssueFilters
-              filter={{ state: "all", milestone: 1, labels: ["bug"] }}
-              options={{
-                milestones: [{ number: 1, title: "v1.3" }],
-                labels: [{ name: "bug", color: "d73a4a" }],
-              }}
+              filter={{ state: "open", milestone: null, labels: [] }}
+              options={{ milestones: [], labels: [] }}
               onChange={() => {}}
+              onSave={() => {}}
             />
-            <RepositoryIssueList
-              issues={[
-                {
-                  id: "open",
-                  kind: "issue",
-                  state: "open",
-                  title: "Browse repository issues",
-                  number: 59,
-                  labels: [],
-                  assignees: [],
-                },
-                {
-                  id: "closed",
-                  kind: "issue",
-                  state: "closed",
-                  title: "Save sidebar repositories",
-                  number: 58,
-                  labels: [],
-                  assignees: [],
-                },
-              ]}
-              onOpen={() => {}}
+            <div className="w-full">
+              <RepositoryIssueList
+                issues={[
+                  {
+                    id: "open",
+                    kind: "issue",
+                    state: "open",
+                    title: "Browse repository issues",
+                    number: 59,
+                    labels: [],
+                    assignees: [],
+                  },
+                  {
+                    id: "closed",
+                    kind: "issue",
+                    state: "closed",
+                    title: "Save sidebar repositories",
+                    number: 58,
+                    labels: [],
+                    assignees: [],
+                  },
+                ]}
+                onOpen={() => {}}
+              />
+            </div>
+          </State>
+          <State
+            label="Bookmarked filter · Double-click or open the menu"
+            className="w-sidebar"
+          >
+            <RepositoryShortcutPreview />
+          </State>
+          <State
+            label="Repository issues · Simulated kanban"
+            className="w-full min-w-0 overflow-auto"
+          >
+            <RepositoryIssueFilters
+              filter={{ state: "all", milestone: null, labels: [] }}
+              options={{ milestones: [], labels: [] }}
+              onChange={() => {}}
+              onSave={() => {}}
             />
+            <div className="h-[340px] w-full min-w-0">
+              <RepositoryIssueBoard
+                issues={[
+                  {
+                    id: "blocked",
+                    kind: "issue",
+                    state: "open",
+                    title: "Wait for the API",
+                    number: 60,
+                    labels: [],
+                    assignees: [],
+                    blockedBy: 1,
+                  },
+                  {
+                    id: "draft",
+                    kind: "issue",
+                    state: "open",
+                    title: "Prepare an implementation",
+                    number: 61,
+                    labels: [],
+                    assignees: [],
+                    pullRequestCount: 1,
+                    pullRequest: {
+                      number: 70,
+                      title: "Work in progress",
+                      state: "open",
+                      is_draft: true,
+                    },
+                  },
+                  {
+                    id: "ready",
+                    kind: "issue",
+                    state: "open",
+                    title: "Browse repository issues",
+                    number: 59,
+                    labels: [],
+                    assignees: [],
+                  },
+                  {
+                    id: "assigned",
+                    kind: "issue",
+                    state: "open",
+                    title: "Build the repository board",
+                    number: 62,
+                    labels: [],
+                    assignees: [{ login: "camille", avatarUrl: "" }],
+                  },
+                  {
+                    id: "review",
+                    kind: "issue",
+                    state: "open",
+                    title: "Review the implementation",
+                    number: 63,
+                    labels: [],
+                    assignees: [],
+                    pullRequestCount: 1,
+                  },
+                  {
+                    id: "closed",
+                    kind: "issue",
+                    state: "closed",
+                    title: "Save sidebar repositories",
+                    number: 58,
+                    labels: [],
+                    assignees: [],
+                  },
+                ]}
+                columns={[
+                  { status: "backlog", items: ["blocked", "draft"] },
+                  { status: "ready", items: ["ready"] },
+                  { status: "in_progress", items: ["assigned"] },
+                  { status: "review", items: ["review"] },
+                  { status: "done", items: ["closed"] },
+                ]}
+                onOpen={() => {}}
+              />
+            </div>
             <p className="text-fg-3 text-xs">
               Offline · Partial cache · More pages remain on GitHub
             </p>
+          </State>
+          <State
+            label="Repository kanban · Empty columns"
+            className="w-full min-w-0 overflow-auto"
+          >
+            <div className="h-[340px] w-full min-w-0">
+              <RepositoryIssueBoard
+                issues={[]}
+                columns={[
+                  { status: "backlog", items: [] },
+                  { status: "ready", items: [] },
+                  { status: "in_progress", items: [] },
+                  { status: "review", items: [] },
+                  { status: "done", items: [] },
+                ]}
+                onOpen={() => {}}
+              />
+            </div>
           </State>
 
           <State
@@ -558,5 +678,22 @@ function SettingsPreview() {
         shortcuts={[{ label: "Command palette", keys: "⌘K" }]}
       />
     </>
+  );
+}
+
+function RepositoryShortcutPreview() {
+  const [name, setName] = useState("Filtre 1");
+
+  return (
+    <RepositoryShortcut
+      name={name}
+      onOpen={() => {}}
+      onRename={async (name) => {
+        setName(name.trim());
+        return true;
+      }}
+      onDuplicate={() => {}}
+      onRemove={() => {}}
+    />
   );
 }

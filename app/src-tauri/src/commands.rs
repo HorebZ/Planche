@@ -1110,7 +1110,6 @@ pub fn save_repository_issue_shortcut(
     core: State<'_, Core>,
     account: UserId,
     id: String,
-    name: String,
     filter: RepositoryIssueFilter,
 ) -> Result<Vec<RepositoryIssueShortcut>> {
     let installing = core.installing.lock().expect("installation gate");
@@ -1123,7 +1122,30 @@ pub fn save_repository_issue_shortcut(
     Ok(core
         .repositories
         .read_repository(&core.reader, &account, &id, |cache| {
-            cache.save_repository_issue_shortcut(&account, &id, &name, &filter)
+            cache.save_repository_issue_shortcut(&account, &id, &filter)
+        })?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn rename_repository_issue_shortcut(
+    core: State<'_, Core>,
+    account: UserId,
+    id: String,
+    shortcut: String,
+    name: String,
+) -> Result<Vec<RepositoryIssueShortcut>> {
+    let installing = core.installing.lock().expect("installation gate");
+    if *installing {
+        return Err(AppError {
+            kind: ErrorKind::Invalid,
+            message: "Planche is installing an update".into(),
+        });
+    }
+    Ok(core
+        .repositories
+        .read_repository(&core.reader, &account, &id, |cache| {
+            cache.rename_repository_issue_shortcut(&account, &id, &shortcut, &name)
         })?)
 }
 

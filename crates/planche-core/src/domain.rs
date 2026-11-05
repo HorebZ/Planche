@@ -57,9 +57,27 @@ impl RepositoryIssueFilter {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct RepositoryIssues {
     pub issues: Vec<ItemContent>,
+    #[serde(default)]
+    pub columns: Vec<RepositoryIssueColumn>,
     pub next_cursor: Option<String>,
     pub complete: bool,
     pub fetched_at: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum RepositoryIssueStatus {
+    Backlog,
+    Ready,
+    InProgress,
+    Review,
+    Done,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct RepositoryIssueColumn {
+    pub status: RepositoryIssueStatus,
+    pub items: Vec<ContentId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
@@ -358,6 +376,7 @@ pub struct CardDetails {
     pub blocked_by: u32,
     pub blocking: u32,
     pub pull_request_count: u32,
+    pub has_draft_pull_request: bool,
     /// The linked PR when there is exactly one; otherwise the count is displayed.
     pub pull_request: Option<LinkedPullRequest>,
 }

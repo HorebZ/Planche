@@ -37,6 +37,7 @@ export const commands = {
 	cachedRepositories: (account: UserId) => __TAURI_INVOKE<SelectedRepository[]>("cached_repositories", { account }),
 	cachedRepositoryIssues: (account: UserId, id: string, filter: RepositoryIssueFilter) => __TAURI_INVOKE<{
 	issues: ItemContent[],
+	columns?: RepositoryIssueColumn[],
 	next_cursor: string | null,
 	complete: boolean,
 	fetched_at: string,
@@ -51,7 +52,8 @@ export const commands = {
 	milestones: RepositoryMilestone[],
 } | null>("refresh_repository_issue_options", { account, id }),
 	repositoryIssueShortcuts: (account: UserId, id: string) => __TAURI_INVOKE<RepositoryIssueShortcut[]>("repository_issue_shortcuts", { account, id }),
-	saveRepositoryIssueShortcut: (account: UserId, id: string, name: string, filter: RepositoryIssueFilter) => __TAURI_INVOKE<RepositoryIssueShortcut[]>("save_repository_issue_shortcut", { account, id, name, filter }),
+	saveRepositoryIssueShortcut: (account: UserId, id: string, filter: RepositoryIssueFilter) => __TAURI_INVOKE<RepositoryIssueShortcut[]>("save_repository_issue_shortcut", { account, id, filter }),
+	renameRepositoryIssueShortcut: (account: UserId, id: string, shortcut: string, name: string) => __TAURI_INVOKE<RepositoryIssueShortcut[]>("rename_repository_issue_shortcut", { account, id, shortcut, name }),
 	deleteRepositoryIssueShortcut: (account: UserId, id: string, shortcut: string) => __TAURI_INVOKE<RepositoryIssueShortcut[]>("delete_repository_issue_shortcut", { account, id, shortcut }),
 	repositoryCatalog: (account: UserId, source: RepositorySource, search: string, after: string | null) => __TAURI_INVOKE<RepositoryPage>("repository_catalog", { account, source, search, after }),
 	selectRepository: (account: UserId, reference: string) => __TAURI_INVOKE<SelectedRepository[]>("select_repository", { account, reference }),
@@ -238,6 +240,7 @@ export type CardDetails = {
 	blocked_by?: number,
 	blocking?: number,
 	pull_request_count?: number,
+	has_draft_pull_request?: boolean,
 	/**  The linked PR when there is exactly one; otherwise the count is displayed. */
 	pull_request?: LinkedPullRequest | null,
 };
@@ -436,6 +439,11 @@ export type RateUsage = {
 	reset_at: number | null,
 };
 
+export type RepositoryIssueColumn = {
+	status: RepositoryIssueStatus,
+	items: ContentId[],
+};
+
 export type RepositoryIssueFilter = {
 	state: RepositoryIssueState,
 	milestone: number | null,
@@ -455,8 +463,11 @@ export type RepositoryIssueShortcut = {
 
 export type RepositoryIssueState = "open" | "closed" | "all";
 
+export type RepositoryIssueStatus = "backlog" | "ready" | "in_progress" | "review" | "done";
+
 export type RepositoryIssues = {
 	issues: ItemContent[],
+	columns?: RepositoryIssueColumn[],
 	next_cursor: string | null,
 	complete: boolean,
 	fetched_at: string,

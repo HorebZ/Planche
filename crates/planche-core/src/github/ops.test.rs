@@ -306,6 +306,7 @@ fn multiple_linked_prs_use_the_total_count_and_empty_sub_issues_are_omitted() {
     let content = &mut page["data"]["node"]["items"]["nodes"][0]["content"];
 
     content["closedByPullRequestsReferences"]["totalCount"] = json!(3);
+    content["closedByPullRequestsReferences"]["nodes"][0]["isDraft"] = json!(true);
     content["subIssuesSummary"] = json!({ "completed": 0, "total": 0 });
 
     let decoded = decode_project_items(&page.to_string()).unwrap();
@@ -315,6 +316,7 @@ fn multiple_linked_prs_use_the_total_count_and_empty_sub_issues_are_omitted() {
     };
 
     assert_eq!(details.pull_request_count, 3);
+    assert!(details.has_draft_pull_request);
     assert!(details.pull_request.is_none());
     assert!(details.sub_issues.is_none());
 }

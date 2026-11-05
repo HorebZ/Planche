@@ -18,6 +18,7 @@ async fn offline_preserves_partial_pages_and_old_sessions_or_removals_cannot_wri
         labels: vec![],
     };
     let page = RepositoryIssues {
+        columns: vec![],
         issues: vec![issue_record().content],
         next_cursor: Some("next".into()),
         complete: false,
@@ -116,6 +117,7 @@ async fn an_old_refusal_cannot_purge_a_newer_successful_refresh() {
         labels: vec![],
     };
     let page = RepositoryIssues {
+        columns: vec![],
         issues: vec![issue_record().content],
         next_cursor: None,
         complete: true,
@@ -149,4 +151,77 @@ async fn an_old_refusal_cannot_purge_a_newer_successful_refresh() {
             .unwrap()
             .is_some()
     );
+}
+
+#[test]
+fn kanban_columns_follow_issue_state_with_closed_and_blocked_taking_precedence() {
+    use crate::domain::{ContentId, RepositoryIssueStatus};
+    use crate::fixtures::user;
+    use RepositoryIssueStatus::*;
+
+    for (closed, blocked, draft, prs, assigned, expected) in [
+        (true, true, true, 2, true, Done),
+        (false, true, false, 1, true, Backlog),
+        (false, false, true, 2, true, Backlog),
+        (false, false, false, 1, true, Review),
+        (false, false, false, 1, false, Review),
+        (false, false, false, 0, true, InProgress),
+        (false, false, false, 0, false, Ready),
+    ] {
+        let mut content = issue_record().content;
+        let ItemContent::Issue {
+            id,
+            state,
+            details,
+            assignees,
+            ..
+        } = &mut content
+        else {
+            unreachable!();
+        };
+        *id = ContentId("issue".into());
+        *state = if closed {
+            IssueState::Closed
+        } else {
+            IssueState::Open
+        };
+        details.blocked_by = u32::from(blocked);
+        details.has_draft_pull_request = draft;
+        details.pull_request_count = prs;
+        if assigned {
+            assignees.push(user("dev"));
+        }
+        let mut data = RepositoryIssues {
+            issues: vec![content],
+            columns: vec![],
+            next_cursor: None,
+            complete: true,
+            fetched_at: String::new(),
+        };
+
+        data.group_columns();
+
+        assert_eq!(
+            data.columns
+                .iter()
+                .map(|column| column.status)
+                .collect::<Vec<_>>(),
+            [Backlog, Ready, InProgress, Review, Done]
+        );
+        assert_eq!(
+            data.columns
+                .iter()
+                .map(|column| column.items.len())
+                .sum::<usize>(),
+            1
+        );
+        assert_eq!(
+            data.columns
+                .iter()
+                .find(|column| column.status == expected)
+                .unwrap()
+                .items,
+            [ContentId("issue".into())]
+        );
+    }
 }

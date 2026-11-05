@@ -26,7 +26,7 @@ pub async fn repository_issues(
     filter: &RepositoryIssueFilter,
     after: Option<&str>,
 ) -> Result<Option<RepositoryIssues>> {
-    load_issues(account, repository, filter, after, |label, after| async move {
+    let mut loaded = load_issues(account, repository, filter, after, |label, after| async move {
         Ok(client.query::<wire::IssueData>(DOCUMENT, "RepositoryIssues", json!({
             "id": repository,
             "after": after,
@@ -34,7 +34,14 @@ pub async fn repository_issues(
             "states": match filter.state { RepositoryIssueState::Open => vec!["OPEN"], RepositoryIssueState::Closed => vec!["CLOSED"], RepositoryIssueState::All => vec!["OPEN", "CLOSED"] },
             "filter": filter.milestone.map(|number| json!({ "milestoneNumber": number.to_string() })),
         })).await?.data)
-    }).await
+    }).await?;
+    if let Some(page) = &mut loaded {
+        for content in &mut page.issues {
+            complete_draft_status(client, account, content).await?;
+        }
+    }
+
+    Ok(loaded)
 }
 
 async fn load_issues<F: std::future::Future<Output = Result<wire::IssueData>>>(
@@ -109,6 +116,7 @@ async fn load_issues<F: std::future::Future<Output = Result<wire::IssueData>>>(
     let complete = cursor.streams.iter().all(|stream| stream.done);
     Ok(Some(RepositoryIssues {
         issues,
+        columns: vec![],
         complete,
         next_cursor: (!complete)
             .then(|| serde_json::to_string(&cursor).expect("cursor serializes")),

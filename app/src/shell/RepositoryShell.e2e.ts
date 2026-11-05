@@ -13,16 +13,19 @@ async function openRepository(page: Page, scenario = "board") {
   await expect(
     page.getByRole("list", { name: "Repository issues", exact: true }).getByRole("listitem"),
   ).toHaveCount(50);
+  await expect(page.getByRole("button", { name: "Open", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.getByRole("region", { name: "Repository kanban", exact: true })).toHaveCount(0);
 }
 
 test("source pagination, AND milestone and OR labels, and persistent deletable filter shortcuts", async ({
   page,
 }) => {
   await openRepository(page);
-  const rows = page
-    .getByRole("list", { name: "Repository issues", exact: true })
-    .getByRole("listitem");
-  await page.getByRole("button", { name: "All", exact: true }).click();
+  const rows = page.locator('[aria-label="Repository kanban"]').getByRole("listitem");
+  await page.getByRole("button", { name: "Board", exact: true }).click();
   await expect(rows).toHaveCount(50);
   await page.getByRole("button", { name: "Load more issues", exact: true }).click();
   await expect(rows).toHaveCount(100);
@@ -41,8 +44,12 @@ test("source pagination, AND milestone and OR labels, and persistent deletable f
   await expect(
     page.getByRole("button", { name: "Open issue #3: Repository issue 3", exact: true }),
   ).toBeVisible();
-  await page.getByRole("textbox", { name: "Saved filter name", exact: true }).fill("Triage");
   await page.getByRole("button", { name: "Save filter", exact: true }).click();
+  await page.getByRole("button", { name: "Filtre 1", exact: true }).dblclick();
+  const rename = page.getByRole("textbox", { name: "Rename filter Filtre 1", exact: true });
+  await expect(rename).toBeFocused();
+  await rename.fill("Triage");
+  await rename.press("Enter");
   await expect(page.getByRole("button", { name: "Triage", exact: true })).toBeVisible();
   await page.reload();
   await page.getByRole("button", { name: "Triage", exact: true }).click();
@@ -50,9 +57,26 @@ test("source pagination, AND milestone and OR labels, and persistent deletable f
   await expect(
     page.getByRole("button", { name: "Filter by milestone", exact: true }),
   ).toContainText("Backlog");
-  await page.getByRole("button", { name: "Triage", exact: true }).hover();
-  await page.getByRole("button", { name: "Delete filter Triage", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Triage", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Options for filter Triage", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Duplicate", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Filtre 2", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Clear filters", exact: true }).click();
+  await expect(rows).toHaveCount(50);
+  await page.getByRole("button", { name: "Filtre 2", exact: true }).click();
+  await expect(rows).toHaveCount(21);
+  await page.getByRole("button", { name: "Options for filter Filtre 2", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Rename", exact: true }).click();
+  const duplicateName = page.getByRole("textbox", { name: "Rename filter Filtre 2", exact: true });
+  await expect(duplicateName).toBeFocused();
+  await duplicateName.fill("Copy");
+  await duplicateName.press("Enter");
+  await expect(page.getByRole("button", { name: "Copy", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Triage", exact: true })).toBeVisible();
+  for (const name of ["Copy", "Triage"]) {
+    await page.getByRole("button", { name: `Options for filter ${name}`, exact: true }).click();
+    await page.getByRole("menuitem", { name: "Delete", exact: true }).click();
+    await expect(page.getByRole("button", { name, exact: true })).toHaveCount(0);
+  }
 });
 
 test("native issue detail without a Project preserves source scroll and state when returning", async ({
@@ -122,4 +146,37 @@ test("a partial offline cache remains partial, can resume, and does not invent c
   await page.getByRole("button", { name: "Load more issues", exact: true }).click();
   await expect(rows).toHaveCount(82);
   await expect(page.getByText(/82 issues loaded · Complete result/)).toBeVisible();
+});
+
+test("Board uses independent column scrolling while Open and Closed stay lists", async ({
+  page,
+}) => {
+  await openRepository(page);
+  await page.getByRole("button", { name: "Board", exact: true }).click();
+  const board = page.getByRole("region", { name: "Repository kanban", exact: true });
+  await expect(board.getByRole("listitem")).toHaveCount(50);
+  await expect(page.getByRole("list", { name: "Repository issues", exact: true })).toHaveCount(0);
+  const column = board.getByRole("region", { name: "Review", exact: true });
+  const scroll = column.locator('[data-slot="column-scroll"]');
+  const other = board
+    .getByRole("region", { name: "In progress", exact: true })
+    .locator('[data-slot="column-scroll"]');
+  const header = column.locator("header");
+  const headerTop = await header.evaluate((element) => element.getBoundingClientRect().top);
+  await scroll.hover();
+  await page.mouse.wheel(0, 400);
+
+  await expect.poll(() => scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  expect(await other.evaluate((element) => element.scrollTop)).toBe(0);
+  expect(await header.evaluate((element) => element.getBoundingClientRect().top)).toBe(headerTop);
+  expect(await board.evaluate((element) => element.scrollTop)).toBe(0);
+  expect(
+    await page.locator('[data-slot="repository-scroll"]').evaluate((element) => element.scrollTop),
+  ).toBe(0);
+
+  await page.getByRole("button", { name: "Closed", exact: true }).click();
+  await expect(
+    page.getByRole("list", { name: "Repository issues", exact: true }).getByRole("listitem"),
+  ).toHaveCount(41);
+  await expect(board).toHaveCount(0);
 });

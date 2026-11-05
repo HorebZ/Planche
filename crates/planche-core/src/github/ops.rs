@@ -170,6 +170,9 @@ pub async fn issue(
             json!({ "id": content, "assigneesAfter": assignees_after, "labelsAfter": labels_after }),
         ).await?.data)
     }).await?;
+    if let Some((issue, _)) = &mut loaded {
+        complete_draft_status(client, account, &mut issue.content).await?;
+    }
     if !client.can_write_issues()
         && let Some((issue, _)) = &mut loaded
     {
@@ -185,6 +188,24 @@ pub async fn issue(
     }
 
     Ok(loaded)
+}
+
+async fn complete_draft_status(
+    client: &GithubClient,
+    account: &UserId,
+    content: &mut ItemContent,
+) -> Result<()> {
+    if let ItemContent::Issue { id, details, .. } = content
+        && details.pull_request_count > 100
+        && !details.has_draft_pull_request
+    {
+        let activity = issue_activity(client, account, id)
+            .await?
+            .ok_or_else(|| Error::Decode("linked pull requests are no longer available".into()))?;
+        details.has_draft_pull_request = activity.pull_requests.iter().any(|pr| pr.is_draft);
+    }
+
+    Ok(())
 }
 
 async fn load_issue<F: std::future::Future<Output = Result<wire::IssueData>>>(
@@ -867,6 +888,9 @@ fn content_from_wire(content: wire::Content) -> ItemContent {
                 pull_request_count: closed_by_pull_requests_references
                     .as_ref()
                     .map_or(0, |p| p.total_count),
+                has_draft_pull_request: closed_by_pull_requests_references
+                    .as_ref()
+                    .is_some_and(|prs| prs.nodes.iter().flatten().any(|pr| pr.is_draft)),
                 pull_request: closed_by_pull_requests_references
                     .filter(|p| p.total_count == 1)
                     .and_then(|p| p.nodes.into_iter().flatten().next())

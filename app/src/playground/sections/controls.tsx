@@ -1,4 +1,4 @@
-import { Search } from "lucide-react";
+import { Columns3, Search } from "lucide-react";
 import { useId } from "react";
 import { Checkbox, CheckMark } from "@/components/ui/checkbox";
 import { Field, FieldMessage, Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { ViewButton } from "@/components/ui/view-button";
 import { Row, Section, State } from "../kit";
 
 const intervals = [
@@ -144,6 +145,47 @@ export function ControlsSection() {
                 defaultChecked
                 disabled
               />
+            </State>
+          </Row>
+          <Row label="view buttons · shared by projects and repositories">
+            <State label="default">
+              <ViewButton aria-pressed={false}>
+                <Columns3 />
+                Board
+              </ViewButton>
+            </State>
+            <State label="selected">
+              <ViewButton aria-pressed>
+                <Columns3 />
+                Board
+              </ViewButton>
+            </State>
+            <State label="hover">
+              <ViewButton
+                aria-pressed={false}
+                data-preview="hover"
+              >
+                <Columns3 />
+                Board
+              </ViewButton>
+            </State>
+            <State label="focus">
+              <ViewButton
+                aria-pressed={false}
+                data-preview="focus"
+              >
+                <Columns3 />
+                Board
+              </ViewButton>
+            </State>
+            <State label="disabled">
+              <ViewButton
+                disabled
+                aria-pressed={false}
+              >
+                <Columns3 />
+                Board
+              </ViewButton>
             </State>
           </Row>
           <Row label="segmented">

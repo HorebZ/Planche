@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { type ProjectTone, projectTones } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ViewButton } from "@/components/ui/view-button";
 import type { Board, ProjectMeta, User, ViewId } from "@/ipc/bindings.types";
 import type { ProjectLayout } from "@/stores/preferences";
 
@@ -189,17 +190,16 @@ export function Toolbar({
               { id: "list", label: "List", Icon: List },
             ] as const
           ).map(({ id, label, Icon }) => (
-            <button
+            <ViewButton
               key={id}
               type="button"
               aria-pressed={layout === id}
               disabled={!board}
               onClick={() => onLayoutChange(id)}
-              className={`flex h-7 items-center gap-1.5 rounded-full px-3 font-medium focus-visible:shadow-ring ${layout === id ? "bg-active" : "text-fg-2 shadow-[inset_0_0_0_1px_var(--pl-border-strong)] hover:bg-hover"}`}
             >
               <Icon className="size-[15px] text-fg-3" />
               {label}
-            </button>
+            </ViewButton>
           ))}
         </fieldset>
         <BoardFilter

@@ -385,6 +385,14 @@ export function installMockBackend(scenario: Scenario) {
         next_cursor: end < matches.length ? String(end) : null,
         complete: end === matches.length,
       });
+      for (const column of data.columns ?? []) {
+        column.items = data.issues.flatMap((issue) =>
+          issue.kind === "issue" &&
+          repositorySource.find((source) => source.issue.id === issue.id)?.status === column.status
+            ? [issue.id]
+            : [],
+        );
+      }
       sessionStorage.setItem(issueCacheKey(args), JSON.stringify(data));
       return { kind: "ready", data };
     },
@@ -392,16 +400,44 @@ export function installMockBackend(scenario: Scenario) {
     refresh_repository_issue_options: () => repositoryIssueOptions(),
     repository_issue_shortcuts: (args) => savedShortcuts(args),
     save_repository_issue_shortcut: (args) => {
-      const name = String(args.name).trim();
       const existing = savedShortcuts(args);
+      let number = existing.length + 1;
+      while (existing.some((shortcut) => shortcut.name.toLowerCase() === `filtre ${number}`)) {
+        number += 1;
+      }
       const shortcut = {
-        id:
-          existing.find((shortcut) => shortcut.name.toLowerCase() === name.toLowerCase())?.id ??
-          crypto.randomUUID(),
-        name,
+        id: crypto.randomUUID(),
+        name: `Filtre ${number}`,
         filter: args.filter as RepositoryIssueFilter,
       };
-      const result = [...existing.filter((item) => item.id !== shortcut.id), shortcut];
+      const result = [...existing, shortcut];
+      sessionStorage.setItem(shortcutKey(args), JSON.stringify(result));
+      return structuredClone(result);
+    },
+    rename_repository_issue_shortcut: (args) => {
+      const existing = savedShortcuts(args);
+      const name = String(args.name).trim();
+      if (
+        !name ||
+        existing.some(
+          (shortcut) =>
+            shortcut.id !== args.shortcut && shortcut.name.toLowerCase() === name.toLowerCase(),
+        )
+      ) {
+        throw {
+          kind: "Invalid",
+          message: !name ? "Enter a filter name." : "A saved filter already uses this name.",
+        } satisfies AppError;
+      }
+      if (!existing.some((shortcut) => shortcut.id === args.shortcut)) {
+        throw {
+          kind: "Invalid",
+          message: "This saved filter no longer exists.",
+        } satisfies AppError;
+      }
+      const result = existing.map((shortcut) =>
+        shortcut.id === args.shortcut ? { ...shortcut, name } : shortcut,
+      );
       sessionStorage.setItem(shortcutKey(args), JSON.stringify(result));
       return structuredClone(result);
     },

@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
 
 for (const colorScheme of ["light", "dark"] as const) {
-  test(`repository list and native detail fit in ${colorScheme}`, async ({ page }) => {
+  test(`repository lists, optional board and native detail fit in ${colorScheme}`, async ({
+    page,
+  }) => {
     await page.emulateMedia({ colorScheme });
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/?mock=board");
@@ -19,7 +21,43 @@ for (const colorScheme of ["light", "dark"] as const) {
       true,
     );
     await page.screenshot({
-      path: test.info().outputPath(`repository-${colorScheme}.png`),
+      path: test.info().outputPath(`repository-list-${colorScheme}.png`),
+      animations: "disabled",
+    });
+    await page.getByRole("button", { name: "Save filter", exact: true }).click();
+    await page.getByRole("button", { name: "Options for filter Filtre 1", exact: true }).click();
+    for (const name of ["Rename", "Duplicate", "Delete"]) {
+      await expect(page.getByRole("menuitem", { name, exact: true })).toBeVisible();
+    }
+    await page.screenshot({
+      path: test.info().outputPath(`bookmark-menu-${colorScheme}.png`),
+      animations: "disabled",
+    });
+    await page.getByRole("menuitem", { name: "Rename", exact: true }).click();
+    const rename = page.getByRole("textbox", { name: "Rename filter Filtre 1", exact: true });
+    await expect(rename).toBeFocused();
+    await rename.fill("Triage");
+    await page.screenshot({
+      path: test.info().outputPath(`bookmark-rename-${colorScheme}.png`),
+      animations: "disabled",
+    });
+    await rename.press("Escape");
+    await expect(page.getByRole("button", { name: "Filtre 1", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Closed", exact: true }).click();
+    await expect(browser.getByRole("listitem")).toHaveCount(41);
+    await page.screenshot({
+      path: test.info().outputPath(`repository-closed-${colorScheme}.png`),
+      animations: "disabled",
+    });
+    await page.getByRole("button", { name: "Board", exact: true }).click();
+    const board = page.getByRole("region", { name: "Repository kanban", exact: true });
+    await expect(board.locator('[data-slot="board-column"]')).toHaveCount(5);
+    await expect(board.getByRole("listitem")).toHaveCount(50);
+    expect(await board.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(
+      true,
+    );
+    await page.screenshot({
+      path: test.info().outputPath(`repository-board-${colorScheme}.png`),
       animations: "disabled",
     });
     await page

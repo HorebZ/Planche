@@ -1,7 +1,59 @@
 use super::*;
 use crate::domain::{
-    RepositoryIssueFilter, RepositoryIssueOptions, RepositoryIssues, RepositoryIssuesLoad,
+    IssueState, ItemContent, RepositoryIssueColumn, RepositoryIssueFilter, RepositoryIssueOptions,
+    RepositoryIssueStatus, RepositoryIssues, RepositoryIssuesLoad,
 };
+
+impl RepositoryIssues {
+    pub(crate) fn group_columns(&mut self) {
+        use RepositoryIssueStatus::*;
+
+        self.columns = [Backlog, Ready, InProgress, Review, Done]
+            .into_iter()
+            .map(|status| RepositoryIssueColumn {
+                status,
+                items: vec![],
+            })
+            .collect();
+        for content in &self.issues {
+            let (id, status) = match content {
+                ItemContent::Issue {
+                    id,
+                    state,
+                    assignees,
+                    details,
+                    ..
+                } => {
+                    let status = if *state == IssueState::Closed {
+                        Done
+                    } else if details.blocked_by > 0
+                        || details.has_draft_pull_request
+                        || details.pull_request.as_ref().is_some_and(|pr| pr.is_draft)
+                    {
+                        Backlog
+                    } else if details.pull_request_count > 0 {
+                        Review
+                    } else if !assignees.is_empty() {
+                        InProgress
+                    } else {
+                        Ready
+                    };
+
+                    (id, status)
+                }
+                ItemContent::Draft { id, .. } => (id, Backlog),
+                _ => continue,
+            };
+
+            self.columns
+                .iter_mut()
+                .find(|column| column.status == status)
+                .expect("all repository statuses have a column")
+                .items
+                .push(id.clone());
+        }
+    }
+}
 
 fn denied(error: &Error) -> bool {
     matches!(error, Error::Http(403 | 404))

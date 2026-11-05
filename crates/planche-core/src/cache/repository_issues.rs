@@ -44,6 +44,7 @@ impl Cache {
                     intent.apply(content);
                 }
             }
+            data.group_columns();
         }
         Ok(data)
     }
@@ -175,15 +176,37 @@ impl Cache {
         &self,
         account: &UserId,
         repository: &str,
-        name: &str,
         filter: &RepositoryIssueFilter,
+    ) -> Result<Vec<RepositoryIssueShortcut>> {
+        let mut number = self.repository_issue_shortcuts(account, repository)?.len() + 1;
+        loop {
+            let name = format!("Filtre {number}");
+            let inserted = self.conn.execute("INSERT INTO repository_issue_shortcut (account_id, repository_id, name, filter) VALUES (?1, ?2, ?3, ?4) ON CONFLICT (account_id, repository_id, name) DO NOTHING", params![account.as_str(), repository, name, filter_key(filter)])?;
+            if inserted > 0 {
+                return self.repository_issue_shortcuts(account, repository);
+            }
+            number += 1;
+        }
+    }
+
+    pub fn rename_repository_issue_shortcut(
+        &self,
+        account: &UserId,
+        repository: &str,
+        id: &str,
+        name: &str,
     ) -> Result<Vec<RepositoryIssueShortcut>> {
         let name = name.trim();
         if name.is_empty() {
             return Err(Error::InvalidRepository("Enter a filter name.".into()));
         }
-        self.conn.execute("INSERT INTO repository_issue_shortcut (account_id, repository_id, name, filter) VALUES (?1, ?2, ?3, ?4) ON CONFLICT (account_id, repository_id, name) DO UPDATE SET name = excluded.name, filter = excluded.filter", params![account.as_str(), repository, name, filter_key(filter)])?;
-        self.repository_issue_shortcuts(account, repository)
+
+        match self.conn.execute("UPDATE repository_issue_shortcut SET name = ?4 WHERE account_id = ?1 AND repository_id = ?2 AND id = ?3", params![account.as_str(), repository, id, name]) {
+            Ok(0) => Err(Error::InvalidRepository("This saved filter no longer exists.".into())),
+            Ok(_) => self.repository_issue_shortcuts(account, repository),
+            Err(error) if error.sqlite_error_code() == Some(rusqlite::ErrorCode::ConstraintViolation) => Err(Error::InvalidRepository("A saved filter already uses this name.".into())),
+            Err(error) => Err(error.into()),
+        }
     }
 
     pub fn delete_repository_issue_shortcut(

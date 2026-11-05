@@ -16,6 +16,7 @@ fn pages_shortcuts_and_accounts_survive_restart_and_refusals_invalidate_late_pag
     cache.select_repository(&account, &repository()).unwrap();
     let key = filter_key(&filter);
     let first = RepositoryIssues {
+        columns: vec![],
         issues: vec![issue_record().content],
         next_cursor: Some("page2".into()),
         complete: false,
@@ -45,11 +46,14 @@ fn pages_shortcuts_and_accounts_survive_restart_and_refusals_invalidate_late_pag
             .is_none()
     );
     let saved = cache
-        .save_repository_issue_shortcut(&account, "R_planche", "  Bugs  ", &filter)
+        .save_repository_issue_shortcut(&account, "R_planche", &filter)
+        .unwrap();
+    let saved = cache
+        .rename_repository_issue_shortcut(&account, "R_planche", &saved[0].id, "  Bugs  ")
         .unwrap();
     assert_eq!(saved[0].name, "Bugs");
     cache
-        .save_repository_issue_shortcut(&account, "R_planche", "bugs", &filter)
+        .rename_repository_issue_shortcut(&account, "R_planche", &saved[0].id, "bugs")
         .unwrap();
     drop(cache);
 
@@ -178,6 +182,7 @@ fn migration_from_favorites_keeps_selection_and_shared_issue_refusal_redacts_rep
         _ => unreachable!(),
     };
     let page = RepositoryIssues {
+        columns: vec![],
         issues: vec![record.content.clone()],
         next_cursor: None,
         complete: true,
@@ -231,4 +236,138 @@ fn migration_from_favorites_keeps_selection_and_shared_issue_refusal_redacts_rep
             .unwrap()
             .is_some()
     );
+}
+
+#[test]
+fn kanban_rebuilds_legacy_snapshots_after_pending_assignments_and_newer_issue_details() {
+    use crate::domain::RepositoryIssueStatus;
+    use crate::fixtures::user;
+
+    let mut cache = Cache::open(":memory:").unwrap();
+    let account = UserId("A".into());
+    let filter = RepositoryIssueFilter {
+        state: RepositoryIssueState::All,
+        milestone: None,
+        labels: vec![],
+    };
+    let record = issue_record();
+    let ItemContent::Issue { id, .. } = &record.content else {
+        unreachable!()
+    };
+    let legacy = serde_json::json!({
+        "issues": [record.content],
+        "next_cursor": null,
+        "complete": true,
+        "fetched_at": "2026-01-01T00:00:00Z",
+    });
+    cache.select_repository(&account, &repository()).unwrap();
+    let revision = cache
+        .begin_repository_data(&account, "R_planche", &filter_key(&filter))
+        .unwrap();
+    cache
+        .finish_repository_data(
+            &account,
+            "R_planche",
+            &filter_key(&filter),
+            revision,
+            &legacy,
+        )
+        .unwrap();
+    let read_status = |cache: &Cache| {
+        cache
+            .repository_issues(&account, "R_planche", &filter)
+            .unwrap()
+            .unwrap()
+            .columns
+            .into_iter()
+            .find(|column| !column.items.is_empty())
+            .unwrap()
+            .status
+    };
+    assert_eq!(read_status(&cache), RepositoryIssueStatus::Ready);
+
+    cache
+        .enqueue_issue(
+            &account,
+            &IssueIntent::SetAssignees {
+                content_id: id.clone(),
+                add: vec![user("dev")],
+                remove: vec![],
+            },
+        )
+        .unwrap();
+
+    assert_eq!(read_status(&cache), RepositoryIssueStatus::InProgress);
+
+    let mut closed = record.clone();
+    let ItemContent::Issue { state, .. } = &mut closed.content else {
+        unreachable!()
+    };
+    *state = crate::domain::IssueState::Closed;
+    let revision = cache.begin_issue("github.com", &account, id).unwrap();
+    cache
+        .finish_issue("github.com", &account, id, revision, Some((&closed, "")))
+        .unwrap();
+
+    assert_eq!(read_status(&cache), RepositoryIssueStatus::Done);
+}
+
+#[test]
+fn bookmarks_get_unique_names_and_rename_never_overwrites_another_filter() {
+    let cache = Cache::open(":memory:").unwrap();
+    let account = UserId("A".into());
+    let filter = RepositoryIssueFilter {
+        state: RepositoryIssueState::Open,
+        milestone: Some(7),
+        labels: vec!["bug".into()],
+    };
+    let first = cache
+        .save_repository_issue_shortcut(&account, "repo", &filter)
+        .unwrap();
+    assert_eq!(first[0].name, "Filtre 1");
+    let copy = cache
+        .save_repository_issue_shortcut(&account, "repo", &first[0].filter)
+        .unwrap();
+    assert_eq!(copy[1].name, "Filtre 2");
+    assert_ne!(copy[0].id, copy[1].id);
+    assert_eq!(copy[0].filter, copy[1].filter);
+
+    let renamed = cache
+        .rename_repository_issue_shortcut(&account, "repo", &first[0].id, " Filtre 3 ")
+        .unwrap();
+    let created = cache
+        .save_repository_issue_shortcut(&account, "repo", &filter)
+        .unwrap();
+
+    assert_eq!(renamed[0].id, first[0].id);
+    assert_eq!(renamed[0].name, "Filtre 3");
+    assert_eq!(created[2].name, "Filtre 4");
+    assert_eq!(created[0].filter, filter);
+    for (owner, repository, id, name) in [
+        (&account, "repo", copy[1].id.as_str(), "filtre 3"),
+        (&account, "repo", copy[1].id.as_str(), "  "),
+        (&account, "repo", "missing", "Triage"),
+        (&UserId("B".into()), "repo", copy[1].id.as_str(), "Triage"),
+        (&account, "other", copy[1].id.as_str(), "Triage"),
+    ] {
+        assert!(
+            cache
+                .rename_repository_issue_shortcut(owner, repository, id, name)
+                .is_err()
+        );
+    }
+    assert_eq!(
+        cache.repository_issue_shortcuts(&account, "repo").unwrap(),
+        created
+    );
+
+    for (owner, repository) in [(&UserId("B".into()), "repo"), (&account, "other")] {
+        assert_eq!(
+            cache
+                .save_repository_issue_shortcut(owner, repository, &filter)
+                .unwrap()[0]
+                .name,
+            "Filtre 1"
+        );
+    }
 }

@@ -1,52 +1,59 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bookmark, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { RepositoryShortcut } from "@/components/ui/repository-shortcut";
 import { notify } from "@/components/ui/toast";
-import { commands } from "@/ipc/bindings.types";
+import { commands, type RepositoryIssueShortcut } from "@/ipc/bindings.types";
 import { authQuery, errorMessage } from "@/ipc/queries";
-import { repositoryShortcutsQuery } from "@/ipc/repositories.queries";
+import { repositoriesQuery, repositoryShortcutsQuery } from "@/ipc/repositories.queries";
 import { useRepositoryViews } from "@/stores/repository-views";
 
 export function RepositoryShortcuts({ account, id }: { account: string; id: string }) {
   const client = useQueryClient();
   const shortcuts = useQuery(repositoryShortcutsQuery(account, id));
-  const remove = async (shortcut: string) => {
+  const [pending, setPending] = useState(false);
+  const mutate = async (operation: () => Promise<RepositoryIssueShortcut[]>) => {
+    if (pending) {
+      return false;
+    }
+    setPending(true);
     try {
-      const result = await commands.deleteRepositoryIssueShortcut(account, id, shortcut);
-      if (client.getQueryData(authQuery.queryKey)?.id === account) {
-        client.setQueryData(repositoryShortcutsQuery(account, id).queryKey, result);
+      const result = await operation();
+      if (
+        client.getQueryData(authQuery.queryKey)?.id !== account ||
+        !client
+          .getQueryData(repositoriesQuery(account).queryKey)
+          ?.some((saved) => saved.repository.id === id)
+      ) {
+        return false;
       }
+      client.setQueryData(repositoryShortcutsQuery(account, id).queryKey, result);
+      return true;
     } catch (error) {
-      notify(`Could not delete filter: ${errorMessage(error)}`, "error");
+      notify(`Could not update saved filter: ${errorMessage(error)}`, "error");
+      return false;
+    } finally {
+      setPending(false);
     }
   };
 
   return (
     <>
       {shortcuts.data?.map((shortcut) => (
-        <div
+        <RepositoryShortcut
           key={shortcut.id}
-          className="group flex items-center gap-1 pl-5"
-        >
-          <Button
-            variant="ghost"
-            size="sm"
-            className="min-w-0 flex-1 justify-start text-fg-2"
-            onClick={() => useRepositoryViews.getState().open(account, id, shortcut.filter)}
-          >
-            <Bookmark />
-            <span className="truncate">{shortcut.name}</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-5 text-fg-3 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
-            aria-label={`Delete filter ${shortcut.name}`}
-            onClick={() => void remove(shortcut.id)}
-          >
-            <X className="size-3" />
-          </Button>
-        </div>
+          name={shortcut.name}
+          pending={pending}
+          onOpen={() => useRepositoryViews.getState().open(account, id, shortcut.filter)}
+          onRename={(name) =>
+            mutate(() => commands.renameRepositoryIssueShortcut(account, id, shortcut.id, name))
+          }
+          onDuplicate={() =>
+            void mutate(() => commands.saveRepositoryIssueShortcut(account, id, shortcut.filter))
+          }
+          onRemove={() =>
+            void mutate(() => commands.deleteRepositoryIssueShortcut(account, id, shortcut.id))
+          }
+        />
       ))}
       {shortcuts.error && (
         <p

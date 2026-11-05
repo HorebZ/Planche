@@ -34,6 +34,7 @@ fn builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::refresh_repository_issue_options,
             commands::repository_issue_shortcuts,
             commands::save_repository_issue_shortcut,
+            commands::rename_repository_issue_shortcut,
             commands::delete_repository_issue_shortcut,
             commands::repository_catalog,
             commands::select_repository,

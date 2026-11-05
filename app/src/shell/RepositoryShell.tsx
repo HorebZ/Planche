@@ -15,9 +15,12 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Input } from "@/components/ui/input";
 import { IssueDetail } from "@/components/ui/issue-detail";
-import { RepositoryIssueFilters, RepositoryIssueList } from "@/components/ui/repository-issues";
+import {
+  RepositoryIssueBoard,
+  RepositoryIssueFilters,
+  RepositoryIssueList,
+} from "@/components/ui/repository-issues";
 import { notify } from "@/components/ui/toast";
 import { commands, type ItemContent, type RepositoryIssueFilter } from "@/ipc/bindings.types";
 import {
@@ -63,7 +66,6 @@ export function RepositoryShell({ account, id }: { account: string; id: string }
   const openProject = useOpenProject();
   const [loadingMore, setLoadingMore] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
-  const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const scroll = useRef<HTMLDivElement>(null);
@@ -78,9 +80,15 @@ export function RepositoryShell({ account, id }: { account: string; id: string }
         : fresh.data.data
       : cached.data;
   const offline = fresh.data?.kind === "offline";
-  const issues = (data?.issues ?? []).filter(
-    (issue): issue is RepositoryIssue => issue.kind === "issue",
+  const boardView = view.filter.state === "all";
+  const byId = new Map(
+    (data?.issues ?? [])
+      .filter((issue): issue is RepositoryIssue => issue.kind === "issue")
+      .map((issue) => [issue.id, issue]),
   );
+  const issues = boardView
+    ? (data?.columns ?? []).flatMap((column) => column.items.flatMap((id) => byId.get(id) ?? []))
+    : [...byId.values()];
   const detail = issues.find((issue) => issue.id === view.detail);
   const error =
     pageError ??
@@ -138,13 +146,13 @@ export function RepositoryShell({ account, id }: { account: string; id: string }
     }
   };
   const save = async () => {
-    if (saving || !name.trim()) {
+    if (saving) {
       return;
     }
     setSaving(true);
     setSaveError(null);
     try {
-      const result = await commands.saveRepositoryIssueShortcut(account, id, name, view.filter);
+      const result = await commands.saveRepositoryIssueShortcut(account, id, view.filter);
       if (
         client.getQueryData(authQuery.queryKey)?.id !== account ||
         !client
@@ -154,7 +162,6 @@ export function RepositoryShell({ account, id }: { account: string; id: string }
         return;
       }
       client.setQueryData(repositoryShortcutsQuery(account, id).queryKey, result);
-      setName("");
     } catch (error) {
       setSaveError(errorMessage(error));
     } finally {
@@ -260,30 +267,9 @@ export function RepositoryShell({ account, id }: { account: string; id: string }
               filter={view.filter}
               options={options.data === undefined ? (cachedOptions.data ?? null) : options.data}
               onChange={changeFilter}
+              onSave={() => void save()}
+              saving={saving}
             />
-            <form
-              className="flex flex-wrap items-center gap-2"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void save();
-              }}
-            >
-              <Input
-                className="h-7 w-44"
-                aria-label="Saved filter name"
-                placeholder="Name this filter…"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-              />
-              <Button
-                type="submit"
-                size="sm"
-                variant="ghost"
-                disabled={!name.trim() || saving}
-              >
-                Save filter
-              </Button>
-            </form>
             {saveError && (
               <p
                 role="alert"
@@ -340,19 +326,39 @@ export function RepositoryShell({ account, id }: { account: string; id: string }
           </div>
           <div
             ref={scroll}
-            className="min-h-0 flex-1 overflow-y-auto"
-            onScroll={(event) => update({ scrollTop: event.currentTarget.scrollTop })}
+            className={
+              boardView
+                ? "flex min-h-0 flex-1 flex-col overflow-hidden"
+                : "min-h-0 flex-1 overflow-y-auto"
+            }
+            data-slot="repository-scroll"
+            onScroll={(event) => {
+              if (!boardView) {
+                update({ scrollTop: event.currentTarget.scrollTop });
+              }
+            }}
           >
-            {data && (
-              <RepositoryIssueList
-                issues={issues.map((issue) => ({ ...cardData(issue), id: issue.id }))}
-                selected={view.detail ?? view.selected}
-                onOpen={open}
-                onSelect={(selected) => update({ selected })}
-              />
-            )}
+            {data &&
+              (boardView ? (
+                <div className="min-h-0 flex-1">
+                  <RepositoryIssueBoard
+                    issues={issues.map((issue) => ({ ...cardData(issue), id: issue.id }))}
+                    columns={data.columns ?? []}
+                    selected={view.detail ?? view.selected}
+                    onOpen={open}
+                    onSelect={(selected) => update({ selected })}
+                  />
+                </div>
+              ) : (
+                <RepositoryIssueList
+                  issues={issues.map((issue) => ({ ...cardData(issue), id: issue.id }))}
+                  selected={view.detail ?? view.selected}
+                  onOpen={open}
+                  onSelect={(selected) => update({ selected })}
+                />
+              ))}
             {data?.next_cursor && (
-              <div className="p-4">
+              <div className="shrink-0 p-4">
                 <Button
                   disabled={loadingMore || fresh.isFetching}
                   onClick={() => void more()}

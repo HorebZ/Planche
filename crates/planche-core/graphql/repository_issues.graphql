@@ -11,6 +11,11 @@ query RepositoryIssues($id: ID!, $after: String, $states: [IssueState!], $labels
           repository { nameWithOwner }
           assignees(first: 100) { nodes { id login avatarUrl } }
           labels(first: 100) { nodes { name color } }
+          issueDependenciesSummary { blockedBy blocking }
+          closedByPullRequestsReferences(first: 100, includeClosedPrs: true) {
+            totalCount
+            nodes { number title prState: state isDraft }
+          }
         }
       }
     }
