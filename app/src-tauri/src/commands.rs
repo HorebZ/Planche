@@ -263,8 +263,10 @@ impl Core {
             Ok(found) => found,
             // Not cached and not listed yet: the app just started on a project never synced.
             Err(_) => {
-                *self.projects.lock().expect("projects lock") =
-                    Some(ops::list_projects(&client).await?);
+                let list = ops::list_projects(&client).await?;
+
+                self.cache().reconcile_projects(&list)?;
+                *self.projects.lock().expect("projects lock") = Some(list);
 
                 self.owner_of(project)?
             }
@@ -480,10 +482,18 @@ pub async fn auth_sign_out(core: State<'_, Core>) -> Result<()> {
 #[tauri::command]
 #[specta::specta]
 pub async fn list_projects(core: State<'_, Core>) -> Result<ProjectList> {
+    let token = core.token.lock().expect("token lock").clone();
     let client = core.client()?;
 
     match ops::list_projects(&client).await {
         Ok(list) => {
+            let current_token = core.token.lock().expect("token lock");
+
+            if *current_token != token {
+                return Err(Error::NotSignedIn.into());
+            }
+
+            core.cache().reconcile_projects(&list)?;
             *core.projects.lock().expect("projects lock") = Some(list.clone());
 
             Ok(list)

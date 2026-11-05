@@ -532,6 +532,74 @@ impl Cache {
         })
     }
 
+    /// Saves a complete GitHub listing and purges projects no saved account can access.
+    pub fn reconcile_projects(&mut self, list: &ProjectList) -> Result<()> {
+        let mut ids: Vec<ProjectId> = list
+            .owners
+            .iter()
+            .flat_map(|owner| owner.projects.iter().map(|project| project.id.clone()))
+            .collect();
+        let account_key = self
+            .get("account_id")?
+            .map(|id| format!("account_projects:{id}"));
+        let tx = self.write()?;
+
+        for json in tx
+            .prepare_cached(
+                "SELECT value FROM kv WHERE key GLOB 'account_projects:*' AND key <> ?1",
+            )?
+            .query_map([account_key.as_deref().unwrap_or("")], |row| {
+                row.get::<_, String>(0)
+            })?
+        {
+            let other: ProjectList =
+                serde_json::from_str(&json?).map_err(|error| Error::Cache(error.to_string()))?;
+
+            ids.extend(
+                other
+                    .owners
+                    .into_iter()
+                    .flat_map(|owner| owner.projects.into_iter().map(|project| project.id)),
+            );
+        }
+
+        let ids = serde_json::to_string(&ids).expect("ids serialize");
+        let removed: Vec<ProjectId> = tx
+            .prepare_cached(
+                "SELECT id FROM project WHERE id NOT IN (SELECT value FROM json_each(?1))",
+            )?
+            .query_map([ids], |row| row.get(0).map(ProjectId))?
+            .collect::<rusqlite::Result<_>>()?;
+
+        for project in removed {
+            let revision = Self::next_issue_revision(&tx)?;
+
+            // Share the snapshot revision so an older in-flight fetch cannot undo the refusal.
+            set_kv(
+                &tx,
+                &format!("project_invalidated:{project}"),
+                &revision.to_string(),
+            )?;
+            tx.execute("DELETE FROM project WHERE id = ?1", [project.as_str()])?;
+            tx.execute(
+                "DELETE FROM kv WHERE key = ?1 OR ((key = 'last_project' OR key GLOB 'last_project:*') AND value = ?2)",
+                params![changed_key(&project), project.as_str()],
+            )?;
+        }
+
+        if let Some(key) = account_key {
+            set_kv(
+                &tx,
+                &key,
+                &serde_json::to_string(list).expect("projects serialize"),
+            )?;
+        }
+
+        tx.commit()?;
+
+        Ok(())
+    }
+
     /// The last known server state of the project.
     pub fn snapshot(&self, project: &ProjectId) -> Result<Option<(ProjectMeta, Vec<Item>)>> {
         let Some(meta) = self.meta(project)? else {
@@ -832,6 +900,17 @@ impl Cache {
             .collect();
         let tx = self.write()?;
         let project = meta.id.as_str();
+
+        if tx.query_row(
+            "SELECT EXISTS(SELECT 1 FROM kv WHERE key = ?1 AND CAST(value AS INTEGER) > ?2)",
+            params![format!("project_invalidated:{project}"), revision],
+            |row| row.get::<_, bool>(0),
+        )? {
+            return Err(Error::ProjectNotFound {
+                owner: meta.owner.clone(),
+                number: meta.number,
+            });
+        }
 
         // A project deleted and recreated under the same number has a new ID.
         tx.execute(

@@ -238,7 +238,7 @@ pub enum IssueLoad {
     Unavailable,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct ProjectList {
     /// The viewer first, then organizations by login.
     pub owners: Vec<OwnerProjects>,
@@ -246,14 +246,14 @@ pub struct ProjectList {
     pub sso_blocked: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct OwnerProjects {
     pub login: String,
     pub is_org: bool,
     pub projects: Vec<ProjectSummary>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct ProjectSummary {
     pub id: ProjectId,
     pub number: u32,

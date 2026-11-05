@@ -1,6 +1,123 @@
 use super::*;
 
 #[test]
+fn project_listing_purges_missing_and_denied_projects_with_their_local_state() {
+    let mut cache = Cache::open(":memory:").unwrap();
+    let meta =
+        crate::github::ops::decode_project_meta(crate::github::fixtures::PROJECT_META).unwrap();
+    let items = crate::github::ops::decode_project_items(crate::github::fixtures::ITEM_PAGES[0])
+        .unwrap()
+        .items;
+    cache.write_snapshot(&meta, &items, true).unwrap();
+    cache
+        .enqueue(&Intent::Archive {
+            project_id: meta.id.clone(),
+            item_id: items[0].id.clone(),
+        })
+        .unwrap();
+    cache.set("last_project", meta.id.as_str()).unwrap();
+
+    for owner in ["allowed", "blocked", "removed-org"] {
+        let mut other = meta.clone();
+        other.id = ProjectId(owner.into());
+        other.owner = owner.into();
+        other.owner_is_org = true;
+        other.fields.clear();
+        other.views.clear();
+
+        cache.write_snapshot(&other, &[], false).unwrap();
+    }
+
+    let mut list = cache.projects().unwrap();
+    list.owners.retain(|owner| owner.login == "allowed");
+    list.sso_blocked.push("blocked".into());
+
+    cache.reconcile_projects(&list).unwrap();
+
+    assert_eq!(cache.projects().unwrap().owners, list.owners);
+    assert!(cache.snapshot(&meta.id).unwrap().is_none());
+    assert!(cache.project_ref(&meta.id).unwrap().is_none());
+    assert!(cache.intents(&meta.id).unwrap().is_empty());
+    assert!(cache.get("last_project").unwrap().is_none());
+    assert!(cache.get(&changed_key(&meta.id)).unwrap().is_none());
+
+    for table in [
+        "item",
+        "item_field_value",
+        "item_assignee",
+        "item_label",
+        "field",
+        "field_option",
+        "view",
+    ] {
+        let count: u32 = cache
+            .conn
+            .query_row(&format!("SELECT count(*) FROM {table}"), [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+
+        assert_eq!(count, 0, "{table}");
+    }
+
+    cache.set("last_project", "allowed").unwrap();
+    cache.reconcile_projects(&list).unwrap();
+
+    assert_eq!(
+        cache.get("last_project").unwrap().as_deref(),
+        Some("allowed")
+    );
+}
+
+#[test]
+fn project_reconciliation_preserves_other_accounts_and_updates_the_offline_list() {
+    let mut cache = Cache::open(":memory:").unwrap();
+    let meta =
+        crate::github::ops::decode_project_meta(crate::github::fixtures::PROJECT_META).unwrap();
+    cache.write_snapshot(&meta, &[], true).unwrap();
+    let list = cache.projects().unwrap();
+
+    for account in ["A", "B"] {
+        cache.set("account_id", account).unwrap();
+        cache.reconcile_projects(&list).unwrap();
+        cache
+            .set(&format!("last_project:{account}"), meta.id.as_str())
+            .unwrap();
+    }
+
+    let empty = ProjectList {
+        owners: Vec::new(),
+        sso_blocked: Vec::new(),
+    };
+    cache.set("account_id", "A").unwrap();
+
+    cache.reconcile_projects(&empty).unwrap();
+
+    assert_eq!(
+        cache.get("account_projects:A").unwrap(),
+        Some(serde_json::to_string(&empty).unwrap())
+    );
+    assert!(cache.snapshot(&meta.id).unwrap().is_some());
+
+    cache.set("account_id", "B").unwrap();
+
+    assert_eq!(
+        cache.get("account_projects:B").unwrap(),
+        Some(serde_json::to_string(&list).unwrap())
+    );
+
+    cache.reconcile_projects(&empty).unwrap();
+
+    assert_eq!(
+        cache.get("account_projects:B").unwrap(),
+        Some(serde_json::to_string(&empty).unwrap())
+    );
+    assert!(cache.snapshot(&meta.id).unwrap().is_none());
+    assert!(cache.get("last_project:A").unwrap().is_none());
+    assert!(cache.get("last_project:B").unwrap().is_none());
+}
+
+#[test]
 fn read_only_projects_remain_readable_and_reject_new_project_writes_without_losing_the_queue() {
     let mut cache = Cache::open(":memory:").unwrap();
     let mut meta =

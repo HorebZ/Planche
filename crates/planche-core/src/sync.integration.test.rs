@@ -95,6 +95,42 @@ async fn a_failure_on_page_2_leaves_the_cache_byte_for_byte() {
 }
 
 #[tokio::test]
+async fn a_project_removed_during_sync_stays_removed_until_a_new_fetch_succeeds() {
+    let github = FakeGithub::new();
+    let (path, mut cache, project) = synced("lost-project-access", &github).await;
+    let mut listing_cache = Cache::open(&path).unwrap();
+    let empty_list = crate::domain::ProjectList {
+        owners: Vec::new(),
+        sso_blocked: Vec::new(),
+    };
+
+    let result = sync::full_sync(&mut cache, &github, "@me", 2, |page, _, _| {
+        if page == 1 {
+            listing_cache.reconcile_projects(&empty_list).unwrap();
+        }
+    })
+    .await;
+
+    assert!(matches!(result, Err(Error::ProjectNotFound { .. })));
+    assert!(cache.snapshot(&project).unwrap().is_none());
+    drop(cache);
+    let mut cache = Cache::open(path).unwrap();
+
+    assert!(cache.projects().unwrap().owners.is_empty());
+    assert!(
+        sync::full_sync(&mut cache, &FakeOffline, "@me", 2, |_, _, _| {})
+            .await
+            .is_err()
+    );
+    assert!(cache.projects().unwrap().owners.is_empty());
+
+    sync_once(&mut cache, &github).await.unwrap();
+
+    assert!(cache.snapshot(&project).unwrap().is_some());
+    assert_eq!(cache.projects().unwrap().owners[0].projects[0].id, project);
+}
+
+#[tokio::test]
 async fn an_item_deleted_on_the_server_leaves_the_cache() {
     let github = FakeGithub::new();
     let (_, mut cache, project) = synced("deleted", &github).await;
