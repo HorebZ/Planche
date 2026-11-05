@@ -4,7 +4,9 @@ query Issue($id: ID!, $assigneesAfter: String, $labelsAfter: String) {
     __typename
     id
     ... on Issue {
-      number title url body issueState: state createdAt
+      number title url body issueState: state createdAt updatedAt
+      author { login avatarUrl }
+      comments { totalCount }
       repository { nameWithOwner }
       assignees(first: 100, after: $assigneesAfter) {
         pageInfo { hasNextPage endCursor }

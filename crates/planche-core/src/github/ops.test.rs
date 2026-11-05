@@ -376,6 +376,15 @@ fn issue_relations_decode_and_survive_the_offline_cache() {
     };
 
     assert_eq!(details.created_at.as_deref(), Some("2026-10-02T12:00:00Z"));
+    assert_eq!(details.updated_at.as_deref(), Some("2026-10-13T12:45:00Z"));
+    assert_eq!(details.comment_count, Some(2));
+    let author = details.author.as_ref().unwrap();
+
+    assert_eq!(author.login, "HorebZ");
+    assert_eq!(
+        author.avatar_url,
+        "https://avatars.githubusercontent.com/u/44978959?v=4"
+    );
     assert_eq!(details.parent_title.as_deref(), Some("Parent roadmap"));
 
     let sub_issues = details.sub_issues.as_ref().unwrap();
@@ -467,4 +476,32 @@ fn app_discovery_only_lists_active_organization_installations() {
     ]})).unwrap();
 
     assert_eq!(super::installation_organizations(reply), ["approved-org"]);
+}
+
+#[test]
+fn content_metadata_keeps_zero_comments_deleted_authors_and_legacy_cache_compatibility() {
+    use crate::domain::{CardDetails, ItemContent};
+
+    let content = serde_json::from_value(json!({
+        "__typename": "PullRequest", "id": "PR_metadata", "number": 42,
+        "title": "Fix", "url": "https://github.com/o/r/pull/42", "prState": "OPEN", "isDraft": false,
+        "repository": { "nameWithOwner": "o/r" }, "assignees": { "nodes": [] }, "labels": { "nodes": [] },
+        "createdAt": "2026-11-01T12:00:00Z", "updatedAt": "2026-11-05T12:00:00Z",
+        "author": null, "comments": { "totalCount": 0 }
+    })).unwrap();
+
+    let ItemContent::PullRequest { details, .. } = super::content_from_wire(content) else {
+        panic!("expected a pull request");
+    };
+
+    assert!(details.author.is_none());
+    assert_eq!(details.comment_count, Some(0));
+    assert_eq!(details.updated_at.as_deref(), Some("2026-11-05T12:00:00Z"));
+
+    let legacy: CardDetails =
+        serde_json::from_value(json!({ "created_at": "2026-11-01T12:00:00Z" })).unwrap();
+
+    assert!(legacy.author.is_none());
+    assert!(legacy.updated_at.is_none());
+    assert!(legacy.comment_count.is_none());
 }

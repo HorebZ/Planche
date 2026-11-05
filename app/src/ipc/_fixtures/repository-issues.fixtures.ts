@@ -52,6 +52,7 @@ export function repositoryIssueSource(): {
               ? "in_progress"
               : "review";
     const draft = status === "backlog" && number % 2 === 0;
+    const linked = draft || status === "review" || state === "closed";
 
     return {
       status,
@@ -64,18 +65,21 @@ export function repositoryIssueSource(): {
         state,
         assignees: status === "in_progress" ? [{ id: "U_dev", login: "dev", avatar_url: "" }] : [],
         details: {
+          author: { login: "HorebZ", avatar_url: "" },
+          created_at: "2026-10-31T12:00:00Z",
+          updated_at: "2026-11-05T12:00:00Z",
+          comment_count: number % 5,
           blocked_by: status === "backlog" && !draft ? 1 : 0,
           has_draft_pull_request: draft,
-          pull_request_count: draft || status === "review" ? 1 : 0,
-          pull_request:
-            draft || status === "review"
-              ? {
-                  number: number + 200,
-                  title: `Fix issue ${number}`,
-                  state: "open",
-                  is_draft: draft,
-                }
-              : null,
+          pull_request_count: linked ? 1 : 0,
+          pull_request: linked
+            ? {
+                number: number + 200,
+                title: `Fix issue ${number}`,
+                state: state === "closed" ? (number % 2 === 0 ? "merged" : "closed") : "open",
+                is_draft: draft,
+              }
+            : null,
         },
         labels: repositoryIssueOptions().labels.filter(
           (label) => number % (label.name === "bug" ? 2 : 3) === 0,

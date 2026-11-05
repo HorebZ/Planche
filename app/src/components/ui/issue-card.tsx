@@ -10,6 +10,11 @@ import {
 import type { ComponentProps } from "react";
 import { AvatarStack, type AvatarUser } from "@/components/ui/avatar";
 import type { DisplayProperty } from "@/components/ui/display-menu";
+import {
+  IssueCommentCount,
+  IssueMetadata,
+  IssuePullRequestCount,
+} from "@/components/ui/issue-metadata";
 import { Kbd } from "@/components/ui/kbd";
 import type { CardLabel } from "@/components/ui/label-chip";
 import { LabelSummary } from "@/components/ui/label-summary";
@@ -23,7 +28,7 @@ import { type StatusKey, StatusSquare } from "@/components/ui/status";
 import { cn } from "@/lib/cn";
 
 const issueCardVariants = cva(
-  "relative flex min-w-0 flex-col gap-2 rounded-lg bg-card px-3 py-[11px] outline-none transition-[box-shadow,rotate,scale] ease-pl",
+  "group/assignees relative flex min-w-0 flex-col gap-2 rounded-lg bg-card px-3 py-[11px] outline-none transition-[box-shadow,rotate,scale] ease-pl",
   {
     variants: {
       dragState: {
@@ -46,6 +51,9 @@ type CardBase = {
   status?: StatusKey;
   priority?: Priority;
   createdAt?: string;
+  updatedAt?: string;
+  author?: AvatarUser;
+  commentCount?: number;
   parentTitle?: string;
   subIssues?: { completed: number; total: number };
   blockedBy?: number;
@@ -81,6 +89,9 @@ export function IssueCard({
   status,
   priority,
   createdAt,
+  updatedAt,
+  author,
+  commentCount,
   parentTitle,
   subIssues,
   blockedBy = 0,
@@ -99,9 +110,6 @@ export function IssueCard({
     status ??
     (state === "draft" ? "draft" : state === "closed" || state === "merged" ? "done" : "todo");
   const muted = resolvedStatus === "done" || resolvedStatus === "cancelled";
-  const prLabel = pullRequest
-    ? `Pull request #${pullRequest.number}: ${pullRequest.title} (${pullRequest.state === "open" && pullRequest.is_draft ? "draft" : pullRequest.state})`
-    : `${pullRequestCount} linked pull requests`;
   const blockedLabel = `Blocked by ${blockedBy} issue${blockedBy === 1 ? "" : "s"}`;
   const blockingLabel = `Blocking ${blocking} issue${blocking === 1 ? "" : "s"}`;
 
@@ -134,20 +142,13 @@ export function IssueCard({
             </span>
           ) : null}
         </div>
+        <IssueCommentCount count={commentCount} />
         {!hiddenProperties.includes("assignees") ? (
           <span className="flex shrink-0 items-center">
-            {assignees.length ? (
-              <AvatarStack
-                users={assignees}
-                size={16}
-              />
-            ) : (
-              <span
-                role="img"
-                aria-label="Unassigned"
-                className="size-3.5 shrink-0 rounded-full opacity-60 shadow-[inset_0_0_0_1px_var(--pl-fg-3)]"
-              />
-            )}
+            <AvatarStack
+              users={assignees}
+              size={16}
+            />
           </span>
         ) : null}
       </div>
@@ -155,13 +156,13 @@ export function IssueCard({
         <span className="mt-0.5 flex shrink-0 text-fg-3">
           {kind === "pr" ? (
             state === "draft" ? (
-              <GitPullRequestDraft className="size-3.5" />
+              <GitPullRequestDraft className="size-3.5 text-fg-3" />
             ) : state === "merged" ? (
-              <GitMerge className="size-3.5 text-status-done" />
+              <GitMerge className="size-3.5 text-status-review" />
             ) : state === "closed" ? (
-              <GitPullRequestClosed className="size-3.5" />
+              <GitPullRequestClosed className="size-3.5 text-danger" />
             ) : (
-              <GitPullRequest className="size-3.5" />
+              <GitPullRequest className="size-3.5 text-success" />
             )
           ) : (
             <StatusSquare status={resolvedStatus} />
@@ -192,25 +193,11 @@ export function IssueCard({
               {subIssues.completed}/{subIssues.total}
             </span>
           ) : null}
-          {pullRequestCount > 0 ? (
-            <span
-              className={metadataClass}
-              role="img"
-              aria-label={prLabel}
-              title={prLabel}
-            >
-              {pullRequest?.state === "merged" ? (
-                <GitMerge className="size-3.5" />
-              ) : pullRequest?.state === "closed" ? (
-                <GitPullRequestClosed className="size-3.5" />
-              ) : pullRequest?.is_draft ? (
-                <GitPullRequestDraft className="size-3.5" />
-              ) : (
-                <GitPullRequest className="size-3.5" />
-              )}
-              {pullRequest ? `#${pullRequest.number}` : `${pullRequestCount} PRs`}
-            </span>
-          ) : null}
+          <IssuePullRequestCount
+            count={pullRequestCount}
+            pullRequest={pullRequest}
+            className={metadataClass}
+          />
           {blockedBy > 0 ? (
             <span
               className={cn(metadataClass, "bg-danger-soft text-danger")}
@@ -236,12 +223,11 @@ export function IssueCard({
         </div>
       ) : null}
       {!hiddenProperties.includes("labels") ? <LabelSummary labels={labels} /> : null}
-      {createdAt ? (
-        <span className="text-[12px] text-fg-3 tabular-nums">
-          Created{" "}
-          {new Date(createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-        </span>
-      ) : null}
+      <IssueMetadata
+        author={author}
+        createdAt={createdAt}
+        updatedAt={updatedAt}
+      />
       {updated ? (
         <div
           aria-hidden

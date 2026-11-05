@@ -97,6 +97,8 @@ fragment ProjectItemPage on ProjectV2ItemConnection {
       }
       ... on Issue {
         id number title url issueState: state updatedAt createdAt
+        author { login avatarUrl }
+        comments { totalCount }
         parent { title }
         subIssuesSummary { completed total }
         issueDependenciesSummary { blockedBy blocking }
@@ -110,6 +112,8 @@ fragment ProjectItemPage on ProjectV2ItemConnection {
       }
       ... on PullRequest {
         id number title url prState: state isDraft updatedAt createdAt
+        author { login avatarUrl }
+        comments { totalCount }
         repository { nameWithOwner }
         assignees(first: 10) { nodes { ...UserLite } }
         labels(first: 10) { nodes { name color } }

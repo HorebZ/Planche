@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
-import { draft } from "@/ipc/_fixtures/card.fixtures";
+import { draft, issue } from "@/ipc/_fixtures/card.fixtures";
 import { useUi } from "@/stores/ui";
-import { Card, focusCard } from "./Card";
+import { Card, cardData, focusCard } from "./Card";
 
 test("a card waiting for sync renders without a Pending badge", () => {
   const container = document.createElement("div");
@@ -55,4 +55,24 @@ test("focus restoration consumes mounted reveals and preserves unmounted request
   element.remove();
   useUi.getState().finishReveal("unmounted");
   useUi.getState().select(null);
+});
+
+test("GitHub metadata reaches the card without replacing the creator with an assignee", () => {
+  const data = cardData(
+    issue({
+      assignees: [{ id: "assigned", login: "assigned", avatar_url: "assigned.png" }],
+      details: {
+        author: { login: "creator", avatar_url: "creator.png" },
+        created_at: "2026-10-31T12:00:00Z",
+        updated_at: "2026-11-05T12:00:00Z",
+        comment_count: 0,
+      },
+    }),
+  );
+
+  expect(data.author).toEqual({ login: "creator", avatarUrl: "creator.png" });
+  expect(data.assignees[0].login).toBe("assigned");
+  expect(data.createdAt).toBe("2026-10-31T12:00:00Z");
+  expect(data.updatedAt).toBe("2026-11-05T12:00:00Z");
+  expect(data.commentCount).toBe(0);
 });

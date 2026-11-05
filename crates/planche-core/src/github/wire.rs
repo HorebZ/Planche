@@ -421,6 +421,12 @@ pub(super) enum Content {
         #[serde(default)]
         created_at: Option<String>,
         #[serde(default)]
+        updated_at: Option<String>,
+        #[serde(default)]
+        author: Option<Author>,
+        #[serde(default)]
+        comments: Option<CommentCount>,
+        #[serde(default)]
         parent: Option<ParentIssue>,
         #[serde(default)]
         sub_issues_summary: Option<crate::domain::SubIssues>,
@@ -441,7 +447,26 @@ pub(super) enum Content {
         labels: Nodes<Label>,
         #[serde(default)]
         created_at: Option<String>,
+        #[serde(default)]
+        updated_at: Option<String>,
+        #[serde(default)]
+        author: Option<Author>,
+        #[serde(default)]
+        comments: Option<CommentCount>,
     },
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct Author {
+    pub login: String,
+    pub avatar_url: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct CommentCount {
+    pub total_count: u32,
 }
 
 #[derive(Deserialize)]

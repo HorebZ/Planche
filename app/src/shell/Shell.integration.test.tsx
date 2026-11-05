@@ -255,8 +255,9 @@ test("Display hides properties in the list and persists the selected view prefer
   key("Escape", get('[role="menu"]'));
 
   expect(
-    document.querySelectorAll('main [data-slot="label-chip"], main [data-slot="avatar"]'),
+    document.querySelectorAll('main [data-slot="label-chip"], main [data-slot="avatar-stack"]'),
   ).toHaveLength(0);
+  expect(get('[data-item-id="PVTI_226"] [title="Created by HorebZ"]')).not.toBeNull();
   expect(get('[data-item-id="PVTI_226"]').textContent).toContain("#226");
   expect(get('[data-item-id="PVTI_226"]').textContent).not.toContain("app#226");
   expect(Object.values(usePreferences.getState().views)[0].hiddenProperties).toEqual([

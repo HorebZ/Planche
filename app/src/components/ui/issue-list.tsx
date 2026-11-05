@@ -3,6 +3,11 @@ import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { AvatarStack } from "@/components/ui/avatar";
 import type { DisplayProperty } from "@/components/ui/display-menu";
 import type { IssueCardData } from "@/components/ui/issue-card";
+import {
+  IssueCommentCount,
+  IssueMetadata,
+  IssuePullRequestCount,
+} from "@/components/ui/issue-metadata";
 import { LabelSummary } from "@/components/ui/label-summary";
 import { type StatusKey, StatusSquare } from "@/components/ui/status";
 import { commandFor } from "@/keyboard/shortcuts";
@@ -119,7 +124,7 @@ export function IssueListGroup({
         ? items.map((item) => (
             <div
               key={item.id}
-              className="flex h-[38px] w-full items-center gap-2.5 border-line border-b px-4 text-left focus-within:bg-active hover:bg-hover"
+              className="group/assignees flex h-14 w-full items-center gap-2.5 border-line border-b px-4 text-left focus-within:bg-active hover:bg-hover"
             >
               <button
                 type="button"
@@ -135,13 +140,29 @@ export function IssueListGroup({
                   {item.number != null ? `#${item.number}` : "Draft"}
                 </span>
                 <StatusSquare status={item.status ?? status} />
-                <span className="min-w-0 flex-1 truncate font-medium">{item.title}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium">{item.title}</span>
+                  <IssueMetadata
+                    author={item.author}
+                    createdAt={item.createdAt}
+                    updatedAt={item.updatedAt}
+                    className="mt-1 h-5 flex-nowrap overflow-hidden"
+                  />
+                </span>
               </button>
               {!hiddenProperties.includes("labels") ? (
                 <div className="min-w-0 max-w-1/3">
                   <LabelSummary labels={item.labels} />
                 </div>
               ) : null}
+              <span className="mr-3 inline-grid min-w-20 shrink-0 grid-cols-2 items-center gap-3">
+                <IssueCommentCount count={item.commentCount} />
+                <IssuePullRequestCount
+                  count={item.pullRequestCount}
+                  pullRequest={item.pullRequest}
+                  className="col-start-2"
+                />
+              </span>
               {!hiddenProperties.includes("assignees") ? (
                 <div className="flex w-7 justify-end">
                   <AvatarStack

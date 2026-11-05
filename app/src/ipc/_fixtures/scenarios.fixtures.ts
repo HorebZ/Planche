@@ -80,7 +80,12 @@ function card(
     labels: labels.map((name) => ({ name, color: labelColors[name] })),
     pending: false,
     updated_by_sync: false,
-    details: { created_at: "2026-10-02T12:00:00Z" },
+    details: {
+      created_at: "2026-10-02T12:00:00Z",
+      updated_at: "2026-11-05T12:00:00Z",
+      author: { login: "HorebZ", avatar_url: "" },
+      comment_count: number % 5,
+    },
   };
 
   if (kind === "p") {
@@ -207,6 +212,9 @@ export function boardFor(scenario: Scenario): Board | null {
       Object.assign(board.columns[1].cards[0], {
         details: {
           created_at: "2026-10-02T12:00:00Z",
+          updated_at: "2026-11-05T12:00:00Z",
+          author: { login: "HorebZ", avatar_url: "" },
+          comment_count: 2,
           parent_title: "A parent issue with a very long title that should stay on one line",
           pull_request_count: 1,
           pull_request: {

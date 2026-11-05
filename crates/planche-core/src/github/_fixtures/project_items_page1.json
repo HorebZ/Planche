@@ -69,6 +69,8 @@
                 ]
               },
               "createdAt": "2026-10-02T12:00:00Z",
+              "author": { "login": "HorebZ", "avatarUrl": "https://avatars.githubusercontent.com/u/44978959?v=4" },
+              "comments": { "totalCount": 2 },
               "parent": {
                 "title": "Parent roadmap"
               },

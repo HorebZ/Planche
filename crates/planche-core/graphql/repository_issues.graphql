@@ -7,7 +7,9 @@ query RepositoryIssues($id: ID!, $after: String, $states: [IssueState!], $labels
       issues(first: 50, after: $after, states: $states, labels: $labels, filterBy: $filter, orderBy: { field: CREATED_AT, direction: DESC }) {
         pageInfo { hasNextPage endCursor }
         nodes {
-          __typename id number title url issueState: state createdAt
+          __typename id number title url issueState: state createdAt updatedAt
+          author { login avatarUrl }
+          comments { totalCount }
           repository { nameWithOwner }
           assignees(first: 100) { nodes { id login avatarUrl } }
           labels(first: 100) { nodes { name color } }

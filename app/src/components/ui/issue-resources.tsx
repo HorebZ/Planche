@@ -74,7 +74,7 @@ export function IssueResources({
                 className={cn(
                   "mt-px size-3.5 shrink-0",
                   pr.state === "merged"
-                    ? "text-accent"
+                    ? "text-status-review"
                     : pr.state === "closed"
                       ? "text-danger"
                       : pr.is_draft

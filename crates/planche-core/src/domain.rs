@@ -372,6 +372,9 @@ pub enum PullRequestState {
 #[serde(default)]
 pub struct CardDetails {
     pub created_at: Option<String>,
+    pub updated_at: Option<String>,
+    pub author: Option<Author>,
+    pub comment_count: Option<u32>,
     pub parent_title: Option<String>,
     pub sub_issues: Option<SubIssues>,
     pub blocked_by: u32,
@@ -380,6 +383,12 @@ pub struct CardDetails {
     pub has_draft_pull_request: bool,
     /// The linked PR when there is exactly one; otherwise the count is displayed.
     pub pull_request: Option<LinkedPullRequest>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct Author {
+    pub login: String,
+    pub avatar_url: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]

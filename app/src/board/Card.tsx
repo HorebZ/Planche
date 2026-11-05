@@ -24,6 +24,11 @@ export function cardData(card: ItemContent): IssueCardData {
         labels: card.labels,
         assignees: card.assignees.map((u) => ({ login: u.login, avatarUrl: u.avatar_url })),
         createdAt: card.details?.created_at ?? undefined,
+        updatedAt: card.details?.updated_at ?? undefined,
+        author: card.details?.author
+          ? { login: card.details.author.login, avatarUrl: card.details.author.avatar_url }
+          : undefined,
+        commentCount: card.details?.comment_count ?? undefined,
         parentTitle: card.details?.parent_title ?? undefined,
         subIssues: card.details?.sub_issues ?? undefined,
         blockedBy: card.details?.blocked_by,
@@ -41,6 +46,11 @@ export function cardData(card: ItemContent): IssueCardData {
         labels: card.labels,
         assignees: card.assignees.map((u) => ({ login: u.login, avatarUrl: u.avatar_url })),
         createdAt: card.details?.created_at ?? undefined,
+        updatedAt: card.details?.updated_at ?? undefined,
+        author: card.details?.author
+          ? { login: card.details.author.login, avatarUrl: card.details.author.avatar_url }
+          : undefined,
+        commentCount: card.details?.comment_count ?? undefined,
       };
     case "draft":
       return {

@@ -181,6 +181,11 @@ export type AuthStatus = {
 	organizations_available?: boolean,
 };
 
+export type Author = {
+	login: string,
+	avatar_url: string,
+};
+
 export type Board = {
 	project: BoardProject,
 	view: BoardView | null,
@@ -236,6 +241,9 @@ export type CardChange = {
 
 export type CardDetails = {
 	created_at?: string | null,
+	updated_at?: string | null,
+	author?: Author | null,
+	comment_count?: number | null,
 	parent_title?: string | null,
 	sub_issues?: SubIssues | null,
 	blocked_by?: number,

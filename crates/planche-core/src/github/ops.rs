@@ -921,6 +921,9 @@ fn content_from_wire(content: wire::Content) -> ItemContent {
             assignees,
             labels,
             created_at,
+            updated_at,
+            author,
+            comments,
             parent,
             sub_issues_summary,
             issue_dependencies_summary,
@@ -939,6 +942,12 @@ fn content_from_wire(content: wire::Content) -> ItemContent {
             labels: labels_from_wire(labels),
             details: Box::new(CardDetails {
                 created_at,
+                updated_at,
+                author: author.map(|author| crate::domain::Author {
+                    login: author.login,
+                    avatar_url: author.avatar_url,
+                }),
+                comment_count: comments.map(|comments| comments.total_count),
                 parent_title: parent.map(|p| p.title),
                 sub_issues: sub_issues_summary.filter(|s| s.total > 0),
                 blocked_by: issue_dependencies_summary
@@ -975,6 +984,9 @@ fn content_from_wire(content: wire::Content) -> ItemContent {
             assignees,
             labels,
             created_at,
+            updated_at,
+            author,
+            comments,
         } => ItemContent::PullRequest {
             id: ContentId(id),
             number,
@@ -987,6 +999,12 @@ fn content_from_wire(content: wire::Content) -> ItemContent {
             labels: labels_from_wire(labels),
             details: Box::new(CardDetails {
                 created_at,
+                updated_at,
+                author: author.map(|author| crate::domain::Author {
+                    login: author.login,
+                    avatar_url: author.avatar_url,
+                }),
+                comment_count: comments.map(|comments| comments.total_count),
                 ..Default::default()
             }),
         },

@@ -230,7 +230,7 @@ export function IssueDetail({
                       disabled={!editable || !onAssign}
                       onClick={onAssign}
                       aria-label="Change assignees"
-                      className="h-auto min-h-8 max-w-full rounded-full px-3 py-1.5"
+                      className="group/assignees h-auto min-h-8 max-w-full rounded-full px-3 py-1.5"
                     >
                       <AvatarStack
                         users={item.assignees}

@@ -276,7 +276,10 @@ fn get_board_reads_the_cached_board() {
             "state": "open",
             "assignees": [],
             "labels": [{ "name": "phase", "color": "1D76DB" }],
-            "details": planche_core::domain::CardDetails::default(),
+            "details": planche_core::domain::CardDetails {
+                updated_at: Some("2026-10-13T12:45:02Z".into()),
+                ..Default::default()
+            },
             "pending": false,
             "updated_by_sync": false
         })

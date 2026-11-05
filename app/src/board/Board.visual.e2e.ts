@@ -95,14 +95,17 @@ test("cards show PRs, both dependency directions and sub-issue progress without 
   await expect(card.getByRole("img", { name: "Blocked by 2 issues" })).toHaveText("Blocked by 2");
   await expect(card.getByRole("img", { name: "Blocking 1 issue" })).toHaveText("Blocks 1");
   await expect(card.getByRole("img", { name: "2 of 5 sub-issues completed" })).toHaveText("2/5");
-  await expect(card.getByText("Created Oct 2")).toBeVisible();
-  await expect(page.getByRole("img", { name: "3 linked pull requests" })).toHaveText("3 PRs");
+  await expect(card.locator('time[datetime="2026-10-02T12:00:00Z"]')).toBeVisible();
+  await expect(card.locator('time[datetime="2026-11-05T12:00:00Z"]')).toBeVisible();
+  await expect(card.getByTitle("Created by HorebZ")).toBeVisible();
+  await expect(card.getByRole("img", { name: "2 comments", exact: true })).toBeVisible();
+  await expect(page.getByRole("img", { name: "3 linked pull requests" })).toHaveText("3");
   await expect(page.getByRole("img", { name: "0 of 2 sub-issues completed" })).toHaveText("0/2");
 
   const header = card.locator(":scope > div").first();
 
   expect(await header.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
-  await expect(card.locator('[data-slot="avatar"]')).toHaveText("CR");
+  await expect(card.locator('[data-slot="avatar-stack"] [data-slot="avatar"]')).toHaveText("CR");
 
   const columns = page.locator('[data-slot="board-column"]');
   const widths = await columns.evaluateAll((els) =>

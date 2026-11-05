@@ -4,6 +4,11 @@ import { BoardColumn, BoardColumnScroll } from "@/components/ui/board-column";
 import { BoardFilter } from "@/components/ui/board-filter";
 import { Button } from "@/components/ui/button";
 import { IssueCard, type IssueCardData } from "@/components/ui/issue-card";
+import {
+  IssueCommentCount,
+  IssueMetadata,
+  IssuePullRequestCount,
+} from "@/components/ui/issue-metadata";
 import { LabelSummary } from "@/components/ui/label-summary";
 import type { StatusKey } from "@/components/ui/status";
 import { ViewButton } from "@/components/ui/view-button";
@@ -207,7 +212,7 @@ export function RepositoryIssueList({
             aria-current={selected === issue.id ? "true" : undefined}
             onFocus={() => onSelect?.(issue.id)}
             onClick={() => onOpen(issue.id)}
-            className="flex w-full items-start gap-3 px-5 py-3 text-left hover:bg-hover focus-visible:shadow-ring aria-[current=true]:bg-active"
+            className="group/assignees flex w-full items-start gap-3 px-5 py-3 text-left hover:bg-hover focus-visible:shadow-ring aria-[current=true]:bg-active"
           >
             {issue.state === "closed" ? (
               <CircleCheck
@@ -221,13 +226,36 @@ export function RepositoryIssueList({
               />
             )}
             <span className="min-w-0 flex-1">
-              <span className="block break-words font-medium text-sm">{issue.title}</span>
-              <span className="mt-1 flex flex-wrap items-center gap-2 text-fg-3 text-xs">
-                <span>
-                  #{issue.number} · {issue.state === "closed" ? "Closed" : "Open"}
-                </span>
-                <LabelSummary labels={issue.labels} />
+              <span
+                className="block truncate font-medium text-sm"
+                title={issue.title}
+              >
+                {issue.title}
               </span>
+              <span className="mt-1 flex h-5 min-w-0 items-center gap-1.5 text-fg-3 text-xs">
+                <span className="shrink-0 whitespace-nowrap">
+                  {issue.repo}#{issue.number}
+                </span>
+                <IssueMetadata
+                  author={issue.author}
+                  createdAt={issue.createdAt}
+                  updatedAt={issue.updatedAt}
+                  className="flex-nowrap overflow-hidden"
+                />
+              </span>
+              {issue.labels.length > 0 ? (
+                <span className="mt-1 flex h-5 min-w-0 items-center">
+                  <LabelSummary labels={issue.labels} />
+                </span>
+              ) : null}
+            </span>
+            <span className="mr-3 inline-grid min-w-20 shrink-0 grid-cols-2 items-center gap-3">
+              <IssueCommentCount count={issue.commentCount} />
+              <IssuePullRequestCount
+                count={issue.pullRequestCount}
+                pullRequest={issue.pullRequest}
+                className="col-start-2"
+              />
             </span>
             <AvatarStack
               users={issue.assignees}

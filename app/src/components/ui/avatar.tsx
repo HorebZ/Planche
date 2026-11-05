@@ -89,6 +89,16 @@ export function AvatarStack({
       className={cn("flex", className)}
       {...props}
     >
+      {!users.length ? (
+        <span
+          role="img"
+          aria-label="Unassigned"
+          className={cn(
+            avatarVariants({ size }),
+            "bg-transparent opacity-0 shadow-[inset_0_0_0_1px_var(--pl-fg-3)] transition-opacity group-focus-within/assignees:opacity-60 group-hover/assignees:opacity-60 group-data-[preview=focus]/assignees:opacity-60 group-data-[preview=hover]/assignees:opacity-60",
+          )}
+        />
+      ) : null}
       {users.map((user, index) => (
         <span
           key={user.login}

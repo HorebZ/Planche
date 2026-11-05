@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/issue-description";
 import { IssueDetail } from "@/components/ui/issue-detail";
 import { IssueListGroup } from "@/components/ui/issue-list";
+import { IssuePullRequestCount } from "@/components/ui/issue-metadata";
 import { IssueResources } from "@/components/ui/issue-resources";
 import { IssueTabPanel, IssueTabs } from "@/components/ui/issue-tabs";
 import { LabelChip } from "@/components/ui/label-chip";
@@ -125,6 +126,10 @@ const openIssue = {
   title: "Column counter ignores filtered cards",
   labels: [labels.bug],
   assignees: [lea],
+  author: { ...camille, avatarUrl: portrait },
+  createdAt: "2026-10-31T12:00:00Z",
+  updatedAt: "2026-11-05T12:00:00Z",
+  commentCount: 2,
 } satisfies IssueCardData;
 
 const dragCard = {
@@ -378,6 +383,22 @@ export function BoardSection() {
                 size={18}
               />
             </State>
+            {(["rest", "hover", "focus"] as const).map((state) => (
+              <State
+                key={state}
+                label={`unassigned · ${state}`}
+              >
+                <div
+                  className="group/assignees"
+                  data-preview={state === "rest" ? undefined : state}
+                >
+                  <AvatarStack
+                    users={[]}
+                    size={18}
+                  />
+                </div>
+              </State>
+            ))}
             <State label="stack 20">
               <AvatarStack
                 users={[camille, theo, lea, amina]}
@@ -390,6 +411,27 @@ export function BoardSection() {
                 size={20}
                 on="bg"
               />
+            </State>
+          </Row>
+          <Row label="linked pull requests">
+            {(["open", "draft", "closed", "merged"] as const).map((state) => (
+              <State
+                key={state}
+                label={state}
+              >
+                <IssuePullRequestCount
+                  count={1}
+                  pullRequest={{
+                    number: 42,
+                    title: "Fix the issue",
+                    state: state === "draft" ? "open" : state,
+                    is_draft: state === "draft",
+                  }}
+                />
+              </State>
+            ))}
+            <State label="multiple">
+              <IssuePullRequestCount count={3} />
             </State>
           </Row>
           <Row label="label">
