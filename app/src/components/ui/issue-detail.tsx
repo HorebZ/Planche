@@ -1,17 +1,19 @@
 import {
+  ArrowUpRight,
+  Box,
   ChevronDown,
   ChevronUp,
-  ExternalLink,
   Maximize2,
   Minimize2,
-  SquarePlus,
+  Plus,
   X,
 } from "lucide-react";
 import { type ReactNode, useLayoutEffect, useRef } from "react";
 import { AvatarStack } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import type { IssueCardData } from "@/components/ui/issue-card";
-import { LabelSummary } from "@/components/ui/label-summary";
+import { LabelChip } from "@/components/ui/label-chip";
+import { PriorityGlyph } from "@/components/ui/planche-glyph";
 import { StatusChip, type StatusKey } from "@/components/ui/status";
 import { cn } from "@/lib/cn";
 
@@ -77,7 +79,7 @@ export function IssueDetail({
     >
       <header
         data-tauri-drag-region
-        className="flex h-10 shrink-0 items-center gap-1 border-line border-b px-3 text-md [&_button]:size-6 [&_svg]:size-3.5"
+        className="flex h-10 shrink-0 items-center gap-1 px-3 text-md [&_button]:size-6 [&_svg]:size-3.5"
       >
         <Button
           variant="ghost"
@@ -96,7 +98,7 @@ export function IssueDetail({
             title="Open in tab"
             onClick={onOpenTab}
           >
-            <SquarePlus />
+            <Plus />
           </Button>
         ) : null}
         {onExpandedChange ? (
@@ -138,7 +140,7 @@ export function IssueDetail({
             aria-label={item?.number != null ? "Open on GitHub" : "Open project on GitHub"}
             onClick={onGitHub}
           >
-            <ExternalLink />
+            <ArrowUpRight />
           </Button>
         ) : null}
       </header>
@@ -165,21 +167,36 @@ export function IssueDetail({
             </h1>
             {notice ? <p className="mb-6 text-fg-2">{notice}</p> : null}
             {item ? (
-              <dl className="grid grid-cols-[100px_minmax(0,1fr)] items-center gap-x-5 gap-y-4 border-line border-y py-5 text-sm">
+              <dl className="flex flex-wrap items-center gap-2 text-sm">
+                {!githubState ? (
+                  <div className="min-w-0 max-w-full">
+                    <dt className="sr-only">Project</dt>
+                    <dd className="inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-fg-3 shadow-card">
+                      <Box
+                        aria-hidden
+                        className="size-3.5 shrink-0"
+                      />
+                      <span className="min-w-0 break-words">{project}</span>
+                    </dd>
+                  </div>
+                ) : null}
                 {githubState ? (
-                  <>
-                    <dt className="text-fg-3">State</dt>
-                    <dd>{githubState === "open" ? "Open" : "Closed"}</dd>
-                  </>
+                  <div>
+                    <dt className="sr-only">State</dt>
+                    <dd className="inline-flex min-h-8 items-center rounded-full bg-card px-3 py-1.5 shadow-card">
+                      <StatusChip
+                        status={githubState === "open" ? "todo" : "done"}
+                        label={githubState === "open" ? "Open" : "Closed"}
+                      />
+                    </dd>
+                  </div>
                 ) : (
-                  <>
-                    <dt className="text-fg-3">Project</dt>
-                    <dd className="break-words">{project}</dd>
-                    <dt className="text-fg-3">Status</dt>
+                  <div className="min-w-0 max-w-full">
+                    <dt className="sr-only">Status</dt>
                     <dd>
                       <Button
-                        variant="ghost"
                         size="sm"
+                        className="h-auto min-h-8 max-w-full rounded-full px-3 py-1.5 [&_[data-slot=status-chip]]:whitespace-normal"
                         disabled={!editable || !status || !onStatus}
                         onClick={onStatus}
                         aria-label="Change project status"
@@ -194,36 +211,53 @@ export function IssueDetail({
                         )}
                       </Button>
                     </dd>
-                  </>
+                  </div>
                 )}
-                <dt className="text-fg-3">Assignees</dt>
-                <dd>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={!editable || !onAssign}
-                    onClick={onAssign}
-                    aria-label="Change assignees"
-                    className="h-auto min-h-6 max-w-full py-1"
-                  >
-                    <AvatarStack
-                      users={item.assignees}
-                      size={18}
-                      on="bg"
-                    />
-                    <span className="whitespace-normal break-words text-left">
-                      {item.assignees.map((user) => user.login).join(", ") ||
-                        (editable || githubState ? "Unassigned" : "Unavailable")}
-                    </span>
-                  </Button>
-                </dd>
-                {item.labels.length ? (
-                  <>
-                    <dt className="text-fg-3">Labels</dt>
-                    <dd className="min-w-0">
-                      <LabelSummary labels={item.labels} />
+                {item.priority ? (
+                  <div>
+                    <dt className="sr-only">Priority</dt>
+                    <dd className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-card px-3 py-1.5 shadow-card">
+                      <PriorityGlyph priority={item.priority} />
+                      <span className="capitalize">{item.priority}</span>
                     </dd>
-                  </>
+                  </div>
+                ) : null}
+                <div className="min-w-0 max-w-full">
+                  <dt className="sr-only">Assignees</dt>
+                  <dd>
+                    <Button
+                      size="sm"
+                      disabled={!editable || !onAssign}
+                      onClick={onAssign}
+                      aria-label="Change assignees"
+                      className="h-auto min-h-8 max-w-full rounded-full px-3 py-1.5"
+                    >
+                      <AvatarStack
+                        users={item.assignees}
+                        size={18}
+                        on="bg"
+                      />
+                      <span className="whitespace-normal break-words text-left">
+                        {item.assignees.map((user) => user.login).join(", ") ||
+                          (editable || githubState ? "Unassigned" : "Unavailable")}
+                      </span>
+                    </Button>
+                  </dd>
+                </div>
+                {item.labels.length ? (
+                  <div className="contents">
+                    <dt className="sr-only">Labels</dt>
+                    <dd className="contents">
+                      {item.labels.map((label) => (
+                        <LabelChip
+                          key={label.name}
+                          {...label}
+                          title={label.name}
+                          className="h-8 min-w-0 max-w-full rounded-full bg-card px-3 font-normal text-sm shadow-card"
+                        />
+                      ))}
+                    </dd>
+                  </div>
                 ) : null}
               </dl>
             ) : null}
