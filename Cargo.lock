@@ -2943,7 +2943,7 @@ checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 
 [[package]]
 name = "planche-app"
-version = "0.1.0-alpha.7"
+version = "0.1.0-alpha.8"
 dependencies = [
  "planche-core",
  "serde",
@@ -2959,7 +2959,7 @@ dependencies = [
 
 [[package]]
 name = "planche-cli"
-version = "0.1.0-alpha.7"
+version = "0.1.0-alpha.8"
 dependencies = [
  "clap",
  "planche-core",
@@ -2971,7 +2971,7 @@ dependencies = [
 
 [[package]]
 name = "planche-core"
-version = "0.1.0-alpha.7"
+version = "0.1.0-alpha.8"
 dependencies = [
  "base64 0.23.1",
  "flate2",

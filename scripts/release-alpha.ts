@@ -139,9 +139,8 @@ async function build() {
     signature,
     [
       "## New in this alpha",
-      "- View and edit project draft titles and Markdown descriptions inside Planche, with previews, offline persistence, and undo.",
-      "- Repository boards place blocked issues in Backlog and issues with draft pull requests in In Progress, with matching status icons.",
-      "- Refresh the public website and README with repository board screenshots and a full changelog.",
+      "- Restore window dragging from empty areas of the tab bar and the sidebar, including the space above the account controls.",
+      "- Tab selection, tab close buttons, and sidebar controls keep their normal interactions.",
       "",
       "## Before reconnecting GitHub",
       "- Existing OAuth grants and PATs retain their previous permissions. To switch to reduced OAuth access, revoke the old Planche grant under GitHub Settings → Applications → Authorized OAuth Apps, then sign in again.",

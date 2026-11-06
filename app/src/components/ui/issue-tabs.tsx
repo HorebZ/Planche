@@ -52,8 +52,12 @@ export function IssueTabs({
       onValueChange={onSelect}
       className="flex min-h-0 min-w-0 flex-1 flex-col gap-2"
     >
-      <div className="flex shrink-0 items-center gap-1">
+      <div
+        data-tauri-drag-region
+        className="flex shrink-0 items-center gap-1"
+      >
         <Tabs.List
+          data-tauri-drag-region
           ref={list}
           aria-label="Open tabs"
           onKeyDown={(event) => {

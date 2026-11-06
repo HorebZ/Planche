@@ -60,6 +60,7 @@ export function Sidebar({ className, ...props }: ComponentProps<"aside">) {
   return (
     <aside
       data-slot="sidebar"
+      data-tauri-drag-region
       className={cn(
         "flex h-full w-sidebar shrink-0 flex-col gap-[18px] px-2.5 pt-[42px] pb-2.5",
         className,
