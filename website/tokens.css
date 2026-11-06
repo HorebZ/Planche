@@ -5,6 +5,9 @@
   --site-muted: #8f8f98;
   --site-accent: #ee7746;
   --site-accent-light: #f6a27c;
+  --site-status-progress: oklch(0.8 0.14 78);
+  --site-status-review: oklch(0.7 0.14 300);
+  --site-status-done: oklch(0.72 0.13 150);
   --site-border: rgb(255 255 255 / 7%);
   --site-border-strong: rgb(255 255 255 / 10%);
   --site-button-bg: rgb(255 255 255 / 4%);

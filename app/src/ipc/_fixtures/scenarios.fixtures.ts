@@ -12,6 +12,7 @@ export type Scenario =
   | "relations"
   | "accounts"
   | "board"
+  | "showcase"
   | "readonly-project"
   | "locked"
   | "unlock-cancelled"

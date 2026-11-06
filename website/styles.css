@@ -117,6 +117,9 @@ article[id] {
   color: var(--site-muted);
   font-size: 14px;
 }
+.nav-links [aria-current="page"] {
+  color: var(--site-fg);
+}
 .button {
   min-height: 46px;
   padding: 10px 20px;
@@ -196,6 +199,12 @@ article[id] {
   color: var(--site-muted);
   font-size: 13px;
 }
+.announcement:hover {
+  text-decoration: none;
+}
+.announcement:hover .announcement-label {
+  text-decoration: underline;
+}
 .announcement-dot {
   width: 6px;
   height: 6px;
@@ -205,7 +214,7 @@ article[id] {
 }
 h1,
 .section-heading h2,
-.changelog h2,
+.changelog-heading h2,
 .download h2 {
   padding-bottom: 8px;
   font-family: var(--site-display-font);
@@ -238,7 +247,7 @@ h1 {
 }
 .hero-preview {
   width: min(1200px, calc(100% - 48px));
-  aspect-ratio: 1200 / 690;
+  aspect-ratio: 2 / 1;
   margin-top: 76px;
   perspective: 2200px;
   text-align: left;
@@ -298,7 +307,7 @@ h1 {
   color: var(--site-accent);
 }
 .section-heading h2,
-.changelog h2 {
+.changelog-heading h2 {
   font-size: clamp(36px, 4vw, 52px);
 }
 .section-heading p {
@@ -306,6 +315,57 @@ h1 {
   font-size: 17px;
   line-height: 26px;
   color: var(--site-muted);
+}
+.workflow {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+.workflow > div {
+  padding: 24px 20px;
+  border: 1px solid var(--site-border);
+  border-radius: 16px;
+  background: var(--site-panel);
+}
+.workflow dt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 18px / 1.3 var(--site-display-font);
+}
+.workflow .icon {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  color: var(--site-muted);
+}
+.workflow .status-badge {
+  fill: currentColor;
+  fill-opacity: 0.12;
+}
+.workflow .status-progress {
+  color: var(--site-status-progress);
+}
+.workflow .status-review {
+  color: var(--site-status-review);
+}
+.workflow .status-done {
+  color: var(--site-status-done);
+}
+.workflow dd {
+  margin: 10px 0 0;
+  color: var(--site-muted);
+  font-size: 14px;
+}
+.workflow-note {
+  max-width: 740px;
+  margin: 24px auto 0;
+  color: var(--site-muted);
+  font-size: 14px;
+  text-align: center;
 }
 .feature-grid {
   display: grid;
@@ -447,10 +507,14 @@ kbd {
   margin-top: 10px;
   color: var(--site-muted);
 }
-.alpha-note a {
+.alpha-note > a {
   display: inline-block;
   margin-top: 16px;
   font-weight: 500;
+}
+.alpha-note :where(p) a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .changelog {
@@ -459,8 +523,14 @@ kbd {
   gap: 80px;
   padding-top: 150px;
 }
-.changelog h2 {
+.changelog-heading h2 {
   font-size: 46px;
+}
+.changelog-page {
+  padding-block: 96px;
+}
+.changelog-page h1 {
+  font-size: clamp(42px, 5vw, 64px);
 }
 .changelog-heading p {
   margin-top: 10px;
@@ -473,6 +543,10 @@ kbd {
   margin-top: 24px;
   font-size: 14px;
   font-weight: 500;
+}
+.changelog-page .changelog-heading > a {
+  display: block;
+  width: fit-content;
 }
 .changelog-entries article {
   display: grid;
@@ -489,7 +563,8 @@ kbd {
   font-size: 13px;
   color: var(--site-muted);
 }
-.changelog h3 {
+.changelog-entries h2,
+.changelog-entries h3 {
   font: 600 18px / 1.4 var(--site-display-font);
   letter-spacing: -0.015em;
 }
@@ -572,6 +647,9 @@ kbd {
 }
 
 @media (max-width: 1100px) {
+  .workflow {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
   .navigation {
     gap: 24px;
   }
@@ -606,6 +684,9 @@ kbd {
 }
 
 @media (max-width: 760px) {
+  .workflow {
+    grid-template-columns: 1fr;
+  }
   .container {
     width: calc(100% - 40px);
   }

@@ -31,6 +31,7 @@ import {
   repositoryIssueSource,
   repositoryIssues,
 } from "./repository-issues.fixtures";
+import { repositoryShowcase, SHOWCASE_DESCRIPTION } from "./repository-showcase.fixtures";
 import {
   boardFor,
   mockupBoard,
@@ -97,7 +98,44 @@ export function installMockBackend(scenario: Scenario) {
     return structuredClone(selected);
   };
   let repositoryOffline = scenario === "offline";
-  const repositorySource = repositoryIssueSource();
+  if (scenario === "showcase" && signedIn.id) {
+    const repositories = [
+      "withastro/astro",
+      "tauri-apps/tauri",
+      "zed-industries/zed",
+      "camille-r/orbit",
+      "planche/aurora",
+    ].map((full_name, index) =>
+      repository({
+        id: `R_showcase_${index}`,
+        full_name,
+        url: `https://github.com/${full_name}`,
+        owner_is_org: !full_name.startsWith("camille-r/"),
+      }),
+    );
+    repositoryMetadata.push(...repositories);
+    saveRepositories(
+      signedIn.id,
+      [repositoryMetadata[0], ...repositories].map((repository) => ({
+        repository,
+        unavailable: false,
+      })),
+    );
+  }
+  const repositorySource = scenario === "showcase" ? repositoryShowcase() : repositoryIssueSource();
+  const repositoryOptions = repositoryIssueOptions(
+    scenario === "showcase"
+      ? {
+          labels: [
+            ...new Map(
+              repositorySource.flatMap(({ issue }) =>
+                issue.labels.map((label) => [label.name, label] as const),
+              ),
+            ).values(),
+          ],
+        }
+      : {},
+  );
   const issueCacheKey = (args: Record<string, unknown>) =>
     `planche:mock:repository-issues:${args.account}:${args.id}:${JSON.stringify(args.filter)}`;
   const shortcutKey = (args: Record<string, unknown>) =>
@@ -150,6 +188,9 @@ export function installMockBackend(scenario: Scenario) {
         issueRecord().content,
     });
   const descriptions = new Map<string, IssueDescription>();
+  if (scenario === "showcase") {
+    descriptions.set(`${signedIn.id}:I_repo_122`, issueDescription({ body: SHOWCASE_DESCRIPTION }));
+  }
   let descriptionError = scenario === "description-error";
   let descriptionDenied = scenario === "description-denied";
   let unlock: (() => void) | undefined;
@@ -396,8 +437,8 @@ export function installMockBackend(scenario: Scenario) {
       sessionStorage.setItem(issueCacheKey(args), JSON.stringify(data));
       return { kind: "ready", data };
     },
-    cached_repository_issue_options: () => repositoryIssueOptions(),
-    refresh_repository_issue_options: () => repositoryIssueOptions(),
+    cached_repository_issue_options: () => structuredClone(repositoryOptions),
+    refresh_repository_issue_options: () => structuredClone(repositoryOptions),
     repository_issue_shortcuts: (args) => savedShortcuts(args),
     save_repository_issue_shortcut: (args) => {
       const existing = savedShortcuts(args);

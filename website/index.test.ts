@@ -49,6 +49,15 @@ test("website links, SVG symbols and CSS assets resolve locally", async () => {
     reference.hash = "";
 
     expect(await Bun.file(reference).exists(), fileURLToPath(reference)).toBe(true);
+    const version = reference.searchParams.get("v");
+    if (version) {
+      const fingerprint = new Bun.CryptoHasher("sha256")
+        .update(await Bun.file(reference).arrayBuffer())
+        .digest("hex")
+        .slice(0, 12);
+
+      expect(version, fileURLToPath(reference)).toBe(fingerprint);
+    }
     if (fragment) {
       expect(fragments.get(reference.href)?.has(fragment), `${reference.href}#${fragment}`).toBe(
         true,
