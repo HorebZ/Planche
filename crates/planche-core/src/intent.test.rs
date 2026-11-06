@@ -227,6 +227,8 @@ fn set_assignees_on_a_draft_sends_its_whole_list() {
         content: ItemContent::Draft {
             id: ContentId("DI_d".into()),
             title: "Planche test draft".into(),
+            body: Some(String::new()),
+            edit_error: None,
             assignees: vec![user("lea")],
         },
         pending: false,

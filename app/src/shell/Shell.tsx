@@ -770,6 +770,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
               <ProjectIssueDetail
                 key={detailId}
                 board={data}
+                viewId={viewId}
                 account={auth.data?.id ?? null}
                 offline={offline}
                 active={!linkedIssue}
@@ -808,6 +809,7 @@ export function Shell({ projectId }: { projectId: ProjectId }) {
             >
               <ProjectIssueDetail
                 board={tabBoards[index].data ?? null}
+                viewId={tab.viewId}
                 account={auth.data?.id ?? null}
                 offline={offline}
                 itemId={tab.itemId}

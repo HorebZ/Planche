@@ -34,6 +34,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../migrations/0009_selected_repositories.sql"),
     include_str!("../migrations/0010_repository_issues.sql"),
     include_str!("../migrations/0011_project_accounts.sql"),
+    include_str!("../migrations/0012_draft_body.sql"),
 ];
 
 /// An acked row stays replayed until the snapshot reflects it, or for this many syncs.
@@ -497,7 +498,8 @@ impl Cache {
         let unacked: Vec<ItemId> = {
             let mut statement = self.conn.prepare_cached(
                 "SELECT DISTINCT item_id FROM pending_mutation
-                 WHERE project_id = ?1 AND project_account_id IS ?2 AND status IN ('pending', 'in_flight', 'unknown')",
+                 WHERE project_id = ?1 AND project_account_id IS ?2 AND status IN ('pending', 'in_flight', 'unknown')
+                 AND NOT (status = 'unknown' AND json_extract(intent, '$.type') = 'update_draft')",
             )?;
 
             statement
@@ -514,6 +516,10 @@ impl Cache {
             Some(json) => serde_json::from_str(&json).map_err(|e| Error::Cache(e.to_string()))?,
             None => Vec::new(),
         };
+        let failed_drafts: HashMap<ItemId, String> = self.conn.prepare_cached(
+            "SELECT item_id, last_error FROM pending_mutation WHERE project_id = ?1 AND project_account_id IS ?2 AND status = 'unknown' AND json_extract(intent, '$.type') = 'update_draft' AND last_error IS NOT NULL ORDER BY seq",
+        )?.query_map(params![project.as_str(), self.mutation_account()?.as_ref().map(UserId::as_str)], |row| Ok((ItemId(row.get(0)?), row.get(1)?)))?
+            .collect::<rusqlite::Result<_>>()?;
         let account = self.get("account_id")?.map(UserId);
         let issue_intents = account
             .as_ref()
@@ -536,6 +542,10 @@ impl Cache {
 
             card.pending = unacked.contains(&card.item_id);
             card.updated_by_sync = changed.contains(&card.item_id);
+
+            if let ItemContent::Draft { edit_error, .. } = &mut card.content {
+                *edit_error = failed_drafts.get(&card.item_id).cloned();
+            }
 
             if let ItemContent::Issue { id, .. } = &card.content {
                 let pending = pending_issues.get(id).copied().unwrap_or(0);
@@ -762,7 +772,8 @@ impl Cache {
     pub fn pending_count(&self, project: &ProjectId) -> Result<u32> {
         Ok(self.conn.query_row(
             "SELECT count(*) FROM pending_mutation
-             WHERE project_id = ?1 AND project_account_id IS ?2 AND status IN ('pending', 'in_flight', 'unknown')",
+             WHERE project_id = ?1 AND project_account_id IS ?2 AND status IN ('pending', 'in_flight', 'unknown')
+             AND NOT (status = 'unknown' AND json_extract(intent, '$.type') = 'update_draft')",
             params![project.as_str(), self.mutation_account()?.as_ref().map(UserId::as_str)],
             |r| r.get(0),
         )?)
@@ -777,10 +788,23 @@ impl Cache {
         {
             return Err(Error::ReadOnlyProject);
         }
+
+        if matches!(intent, Intent::UpdateDraft { .. }) {
+            let board = self
+                .board(project_id, None)?
+                .ok_or_else(|| Error::CardNotFound(item_id.to_string()))?;
+
+            intent::to_operations(intent, &board)?;
+        }
+
         let account = self.mutation_account()?;
         let account = account.as_ref().map(UserId::as_str);
         let tx = self.write()?;
         let mut intent = intent.clone();
+
+        if matches!(intent, Intent::UpdateDraft { .. }) {
+            tx.execute("DELETE FROM pending_mutation WHERE project_id = ?1 AND item_id = ?2 AND project_account_id IS ?3 AND status IN ('pending', 'unknown') AND json_extract(intent, '$.type') = 'update_draft'", params![project_id.as_str(), item_id.as_str(), account])?;
+        }
 
         if let Intent::MoveCard { placement, .. } = &mut intent {
             const PENDING_MOVES: &str = "FROM pending_mutation
@@ -991,11 +1015,14 @@ impl Cache {
 
     /// GitHub accepted the row. It stays replayed until a snapshot reflects it.
     pub fn ack(&self, seq: i64) -> Result<()> {
-        self.conn.execute(
+        let tx = self.conn.unchecked_transaction()?;
+        tx.execute(
             "UPDATE pending_mutation SET status = 'acked', acked_at_sync = 0, last_error = NULL
              WHERE seq = ?1",
             [seq],
         )?;
+        tx.execute("DELETE FROM pending_mutation WHERE status = 'unknown' AND json_extract(intent, '$.type') = 'update_draft' AND seq < ?1 AND EXISTS (SELECT 1 FROM pending_mutation AS accepted WHERE accepted.seq = ?1 AND json_extract(accepted.intent, '$.type') = 'update_draft' AND accepted.project_id = pending_mutation.project_id AND accepted.item_id = pending_mutation.item_id AND accepted.project_account_id IS pending_mutation.project_account_id)", [seq])?;
+        tx.commit()?;
 
         Ok(())
     }
@@ -1014,6 +1041,12 @@ impl Cache {
     pub fn remove(&self, seq: i64) -> Result<()> {
         self.conn
             .execute("DELETE FROM pending_mutation WHERE seq = ?1", [seq])?;
+
+        Ok(())
+    }
+
+    pub(crate) fn fail_draft(&self, seq: i64, error: &str) -> Result<()> {
+        self.conn.execute("UPDATE pending_mutation SET status = 'unknown', last_error = ?2 WHERE seq = ?1 AND json_extract(intent, '$.type') = 'update_draft'", params![seq, error])?;
 
         Ok(())
     }
@@ -1266,7 +1299,7 @@ impl Cache {
         let id = project.as_str();
         let mut statement = self.conn.prepare_cached(
             "SELECT id, kind, content_id, title, number, url, repo, state, is_draft_pr,
-                    is_archived, updated_at, details
+                    is_archived, updated_at, details, draft_body
              FROM item WHERE project_id = ?1 ORDER BY position",
         )?;
         let mut rows: Vec<ItemRow> = statement
@@ -1284,6 +1317,7 @@ impl Cache {
                     archived: r.get(9)?,
                     updated_at: r.get(10)?,
                     details: r.get(11)?,
+                    draft_body: r.get(12)?,
                     single_selects: Vec::new(),
                     assignees: Vec::new(),
                     labels: Vec::new(),
@@ -1513,8 +1547,8 @@ fn write_meta(tx: &Transaction, meta: &ProjectMeta) -> Result<()> {
 fn write_items(tx: &Transaction, meta: &ProjectMeta, items: &[Item]) -> Result<()> {
     let mut item = tx.prepare_cached(&format!(
         "INSERT INTO item (id, project_id, position, kind, content_id, title, number, url, repo,
-                           state, is_draft_pr, is_archived, updated_at, details, synced_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, {NOW})"
+                           state, is_draft_pr, is_archived, updated_at, details, draft_body, synced_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, {NOW})"
     ))?;
     let mut value = tx.prepare_cached(
         "INSERT INTO item_field_value (item_id, field_id, option_id) VALUES (?1, ?2, ?3)",
@@ -1627,6 +1661,10 @@ fn write_items(tx: &Transaction, meta: &ProjectMeta, items: &[Item]) -> Result<(
                     serde_json::to_string(details).map_err(|e| Error::Cache(e.to_string()))?,
                 _ => "{}".to_owned(),
             },
+            match &i.content {
+                ItemContent::Draft { body, .. } => body.as_deref(),
+                _ => None,
+            },
         ])?;
 
         // ponytail: single-select values only, the only kind the domain carries. Text,
@@ -1699,7 +1737,7 @@ fn settle_acked(
     // A draft a dead process left in flight: done when the snapshot shows it, else sent again.
     let unknown: Vec<(i64, String)> = tx
         .prepare_cached(
-            "SELECT seq, intent FROM pending_mutation WHERE project_id = ?1 AND project_account_id IS ?2 AND status = 'unknown'",
+            "SELECT seq, intent FROM pending_mutation WHERE project_id = ?1 AND project_account_id IS ?2 AND status = 'unknown' AND json_extract(intent, '$.type') = 'create_draft'",
         )?
         .query_map(params![project.as_str(), account.map(UserId::as_str)], |r| Ok((r.get(0)?, r.get(1)?)))?
         .collect::<rusqlite::Result<_>>()?;
@@ -1744,6 +1782,7 @@ struct ItemRow {
     archived: bool,
     updated_at: String,
     details: String,
+    draft_body: Option<String>,
     single_selects: Vec<(FieldId, OptionId)>,
     assignees: Vec<User>,
     labels: Vec<Label>,
@@ -1765,6 +1804,8 @@ impl ItemRow {
             "DRAFT_ISSUE" => ItemContent::Draft {
                 id: content_id()?,
                 title: self.title.clone(),
+                body: self.draft_body,
+                edit_error: None,
                 assignees: self.assignees.clone(),
             },
             "ISSUE" => ItemContent::Issue {

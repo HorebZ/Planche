@@ -92,7 +92,7 @@ fragment ProjectItemPage on ProjectV2ItemConnection {
     content {
       __typename
       ... on DraftIssue {
-        id title updatedAt
+        id title body updatedAt
         assignees(first: 10) { nodes { ...UserLite } }
       }
       ... on Issue {

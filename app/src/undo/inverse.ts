@@ -66,6 +66,10 @@ export function inverse(board: Board, intent: Intent): Intent | null {
       };
     case "unarchive":
       return { type: "archive", project_id: intent.project_id, item_id: intent.item_id };
+    case "update_draft":
+      return card.kind === "draft" && typeof card.body === "string"
+        ? { ...intent, title: card.title, body: card.body }
+        : null;
   }
 }
 
@@ -76,6 +80,7 @@ export const verbs: Record<Intent["type"], string> = {
   archive: "archive",
   unarchive: "restore",
   create_draft: "create",
+  update_draft: "update",
 };
 
 /** `#11` for an issue or a pull request, the quoted title for a draft. */
@@ -122,5 +127,7 @@ export function describe(board: Board, intent: Intent): string {
       return `${ref} archived`;
     case "unarchive":
       return `${ref} restored`;
+    case "update_draft":
+      return `${ref} updated`;
   }
 }

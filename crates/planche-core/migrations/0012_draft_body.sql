@@ -1,0 +1,1 @@
+ALTER TABLE item ADD COLUMN draft_body TEXT;

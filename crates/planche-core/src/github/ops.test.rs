@@ -3,6 +3,21 @@ use crate::github::ops::{decode_project_items, decode_project_meta};
 use serde_json::{Value, json};
 
 #[test]
+fn project_drafts_include_their_markdown_description() {
+    let mut page: Value = serde_json::from_str(ITEM_PAGES[0]).unwrap();
+    page["data"]["node"]["items"]["nodes"][0]["content"] = json!({
+        "__typename": "DraftIssue", "id": "DI_test", "title": "A draft",
+        "body": "# Details\n\nKeep **Markdown**.", "assignees": { "nodes": [] }
+    });
+
+    let decoded = decode_project_items(&page.to_string()).unwrap();
+
+    assert!(
+        matches!(&decoded.items[0].content, crate::domain::ItemContent::Draft { body: Some(body), .. } if body == "# Details\n\nKeep **Markdown**.")
+    );
+}
+
+#[test]
 fn issue_references_only_resolve_accessible_issues_for_the_current_viewer() {
     use super::reference_from_wire;
     use crate::Error;

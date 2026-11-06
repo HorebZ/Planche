@@ -194,10 +194,14 @@ export function BoardSection() {
                   onNext={() => {}}
                   onStatus={() => {}}
                   onAssign={() => {}}
+                  onEditTitle={kind === "draft" ? () => {} : undefined}
                   onGitHub={kind === "redacted" || kind === "missing" ? undefined : () => {}}
                 />
               </State>
             ))}
+          </Row>
+          <Row label="draft title and description">
+            <DraftEditorPreview />
           </Row>
           <Row label="issue side panel · full width in a narrow container">
             <IssuePanelPreview />
@@ -1056,6 +1060,23 @@ function FilterPreview() {
       />
       <NoFilterResults onReset={() => setSelected(emptyFilters)} />
     </div>
+  );
+}
+
+function DraftEditorPreview() {
+  const [title, setTitle] = useState("A project draft");
+  const [body, setBody] = useState("Draft **description**.\n\n- Ready to refine");
+
+  return (
+    <IssueDescriptionEditor
+      title={title}
+      onTitleChange={setTitle}
+      value={body}
+      onChange={setBody}
+      onSave={() => {}}
+      onCancel={() => {}}
+      onOpenLink={() => {}}
+    />
   );
 }
 

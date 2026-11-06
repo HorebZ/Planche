@@ -316,7 +316,7 @@ to: OptionId | null; placement: Placement } | { type: "set_assignees"; project_i
  *  A new draft at the top of `column`. `item_id` is a temporary ID chosen by the client,
  *  for the card shown until GitHub creates the real item.
  */
-{ type: "create_draft"; project_id: ProjectId; item_id: ItemId; field_id: FieldId; column: OptionId | null; title: string };
+{ type: "create_draft"; project_id: ProjectId; item_id: ItemId; field_id: FieldId; column: OptionId | null; title: string } | { type: "update_draft"; project_id: ProjectId; item_id: ItemId; title: string; body: string };
 
 /**  Shared GitHub content, without a Project's fields, position or item ID. */
 export type Issue = {
@@ -367,7 +367,7 @@ export type IssuePermissions = {
 
 export type IssueState = "open" | "closed";
 
-export type ItemContent = { kind: "draft"; id: ContentId; title: string; assignees: User[] } | { kind: "issue"; id: ContentId; number: number; title: string; url: string; repo: string; state: IssueState; assignees: User[]; labels: Label[]; details?: CardDetails } | { kind: "pull_request"; id: ContentId; number: number; title: string; url: string; repo: string; state: PullRequestState; is_draft: boolean; assignees: User[]; labels: Label[]; details?: CardDetails } | 
+export type ItemContent = { kind: "draft"; id: ContentId; title: string; body?: string | null; edit_error?: string | null; assignees: User[] } | { kind: "issue"; id: ContentId; number: number; title: string; url: string; repo: string; state: IssueState; assignees: User[]; labels: Label[]; details?: CardDetails } | { kind: "pull_request"; id: ContentId; number: number; title: string; url: string; repo: string; state: PullRequestState; is_draft: boolean; assignees: User[]; labels: Label[]; details?: CardDetails } | 
 /**  Content the token cannot read, such as an issue from a private repo. */
 { kind: "redacted" };
 

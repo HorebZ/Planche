@@ -37,6 +37,8 @@ export const draft = fixtureFactory<Extract<Card, { kind: "draft" }>>({
   kind: "draft",
   id: "DI_1",
   title: "Draft issue",
+  body: "",
+  edit_error: null,
   assignees: [],
 });
 

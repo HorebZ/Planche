@@ -739,6 +739,14 @@ pub async fn execute(client: &GithubClient, operation: &Operation) -> Result<Opt
             "SetDraftAssignees",
             json!({ "draftIssueId": draft_issue_id, "assigneeIds": assignee_ids }),
         ),
+        Operation::UpdateDraft {
+            draft_issue_id,
+            title,
+            body,
+        } => (
+            "UpdateDraft",
+            json!({ "draftIssueId": draft_issue_id, "title": title, "body": body }),
+        ),
     };
 
     client
@@ -905,11 +913,14 @@ fn content_from_wire(content: wire::Content) -> ItemContent {
         wire::Content::DraftIssue {
             id,
             title,
+            body,
             assignees,
         } => ItemContent::Draft {
             id: ContentId(id),
             title,
+            body,
             assignees: users(assignees),
+            edit_error: None,
         },
         wire::Content::Issue {
             id,

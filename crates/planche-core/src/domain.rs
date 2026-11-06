@@ -411,6 +411,10 @@ pub enum ItemContent {
     Draft {
         id: ContentId,
         title: String,
+        #[serde(default)]
+        body: Option<String>,
+        #[serde(default)]
+        edit_error: Option<String>,
         assignees: Vec<User>,
     },
     Issue {

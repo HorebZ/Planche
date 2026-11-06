@@ -35,6 +35,7 @@ export function IssueDetail({
   onStatus,
   onAssign,
   onGitHub,
+  onEditTitle,
   children,
 }: {
   itemId: string;
@@ -54,6 +55,7 @@ export function IssueDetail({
   onStatus?: () => void;
   onAssign?: () => void;
   onGitHub?: () => void;
+  onEditTitle?: () => void;
   children?: ReactNode;
 }) {
   const anchor = useRef<HTMLDivElement>(null);
@@ -162,9 +164,20 @@ export function IssueDetail({
                     : "Restricted item"
                   : "Unavailable item"}
             </p>
-            <h1 className="mb-6 break-words font-semibold text-2xl">
-              {item?.title ?? "Item no longer available"}
-            </h1>
+            <div className="mb-6 flex items-start gap-2">
+              <h1 className="min-w-0 flex-1 break-words font-semibold text-2xl">
+                {item?.title ?? "Item no longer available"}
+              </h1>
+              {onEditTitle ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={onEditTitle}
+                >
+                  Edit title
+                </Button>
+              ) : null}
+            </div>
             {notice ? <p className="mb-6 text-fg-2">{notice}</p> : null}
             {item ? (
               <dl className="flex flex-wrap items-center gap-2 text-sm">

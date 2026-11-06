@@ -1,4 +1,6 @@
+import { useId, useLayoutEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Markdown } from "@/components/ui/markdown";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
 
@@ -109,6 +111,8 @@ export function IssueDescriptionContent({
 
 export function IssueDescriptionEditor({
   value,
+  title,
+  onTitleChange,
   onChange,
   onSave,
   onCancel,
@@ -118,6 +122,8 @@ export function IssueDescriptionEditor({
   onOpenLink,
 }: {
   value: string;
+  title?: string;
+  onTitleChange?: (title: string) => void;
   onChange: (value: string) => void;
   onSave: () => void;
   onCancel: () => void;
@@ -126,20 +132,45 @@ export function IssueDescriptionEditor({
   sourceUrl?: string;
   onOpenLink: (url: string) => void;
 }) {
+  const titleId = useId();
+  const titleInput = useRef<HTMLInputElement>(null);
+
+  useLayoutEffect(() => {
+    titleInput.current?.focus();
+  }, []);
+
   return (
     <section
-      aria-label="Edit description"
+      aria-label={title === undefined ? "Edit description" : "Edit draft"}
       className="mt-7 space-y-3"
     >
       <form
         className="space-y-3"
         onSubmit={(event) => {
           event.preventDefault();
-          if (!saving) {
+          if (!saving && (title === undefined || title.trim())) {
             onSave();
           }
         }}
       >
+        {title !== undefined ? (
+          <label
+            htmlFor={titleId}
+            className="flex flex-col gap-2 font-medium"
+          >
+            Title
+            <Input
+              id={titleId}
+              ref={titleInput}
+              aria-label="Draft title"
+              className="w-full"
+              value={title}
+              onChange={(event) => onTitleChange?.(event.target.value)}
+              disabled={saving}
+              required
+            />
+          </label>
+        ) : null}
         <MarkdownEditor
           label="Description Markdown"
           value={value}
@@ -160,9 +191,9 @@ export function IssueDescriptionEditor({
           </Button>
           <Button
             type="submit"
-            disabled={saving}
+            disabled={saving || (title !== undefined && !title.trim())}
           >
-            {saving ? "Saving…" : "Save description"}
+            {saving ? "Saving…" : title === undefined ? "Save description" : "Save draft"}
           </Button>
         </div>
         {error ? (

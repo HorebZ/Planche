@@ -634,6 +634,167 @@ fn drafts(board: &Board) -> Vec<(String, ItemId)> {
 }
 
 #[tokio::test]
+async fn draft_edits_survive_offline_restart_and_refusal_then_retry_without_moving_the_card() {
+    let github = FakeGithub::new();
+    let (path, mut cache, project) = synced("draft-edit", &github).await;
+    let create = create_draft(&server_board(&cache, &project), "In Progress");
+    cache.enqueue(&create).unwrap();
+    sync::flush(&mut cache, &github, &project, |_| {})
+        .await
+        .unwrap();
+    sync_once(&mut cache, &github).await.unwrap();
+    let before = cache.board(&project, None).unwrap().unwrap();
+    let item_id = drafts(&before)[0].1.clone();
+    let edit = Intent::UpdateDraft {
+        project_id: project.clone(),
+        item_id: item_id.clone(),
+        title: "Renamed draft".into(),
+        body: "# Description\n\nKeep **Markdown**.\n".into(),
+    };
+
+    cache.enqueue(&edit).unwrap();
+    assert!(
+        sync::flush(&mut cache, &FakeOffline, &project, |_| {})
+            .await
+            .is_err()
+    );
+    drop(cache);
+    let mut cache = Cache::open(&path).unwrap();
+    let shown = cache.board(&project, None).unwrap().unwrap();
+    let card = intent::find_card(&shown, item_id.as_str()).unwrap();
+
+    assert!(card.pending);
+    assert!(
+        matches!(&card.content, ItemContent::Draft { title, body: Some(body), .. }
+        if title == "Renamed draft" && body == "# Description\n\nKeep **Markdown**.\n")
+    );
+    assert_eq!(layout(&shown), layout(&before));
+    assert_eq!(
+        intent::find_card(&server_board(&cache, &project), item_id.as_str())
+            .unwrap()
+            .title(),
+        "Planche test draft"
+    );
+
+    github.edit(|state| state.fail_mutations = true);
+    sync::flush(&mut cache, &github, &project, |_| {})
+        .await
+        .unwrap();
+    sync_once(&mut cache, &github).await.unwrap();
+    drop(cache);
+    let mut cache = Cache::open(&path).unwrap();
+    let shown = cache.board(&project, None).unwrap().unwrap();
+    let card = intent::find_card(&shown, item_id.as_str()).unwrap();
+
+    assert!(!card.pending);
+    assert!(
+        matches!(&card.content, ItemContent::Draft { title, edit_error: Some(_), .. } if title == "Renamed draft")
+    );
+    assert!(cache.claim_next(&project).unwrap().is_none());
+
+    cache.enqueue(&edit).unwrap();
+    github.edit(|state| state.fail_mutations = false);
+    sync::flush(&mut cache, &github, &project, |_| {})
+        .await
+        .unwrap();
+    sync_once(&mut cache, &github).await.unwrap();
+    let shown = cache.board(&project, None).unwrap().unwrap();
+    let card = intent::find_card(&shown, item_id.as_str()).unwrap();
+
+    assert!(
+        matches!(&card.content, ItemContent::Draft { body: Some(body), edit_error: None, .. } if body.contains("**Markdown**"))
+    );
+    assert!(!card.pending);
+    assert_eq!(layout(&shown), layout(&before));
+    assert!(cache.intents(&project).unwrap().is_empty());
+
+    let mut meta = cache.meta(&project).unwrap().unwrap();
+    let items = cache.snapshot(&project).unwrap().unwrap().1;
+    meta.can_update = false;
+    cache.write_snapshot(&meta, &items, true).unwrap();
+
+    assert!(matches!(cache.enqueue(&edit), Err(Error::ReadOnlyProject)));
+}
+
+#[tokio::test]
+async fn draft_edits_reject_empty_titles_real_issues_and_temporary_drafts_before_enqueue() {
+    let github = FakeGithub::new();
+    let (_, mut cache, project) = synced("draft-edit-validation", &github).await;
+    let board = server_board(&cache, &project);
+    let create = create_draft(&board, "Todo");
+    cache.enqueue(&create).unwrap();
+    let issue = board
+        .columns
+        .iter()
+        .flat_map(|column| &column.cards)
+        .find(|card| matches!(card.content, ItemContent::Issue { .. }))
+        .unwrap();
+    let edit = |item_id, title: &str| Intent::UpdateDraft {
+        project_id: project.clone(),
+        item_id,
+        title: title.into(),
+        body: String::new(),
+    };
+
+    assert!(matches!(
+        cache.enqueue(&edit(issue.item_id.clone(), " ")),
+        Err(Error::InvalidDraft(_))
+    ));
+    assert!(matches!(
+        cache.enqueue(&edit(issue.item_id.clone(), "A title")),
+        Err(Error::CardNotFound(_))
+    ));
+    assert!(matches!(
+        cache.enqueue(&edit(create.item_id().clone(), "A title")),
+        Err(Error::CardNotFound(_))
+    ));
+    assert_eq!(cache.intents(&project).unwrap(), [create]);
+}
+
+#[tokio::test]
+async fn a_successful_newer_draft_edit_retires_an_older_in_flight_refusal() {
+    let github = FakeGithub::new();
+    let (_, mut cache, project) = synced("superseded-draft-edit", &github).await;
+    let create = create_draft(&server_board(&cache, &project), "Todo");
+    cache.enqueue(&create).unwrap();
+    sync::flush(&mut cache, &github, &project, |_| {})
+        .await
+        .unwrap();
+    sync_once(&mut cache, &github).await.unwrap();
+    let item_id = drafts(&cache.board(&project, None).unwrap().unwrap())[0]
+        .1
+        .clone();
+    let first = Intent::UpdateDraft {
+        project_id: project.clone(),
+        item_id: item_id.clone(),
+        title: "First".into(),
+        body: "First body".into(),
+    };
+    let second = Intent::UpdateDraft {
+        project_id: project.clone(),
+        item_id: item_id.clone(),
+        title: "Second".into(),
+        body: String::new(),
+    };
+    cache.enqueue(&first).unwrap();
+    let in_flight = cache.claim_next(&project).unwrap().unwrap();
+    cache.enqueue(&second).unwrap();
+
+    cache.fail_draft(in_flight.seq, "Refused").unwrap();
+    sync::flush(&mut cache, &github, &project, |_| {})
+        .await
+        .unwrap();
+    sync_once(&mut cache, &github).await.unwrap();
+    let shown = cache.board(&project, None).unwrap().unwrap();
+    let card = intent::find_card(&shown, item_id.as_str()).unwrap();
+
+    assert!(
+        matches!(&card.content, ItemContent::Draft { title, body: Some(body), edit_error: None, .. } if title == "Second" && body.is_empty())
+    );
+    assert!(cache.intents(&project).unwrap().is_empty());
+}
+
+#[tokio::test]
 async fn a_new_draft_is_created_once_then_moved_to_the_top_of_its_column() {
     let github = FakeGithub::new();
     let (_, mut cache, project) = synced("draft", &github).await;

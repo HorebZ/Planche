@@ -48,6 +48,12 @@ pub enum Intent {
         column: Option<OptionId>,
         title: String,
     },
+    UpdateDraft {
+        project_id: ProjectId,
+        item_id: ItemId,
+        title: String,
+        body: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -114,6 +120,11 @@ pub enum Operation {
         draft_issue_id: ContentId,
         assignee_ids: Vec<UserId>,
     },
+    UpdateDraft {
+        draft_issue_id: ContentId,
+        title: String,
+        body: String,
+    },
 }
 
 impl Intent {
@@ -139,6 +150,7 @@ impl Intent {
             | Self::SetAssignees { project_id, .. }
             | Self::Archive { project_id, .. }
             | Self::Unarchive { project_id, .. }
+            | Self::UpdateDraft { project_id, .. }
             | Self::CreateDraft { project_id, .. } => project_id,
         }
     }
@@ -149,6 +161,7 @@ impl Intent {
             | Self::SetAssignees { item_id, .. }
             | Self::Archive { item_id, .. }
             | Self::Unarchive { item_id, .. }
+            | Self::UpdateDraft { item_id, .. }
             | Self::CreateDraft { item_id, .. } => item_id,
         }
     }
@@ -256,6 +269,33 @@ pub fn apply(mut board: Board, intent: &Intent) -> Board {
 
             insert(board, card.clone(), column.as_ref(), order, rank)
         }
+        Intent::UpdateDraft {
+            item_id,
+            title,
+            body,
+            ..
+        } => {
+            let content = board
+                .columns
+                .iter_mut()
+                .flat_map(|column| &mut column.cards)
+                .find(|card| &card.item_id == item_id)
+                .map(|card| &mut card.content);
+
+            if let Some(ItemContent::Draft {
+                title: current_title,
+                body: current_body,
+                edit_error,
+                ..
+            }) = content
+            {
+                *current_title = title.clone();
+                *current_body = Some(body.clone());
+                *edit_error = None;
+            }
+
+            board
+        }
         Intent::CreateDraft {
             item_id,
             column,
@@ -279,6 +319,8 @@ pub fn apply(mut board: Board, intent: &Intent) -> Board {
                 content: ItemContent::Draft {
                     id: ContentId(String::new()),
                     title: title.clone(),
+                    body: Some(String::new()),
+                    edit_error: None,
                     assignees: Vec::new(),
                 },
                 pending: false,
@@ -477,6 +519,36 @@ pub fn to_operations(intent: &Intent, board: &Board) -> Result<Vec<Operation>> {
             project_id: project_id.clone(),
             item_id: item_id.clone(),
         }],
+        Intent::UpdateDraft {
+            item_id,
+            title,
+            body,
+            ..
+        } => {
+            if title.trim().is_empty() {
+                return Err(Error::InvalidDraft("A draft title cannot be empty".into()));
+            }
+
+            let content = board
+                .columns
+                .iter()
+                .flat_map(|column| &column.cards)
+                .find(|card| &card.item_id == item_id)
+                .map(|card| &card.content);
+            let Some(ItemContent::Draft { id, .. }) = content else {
+                return Err(Error::CardNotFound(item_id.to_string()));
+            };
+
+            if id.as_str().is_empty() {
+                return Err(Error::CardNotFound(item_id.to_string()));
+            }
+
+            vec![Operation::UpdateDraft {
+                draft_issue_id: id.clone(),
+                title: title.clone(),
+                body: body.clone(),
+            }]
+        }
         Intent::CreateDraft {
             project_id, title, ..
         } => vec![Operation::AddDraftIssue {

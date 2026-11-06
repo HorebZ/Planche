@@ -683,7 +683,27 @@ export function installMockBackend(scenario: Scenario) {
         setTimeout(
           async () => {
             if (scenario === "rollback") {
-              save(before);
+              const edited = applyIntent(before, intent);
+
+              save(
+                intent.type === "update_draft"
+                  ? {
+                      ...edited,
+                      columns: edited.columns.map((column) => ({
+                        ...column,
+                        cards: column.cards.map((card) =>
+                          card.item_id === intent.item_id && card.kind === "draft"
+                            ? {
+                                ...card,
+                                pending: false,
+                                edit_error: "PLANCHE_FAULT=fail_mutations",
+                              }
+                            : card,
+                        ),
+                      })),
+                    }
+                  : before,
+              );
               await emit("mutation-failed", { intent, message: "PLANCHE_FAULT=fail_mutations" });
             } else {
               save(pending(boards.get(intent.project_id) ?? board ?? before, false));

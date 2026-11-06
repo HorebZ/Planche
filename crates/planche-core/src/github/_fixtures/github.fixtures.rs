@@ -113,9 +113,30 @@ impl FakeGithub {
                 content: ItemContent::Draft {
                     id: ContentId(format!("DI_{}", state.items.len())),
                     title: title.clone(),
+                    body: Some(String::new()),
+                    edit_error: None,
                     assignees: Vec::new(),
                 },
             }),
+            Operation::UpdateDraft {
+                draft_issue_id,
+                title,
+                body,
+            } => {
+                for item in &mut state.items {
+                    if let ItemContent::Draft {
+                        id,
+                        title: current_title,
+                        body: current_body,
+                        ..
+                    } = &mut item.content
+                        && id == draft_issue_id
+                    {
+                        *current_title = title.clone();
+                        *current_body = Some(body.clone());
+                    }
+                }
+            }
             Operation::ArchiveItem { item_id, .. } => {
                 let i = index(&state.items, item_id);
 

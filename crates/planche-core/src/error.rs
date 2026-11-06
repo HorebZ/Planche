@@ -10,6 +10,8 @@ pub enum Error {
     InvalidRepository(String),
     #[error("{0}")]
     InvalidComment(String),
+    #[error("{0}")]
+    InvalidDraft(String),
     #[error("not signed in, run `planche auth login`")]
     NotSignedIn,
     #[error("token rejected by GitHub (401)")]

@@ -234,7 +234,7 @@ fn column_changes(before: &Board, after: &Board) -> Vec<CardChange> {
 #[derive(Debug)]
 pub enum Sent {
     Ok(Mutation),
-    /// A definitive error. The row is gone, and the board shows the server state again.
+    /// A definitive error. Draft edits remain saved for an explicit retry; other rows roll back.
     Failed(Mutation, Error),
 }
 
@@ -285,7 +285,11 @@ pub async fn flush<R: Remote>(
                 return Err(error);
             }
             Err(error) => {
-                cache.remove(mutation.seq)?;
+                if matches!(mutation.intent, Intent::UpdateDraft { .. }) {
+                    cache.fail_draft(mutation.seq, &error.to_string())?;
+                } else {
+                    cache.remove(mutation.seq)?;
+                }
                 sent(Sent::Failed(mutation, error));
             }
         }

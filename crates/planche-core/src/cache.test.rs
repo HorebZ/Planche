@@ -651,10 +651,8 @@ fn switching_migrates_legacy_pending_actions_to_the_previous_account() {
 #[test]
 fn project_account_migration_preserves_pending_actions_and_comment_receipts() {
     let conn = Cache::open(":memory:").unwrap().conn;
-    conn.execute_batch("ALTER TABLE pending_mutation DROP COLUMN project_account_id")
-        .unwrap();
-    conn.pragma_update(None, "user_version", (MIGRATIONS.len() - 1) as u32)
-        .unwrap();
+    conn.execute_batch("ALTER TABLE pending_mutation DROP COLUMN project_account_id; ALTER TABLE item DROP COLUMN draft_body").unwrap();
+    conn.pragma_update(None, "user_version", 10).unwrap();
     conn.execute(
         "INSERT INTO kv (key, value) VALUES ('account_id', 'legacy-account')",
         [],

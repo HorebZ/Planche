@@ -78,6 +78,13 @@ export function applyIntent(board: Board, intent: Intent): Board {
 
       return insert(board, intent.card, intent.column, projectOrder(board), intent.card.position);
 
+    case "update_draft":
+      return mapCard(board, intent.item_id, (card) =>
+        card.kind === "draft"
+          ? { ...card, title: intent.title, body: intent.body, edit_error: null }
+          : card,
+      );
+
     case "create_draft": {
       const { item_id, column, title } = intent;
 
@@ -91,6 +98,8 @@ export function applyIntent(board: Board, intent: Intent): Board {
         kind: "draft",
         id: "",
         title,
+        body: "",
+        edit_error: null,
         assignees: [],
         pending: false,
         updated_by_sync: false,

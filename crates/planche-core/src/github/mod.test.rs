@@ -18,6 +18,7 @@ fn projects_and_issue_operations_use_their_own_connection_without_a_pat_fallback
         "SetSingleSelect",
         "ArchiveItem",
         "SetDraftAssignees",
+        "UpdateDraft",
     ] {
         assert_eq!(client.operation_token(operation).unwrap(), "gho_personal");
     }

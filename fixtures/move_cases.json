@@ -2748,5 +2748,95 @@
    "pending_count": 0,
    "synced_at": null
   }
+ },
+ {
+  "name": "a draft edit updates title and description without moving the card",
+  "board": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board",
+    "manual_order": true
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_edit",
+       "title": "Original draft",
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false,
+       "body": "Original **description**",
+       "edit_error": null
+      }
+     ]
+    }
+   ],
+   "pending_count": 0,
+   "synced_at": null
+  },
+  "intent": {
+   "type": "update_draft",
+   "project_id": "PVT_1",
+   "item_id": "PVTI_A",
+   "title": "Renamed draft",
+   "body": "# Updated\n\nKeep **Markdown**."
+  },
+  "expected": {
+   "project": {
+    "id": "PVT_1",
+    "number": 2,
+    "title": "Planche",
+    "url": "https://github.com/users/HorebZ/projects/2"
+   },
+   "view": {
+    "number": 2,
+    "name": "Board",
+    "manual_order": true
+   },
+   "field": {
+    "id": "PVTSSF_status",
+    "name": "Status"
+   },
+   "columns": [
+    {
+     "option_id": "todo",
+     "name": "Todo",
+     "color": "GRAY",
+     "cards": [
+      {
+       "item_id": "PVTI_A",
+       "position": 0,
+       "kind": "draft",
+       "id": "DI_edit",
+       "title": "Renamed draft",
+       "assignees": [],
+       "pending": false,
+       "updated_by_sync": false,
+       "body": "# Updated\n\nKeep **Markdown**.",
+       "edit_error": null
+      }
+     ]
+    }
+   ],
+   "pending_count": 0,
+   "synced_at": null
+  }
  }
 ]

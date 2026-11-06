@@ -407,6 +407,8 @@ pub(super) enum Content {
     DraftIssue {
         id: String,
         title: String,
+        #[serde(default)]
+        body: Option<String>,
         assignees: Nodes<User>,
     },
     Issue {
