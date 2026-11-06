@@ -41,7 +41,7 @@ export function repositoryIssueSource(): {
     }
 
     const state = number % 3 === 0 ? "closed" : "open";
-    const status: RepositoryIssueStatus =
+    const bucket: RepositoryIssueStatus =
       state === "closed"
         ? "done"
         : number % 5 === 0
@@ -51,7 +51,8 @@ export function repositoryIssueSource(): {
             : number % 5 === 2
               ? "in_progress"
               : "review";
-    const draft = status === "backlog" && number % 2 === 0;
+    const draft = bucket === "backlog" && number % 2 === 0;
+    const status: RepositoryIssueStatus = draft ? "in_progress" : bucket;
     const linked = draft || status === "review" || state === "closed";
 
     return {

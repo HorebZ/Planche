@@ -17,7 +17,7 @@ export const statusLabels: Record<StatusKey, string> = {
 };
 
 export function glyphStatus(status: StatusKey): Status {
-  return status === "backlog" ? "draft" : status === "doing" ? "progress" : status;
+  return status === "backlog" ? "todo" : status === "doing" ? "progress" : status;
 }
 
 export function StatusSquare({

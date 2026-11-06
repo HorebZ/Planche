@@ -217,9 +217,9 @@ export function ShellSection() {
                   },
                 ]}
                 columns={[
-                  { status: "backlog", items: ["blocked", "draft"] },
+                  { status: "backlog", items: ["blocked"] },
                   { status: "ready", items: ["ready"] },
-                  { status: "in_progress", items: ["assigned"] },
+                  { status: "in_progress", items: ["assigned", "draft"] },
                   { status: "review", items: ["review"] },
                   { status: "done", items: ["closed"] },
                 ]}

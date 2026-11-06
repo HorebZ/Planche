@@ -4,7 +4,7 @@ import { expect, test } from "vitest";
 import { Column } from "./Column";
 
 test.each([
-  ["Backlog", "GREEN", "2.26 2.26", null, null],
+  ["Backlog", "GREEN", null, null, null],
   ["Todo", "GRAY", null, null, null],
   ["In progress", "GRAY", null, null, "var(--pl-s-doing)"],
   ["In review", "GRAY", null, null, "var(--pl-s-review)"],

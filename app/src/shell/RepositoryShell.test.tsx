@@ -216,7 +216,7 @@ test("Open is the default list, Closed stays a list, and Planche is a separate v
     ).not.toBeNull();
   }
   expect(
-    get('[data-slot="board-column"][aria-label="Backlog"]').querySelector(
+    get('[data-slot="board-column"][aria-label="In progress"]').querySelector(
       '[data-item-id="I_repo_110"]',
     ),
   ).not.toBeNull();
@@ -229,7 +229,7 @@ test("Open is the default list, Closed stays a list, and Planche is a separate v
 
   await expect
     .poll(() => document.querySelector('[data-slot="issue-detail"] h1')?.textContent)
-    .toBe("Repository issue 110");
+    .toBe("Repository issue 95");
 });
 
 test("repository tabs reuse the editor, preserve drafts and return to the fixed source views", async () => {

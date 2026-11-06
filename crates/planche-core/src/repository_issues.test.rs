@@ -155,14 +155,17 @@ async fn an_old_refusal_cannot_purge_a_newer_successful_refresh() {
 
 #[test]
 fn kanban_columns_follow_issue_state_with_closed_and_blocked_taking_precedence() {
-    use crate::domain::{ContentId, RepositoryIssueStatus};
+    use crate::domain::{ContentId, LinkedPullRequest, PullRequestState, RepositoryIssueStatus};
     use crate::fixtures::user;
     use RepositoryIssueStatus::*;
 
     for (closed, blocked, draft, prs, assigned, expected) in [
         (true, true, true, 2, true, Done),
         (false, true, false, 1, true, Backlog),
-        (false, false, true, 2, true, Backlog),
+        (false, true, true, 1, true, Backlog),
+        (false, false, true, 2, true, InProgress),
+        (false, false, true, 2, false, InProgress),
+        (false, false, true, 1, false, InProgress),
         (false, false, false, 1, true, Review),
         (false, false, false, 1, false, Review),
         (false, false, false, 0, true, InProgress),
@@ -186,7 +189,13 @@ fn kanban_columns_follow_issue_state_with_closed_and_blocked_taking_precedence()
             IssueState::Open
         };
         details.blocked_by = u32::from(blocked);
-        details.has_draft_pull_request = draft;
+        details.has_draft_pull_request = draft && prs > 1;
+        details.pull_request = (draft && prs == 1).then(|| LinkedPullRequest {
+            number: 42,
+            title: "Work in progress".into(),
+            state: PullRequestState::Open,
+            is_draft: true,
+        });
         details.pull_request_count = prs;
         if assigned {
             assignees.push(user("dev"));

@@ -33,6 +33,22 @@ test.each(["backlog", "todo", "doing", "review", "done"] as const)(
   },
 );
 
+test("a regular backlog issue keeps a solid glyph", () => {
+  const container = document.createElement("div");
+
+  container.innerHTML = renderToStaticMarkup(
+    <Card
+      status="backlog"
+      card={issue({ details: { blocked_by: 1 } })}
+    />,
+  );
+
+  const glyph = container.querySelector("[data-slot='status-square'] svg");
+
+  expect(glyph?.getAttribute("aria-label")).toBe("Backlog");
+  expect(glyph?.querySelector("circle")?.getAttribute("stroke-dasharray")).toBeNull();
+});
+
 test("focus restoration consumes mounted reveals and preserves unmounted requests", () => {
   const element = document.createElement("div");
 

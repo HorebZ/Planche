@@ -594,6 +594,15 @@ export function BoardSection() {
                 className={cardClass}
               />
             </State>
+            <State label="backlog issue">
+              <IssueCard
+                {...openIssue}
+                className={cardClass}
+                status="backlog"
+                blockedBy={1}
+                title="Waiting for the API"
+              />
+            </State>
             <State label="issue closed">
               <IssueCard
                 {...openIssue}

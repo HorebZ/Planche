@@ -26,11 +26,12 @@ impl RepositoryIssues {
                 } => {
                     let status = if *state == IssueState::Closed {
                         Done
-                    } else if details.blocked_by > 0
-                        || details.has_draft_pull_request
+                    } else if details.blocked_by > 0 {
+                        Backlog
+                    } else if details.has_draft_pull_request
                         || details.pull_request.as_ref().is_some_and(|pr| pr.is_draft)
                     {
-                        Backlog
+                        InProgress
                     } else if details.pull_request_count > 0 {
                         Review
                     } else if !assignees.is_empty() {
